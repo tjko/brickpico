@@ -1,0 +1,15 @@
+[submodule "libs/bb_spi_lcd-lib"]
+	path = libs/bb_spi_lcd-lib
+	url = https://github.com/tjko/bb_spi_lcd-lib.git
+[submodule "libs/littlefs-lib"]
+	path = libs/littlefs-lib
+	url = https://github.com/lurk101/littlefs-lib.git
+[submodule "libs/cJSON"]
+	path = libs/cJSON
+	url = https://github.com/DaveGamble/cJSON.git
+[submodule "libs/ss_oled-lib"]
+	path = libs/ss_oled-lib
+	url = https://github.com/tjko/ss_oled-lib.git
+[submodule "libs/libb64"]
+	path = libs/libb64
+	url = https://github.com/libb64/libb64.git
