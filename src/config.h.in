@@ -1,0 +1,15 @@
+
+#ifndef BRICKPICO_CONFIG_H
+#define BRICKPICO_CONFIG_H 1
+
+#define BRICKPICO_VERSION         "@brickpico_VERSION@"
+#define BRICKPICO_VERSION_MAJOR   "@brickpico_VERSION_MAJOR@"
+#define BRICKPICO_VERSION_MINOR   "@brickpico_VERSION_MINOR@"
+
+#include "boards/@BRICKPICO_BOARD@.h"
+#define BRICKPICO_BOARD "@BRICKPICO_BOARD@"
+
+
+#include "brickpico-compile.h"
+
+#endif /* BRICKPICO_CONFIG_H */
