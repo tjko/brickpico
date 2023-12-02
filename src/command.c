@@ -509,6 +509,7 @@ int cmd_out_write(const char *cmd, const char *args, int query, char *prev_cmd)
 				log_msg(LOG_INFO, "output%d: change PWM %d%% --> %d%%", out + 1,
 					st->pwm[out], val);
 				st->pwm[out] = val;
+				set_pwm_duty_cycle(out, val);
 				return 0;
 			} else {
 				log_msg(LOG_WARNING, "output%d: invalid new value for PWM: %d", out + 1,
