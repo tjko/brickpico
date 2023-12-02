@@ -30,7 +30,7 @@ cmake .. || fatal "cmake failed"
 make -j
 if [ $? -eq 0 ]; then
 	echo "Build successful."
-	picotool info -a fanpico.uf2
+	picotool info -a brickpico.uf2
 else
 	echo "Build failed."
 	exit 1

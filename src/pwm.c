@@ -28,18 +28,9 @@
 
 #include "brickpico.h"
 
-#define PWM_IN_CLOCK_DIVIDER 100
-#define PWM_IN_SAMPLE_INTERVAL 10 /* milliseconds */
 
 
-/*
- * Functions for generating (emulating) fan PWM control signal and
- * reading (motherboard) PWM signal for controlling fans.
- * Pico PWM hardware is used for both.
- */
-
-
-/* Map of fan PWM signal output pins.
+/* Map of PWM signal output pins.
    Every two pins must be the A and B pins of same PWM slice.
  */
 uint8_t output_gpio_pwm_map[OUTPUT_MAX_COUNT] = {
@@ -62,8 +53,7 @@ uint8_t output_gpio_pwm_map[OUTPUT_MAX_COUNT] = {
 };
 
 
-uint pwm_out_top = 0;
-float pwm_in_count_rate = 0;
+uint16_t pwm_out_top = 0;
 
 /* Set PMW output signal duty cycle.
  */
@@ -87,20 +77,37 @@ void set_pwm_duty_cycle(uint out, float duty)
 
 /* Initialize PWM hardware to generate 25kHz PWM signal on output pins.
  */
+
+#define PWM_TOP_MAX (1<<16)
+
 void setup_pwm_outputs()
 {
 	uint32_t sys_clock = clock_get_hz(clk_sys);
 	pwm_config config = pwm_get_default_config();
-	uint pwm_freq = 25000;
-	uint slice_num;
+	uint pwm_freq = cfg->pwm_freq;
+	uint clk_div = 1;
+	uint slice_num, top;
 	int i;
 
+
+	if (pwm_freq < 10)
+		pwm_freq = 10;
+	else if (pwm_freq > 100000)
+		pwm_freq = 100000;
+
 	log_msg(LOG_NOTICE, "Initializing PWM outputs...");
-	log_msg(LOG_NOTICE, "PWM Frequency: %0.2f kHz", pwm_freq / 1000.0);
+	log_msg(LOG_NOTICE, "PWM Frequency: %u Hz", pwm_freq);
 
-	pwm_out_top = (sys_clock / pwm_freq / 2) - 1;  /* for phase-correct PWM signal */
+	top = sys_clock / clk_div / pwm_freq / 2 - 1;  /* for phase-correct PWM signal */
+	if (top >= PWM_TOP_MAX) {
+		clk_div = top / PWM_TOP_MAX + 1;
+		log_msg(LOG_DEBUG, "adjust clock divider: %u", clk_div);
+		top = sys_clock / clk_div / pwm_freq / 2 - 1;  /* for phase-correct PWM signal */
+	}
+	pwm_out_top = top;
 
-	pwm_config_set_clkdiv(&config, 1);
+	log_msg(LOG_DEBUG, "PWM: TOP=%u (max %u), CLK_DIV=%u", pwm_out_top, PWM_TOP_MAX, clk_div);
+	pwm_config_set_clkdiv_int(&config, clk_div);
 	pwm_config_set_phase_correct(&config, 1);
 	pwm_config_set_wrap(&config, pwm_out_top);
 

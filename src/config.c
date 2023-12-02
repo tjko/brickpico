@@ -32,9 +32,6 @@
 
 #include "brickpico.h"
 
-/* Default configuration embedded using  default_config.s */
-extern const char brickpico_default_config[];
-
 
 struct brickpico_config brickpico_config;
 const struct brickpico_config *cfg = &brickpico_config;
@@ -49,18 +46,22 @@ void clear_config(struct brickpico_config *cfg)
 
 	mutex_enter_blocking(config_mutex);
 
+	memset(cfg, 0, sizeof(struct brickpico_config));
+
 	for (i = 0; i < OUTPUT_MAX_COUNT; i++) {
 		struct pwm_output *o = &cfg->outputs[i];
-
-		o->name[0] = 0;
+		snprintf(o->name, sizeof(o->name), "Output %d", i + 1);
 		o->min_pwm = 0;
-		o->max_pwm = 0;
+		o->max_pwm = 100;
+		o->default_pwm = 0;
+		o->type = 0;
 	}
 
 	cfg->local_echo = false;
 	cfg->spi_active = false;
-	cfg->serial_active = false;
+	cfg->serial_active = true;
 	cfg->led_mode = 0;
+	cfg->pwm_freq = 1000;
 	strncopy(cfg->name, "brickpico1", sizeof(cfg->name));
 	strncopy(cfg->display_type, "default", sizeof(cfg->display_type));
 	strncopy(cfg->display_theme, "default", sizeof(cfg->display_theme));
@@ -100,6 +101,7 @@ cJSON *config_to_json(const struct brickpico_config *cfg)
 	cJSON_AddItemToObject(config, "led_mode", cJSON_CreateNumber(cfg->led_mode));
 	cJSON_AddItemToObject(config, "spi_active", cJSON_CreateNumber(cfg->spi_active));
 	cJSON_AddItemToObject(config, "serial_active", cJSON_CreateNumber(cfg->serial_active));
+	cJSON_AddItemToObject(config, "pwm_freq", cJSON_CreateNumber(cfg->pwm_freq));
 	if (strlen(cfg->display_type) > 0)
 		cJSON_AddItemToObject(config, "display_type", cJSON_CreateString(cfg->display_type));
 	if (strlen(cfg->display_theme) > 0)
@@ -154,6 +156,8 @@ cJSON *config_to_json(const struct brickpico_config *cfg)
 		cJSON_AddItemToObject(o, "name", cJSON_CreateString(f->name));
 		cJSON_AddItemToObject(o, "min_pwm", cJSON_CreateNumber(f->min_pwm));
 		cJSON_AddItemToObject(o, "max_pwm", cJSON_CreateNumber(f->max_pwm));
+		cJSON_AddItemToObject(o, "default_pwm", cJSON_CreateNumber(f->default_pwm));
+		cJSON_AddItemToObject(o, "type", cJSON_CreateNumber(f->type));
 		cJSON_AddItemToArray(outputs, o);
 	}
 	cJSON_AddItemToObject(config, "outputs", outputs);
@@ -196,6 +200,8 @@ int json_to_config(cJSON *config, struct brickpico_config *cfg)
 		cfg->spi_active = cJSON_GetNumberValue(ref);
 	if ((ref = cJSON_GetObjectItem(config, "serial_active")))
 		cfg->serial_active = cJSON_GetNumberValue(ref);
+	if ((ref = cJSON_GetObjectItem(config, "pwm_freq")))
+		cfg->pwm_freq = cJSON_GetNumberValue(ref);
 	if ((ref = cJSON_GetObjectItem(config, "display_type"))) {
 		if ((val = cJSON_GetStringValue(ref)))
 			strncopy(cfg->display_type, val, sizeof(cfg->display_type));
@@ -276,6 +282,8 @@ int json_to_config(cJSON *config, struct brickpico_config *cfg)
 
 			f->min_pwm = cJSON_GetNumberValue(cJSON_GetObjectItem(item, "min_pwm"));
 			f->max_pwm = cJSON_GetNumberValue(cJSON_GetObjectItem(item, "max_pwm"));
+			f->default_pwm = cJSON_GetNumberValue(cJSON_GetObjectItem(item, "default_pwm"));
+			f->type = cJSON_GetNumberValue(cJSON_GetObjectItem(item, "type"));
 		}
 	}
 
@@ -287,8 +295,6 @@ int json_to_config(cJSON *config, struct brickpico_config *cfg)
 
 void read_config(bool multicore)
 {
-	const char *default_config = brickpico_default_config;
-	uint32_t default_config_size = strlen(default_config);
 	cJSON *config = NULL;
 	int res;
 	uint32_t file_size;
@@ -315,21 +321,14 @@ void read_config(bool multicore)
 	if (multicore)
 		multicore_lockout_end_blocking();
 
+	clear_config(&brickpico_config);
+
 	if (!config) {
 		log_msg(LOG_NOTICE, "Using default configuration...");
-		log_msg(LOG_DEBUG, "config size = %lu", default_config_size);
-		/* printf("default config:\n---\n%s\n---\n", default_config); */
-		config = cJSON_Parse(brickpico_default_config);
-		if (!config) {
-			const char *error_str = cJSON_GetErrorPtr();
-			panic("Failed to parse default config: %s\n",
-				(error_str ? error_str : "") );
-		}
+		return;
 	}
 
-
         /* Parse JSON configuration */
-	clear_config(&brickpico_config);
 	if (json_to_config(config, &brickpico_config) < 0) {
 		log_msg(LOG_ERR, "Error parsing JSON configuration");
 	}
@@ -338,7 +337,7 @@ void read_config(bool multicore)
 }
 
 
-void save_config()
+void save_config(bool multicore)
 {
 	cJSON *config;
 	char *str;
@@ -355,9 +354,11 @@ void save_config()
 		log_msg(LOG_ERR, "Failed to generate JSON output");
 	} else {
 		uint32_t config_size = strlen(str) + 1;
-		multicore_lockout_start_blocking();
+		if (multicore)
+			multicore_lockout_start_blocking();
 		flash_write_file(str, config_size, "brickpico.cfg");
-		multicore_lockout_end_blocking();
+		if (multicore)
+			multicore_lockout_end_blocking();
 		free(str);
 	}
 
@@ -387,13 +388,15 @@ void print_config()
 }
 
 
-void delete_config()
+void delete_config(bool multicore)
 {
 	int res;
 
-	multicore_lockout_start_blocking();
+	if (multicore)
+		multicore_lockout_start_blocking();
 	res = flash_delete_file("fanpico.cfg");
-	multicore_lockout_end_blocking();
+	if (multicore)
+		multicore_lockout_end_blocking();
 
 	if (res) {
 		log_msg(LOG_ERR, "Failed to delete configuration.");

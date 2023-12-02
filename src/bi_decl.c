@@ -44,6 +44,22 @@ void set_binary_info()
 	bi_decl(bi_1pin_with_name(SCL_PIN, "SCL (I2C)"));
 #endif
 
+#if SCK_PIN >= 0
+	bi_decl(bi_1pin_with_name(SCK_PIN, "SCK (SPI)"));
+	bi_decl(bi_1pin_with_name(MOSI_PIN, "MOSI (SPI)"));
+	bi_decl(bi_1pin_with_name(MISO_PIN, "MISO (SPI)"));
+	bi_decl(bi_1pin_with_name(CS_PIN, "CS (SPI)"));
+#endif
+#if DC_PIN >= 0
+	bi_decl(bi_1pin_with_name(DC_PIN, "LCD DC (SPI)"));
+#endif
+#if LCD_RESET_PIN >= 0
+	bi_decl(bi_1pin_with_name(LCD_RESET_PIN, "LCD Reset (SPI)"));
+#endif
+#if LCD_LIGHT_PIN >= 0
+	bi_decl(bi_1pin_with_name(LCD_LIGHT_PIN, "LCD Backlight (SPI)"));
+#endif
+
 	bi_decl(bi_1pin_with_name(PWM1_PIN, "PWM1 signal (output)"));
 	bi_decl(bi_1pin_with_name(PWM2_PIN, "PWM2 signal (output)"));
 	bi_decl(bi_1pin_with_name(PWM3_PIN, "PWM3 signal (output)"));

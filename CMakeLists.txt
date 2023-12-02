@@ -80,7 +80,6 @@ add_executable(brickpico
   src/pwm.c
   src/util.c
   src/log.c
-  src/default_config.s
   src/credits.s
   )
 

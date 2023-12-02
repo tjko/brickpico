@@ -57,6 +57,8 @@ struct pwm_output {
 	/* output PWM signal settings */
 	uint8_t min_pwm;
 	uint8_t max_pwm;
+	uint8_t default_pwm;
+	uint8_t type; /* 0 = Dimmer, 1 = Toggle (on/off) */
 };
 
 struct brickpico_config {
@@ -70,6 +72,7 @@ struct brickpico_config {
 	char name[32];
 	bool spi_active;
 	bool serial_active;
+	uint pwm_freq;
 #ifdef WIFI_SUPPORT
 	char wifi_ssid[WIFI_SSID_MAX_LEN + 1];
 	char wifi_passwd[WIFI_PASSWD_MAX_LEN + 1];
@@ -107,8 +110,8 @@ int cmd_version(const char *cmd, const char *args, int query, char *prev_cmd);
 extern mutex_t *config_mutex;
 extern const struct brickpico_config *cfg;
 void read_config(bool multicore);
-void save_config();
-void delete_config();
+void save_config(bool multicore);
+void delete_config(bool multicore);
 void print_config();
 
 /* display.c */

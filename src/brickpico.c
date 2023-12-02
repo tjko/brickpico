@@ -71,12 +71,9 @@ void setup()
 
 	read_config(false);
 
-#if TTL_SERIAL
-	/* Initialize serial console if configured... */
-	if(cfg->serial_active && !cfg->spi_active) {
-		stdio_uart_init_full(TTL_SERIAL_UART,
-				TTL_SERIAL_SPEED, TX_PIN, RX_PIN);
-	}
+#if TTL_SERIAL > 0
+	stdio_uart_init_full(TTL_SERIAL_UART,
+			TTL_SERIAL_SPEED, TX_PIN, RX_PIN);
 #endif
 	printf("\n\n");
 #ifndef NDEBUG
@@ -118,9 +115,10 @@ void setup()
 	setup_pwm_outputs();
 
 	for (i = 0; i < OUTPUT_COUNT; i++) {
-		set_pwm_duty_cycle(i, 0);
+		uint8_t duty = cfg->outputs[i].default_pwm;
+		set_pwm_duty_cycle(i, duty);
+		brickpico_state->pwm[i] = duty;
 	}
-
 
 	log_msg(LOG_NOTICE, "System initialization complete.");
 }
@@ -136,6 +134,36 @@ void clear_state(struct brickpico_state *s)
 }
 
 
+void core1_main()
+{
+	absolute_time_t ABSOLUTE_TIME_INITIALIZED_VAR(t_last, 0);
+	absolute_time_t ABSOLUTE_TIME_INITIALIZED_VAR(t_tick, 0);
+	absolute_time_t t_now;
+	int64_t max_delta = 0;
+	int64_t delta;
+
+	log_msg(LOG_INFO, "core1: started...");
+
+	/* Allow core0 to pause this core... */
+	multicore_lockout_victim_init();
+
+	t_tick = t_last = get_absolute_time();
+
+	while (1) {
+		t_now = get_absolute_time();
+		delta = absolute_time_diff_us(t_last, t_now);
+		t_last = t_now;
+
+		if (delta > max_delta) {
+			max_delta = delta;
+			log_msg(LOG_INFO, "core1: max_loop_time=%lld", max_delta);
+		}
+
+		if (time_passed(&t_tick, 5000)) {
+			log_msg(LOG_DEBUG, "tick");
+		}
+	}
+}
 
 
 int main()
@@ -162,6 +190,8 @@ int main()
 	if (get_debug_level() >= 2)
 		print_mallinfo();
 
+	/* Start second core (core1)... */
+	multicore_launch_core1(core1_main);
 
 #if WATCHDOG_ENABLED
 	watchdog_enable(WATCHDOG_REBOOT_DELAY, 1);

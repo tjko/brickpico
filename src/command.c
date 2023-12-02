@@ -327,7 +327,7 @@ int cmd_save_config(const char *cmd, const char *args, int query, char *prev_cmd
 {
 	if (query)
 		return 1;
-	save_config();
+	save_config(true);
 	return 0;
 }
 
@@ -343,7 +343,7 @@ int cmd_delete_config(const char *cmd, const char *args, int query, char *prev_c
 {
 	if (query)
 		return 1;
-	delete_config();
+	delete_config(true);
 	return 0;
 }
 
@@ -431,6 +431,30 @@ int cmd_out_max_pwm(const char *cmd, const char *args, int query, char *prev_cmd
 				log_msg(LOG_NOTICE, "output%d: change max PWM %d%% --> %d%%", out + 1,
 					conf->outputs[out].max_pwm, val);
 				conf->outputs[out].max_pwm = val;
+			} else {
+				log_msg(LOG_WARNING, "output%d: invalid new value for max PWM: %d", out + 1,
+					val);
+				return 2;
+			}
+		}
+		return 0;
+	}
+	return 1;
+}
+
+int cmd_out_default_pwm(const char *cmd, const char *args, int query, char *prev_cmd)
+{
+	int out, val;
+
+	out = atoi(&prev_cmd[6]) - 1;
+	if (out >= 0 && out < OUTPUT_COUNT) {
+		if (query) {
+			printf("%d\n", conf->outputs[out].default_pwm);
+		} else if (str_to_int(args, &val, 10)) {
+			if (val >= 0 && val <= 100) {
+				log_msg(LOG_NOTICE, "output%d: change default PWM %d%% --> %d%%",
+					out + 1, conf->outputs[out].default_pwm, val);
+				conf->outputs[out].default_pwm = val;
 			} else {
 				log_msg(LOG_WARNING, "output%d: invalid new value for max PWM: %d", out + 1,
 					val);
@@ -897,6 +921,30 @@ int cmd_spi(const char *cmd, const char *args, int query, char *prev_cmd)
 }
 
 
+int cmd_pwm_freq(const char *cmd, const char *args, int query, char *prev_cmd)
+{
+	int val;
+
+	if (query) {
+		printf("%u\n", conf->pwm_freq);
+		return 0;
+	}
+
+	if (str_to_int(args, &val, 10)) {
+		if (val >= 10 && val <= 100000) {
+			log_msg(LOG_NOTICE, "change PWM frequency %uHz --> %uHz",
+				conf->pwm_freq, val);
+			conf->pwm_freq = val;
+		} else {
+			log_msg(LOG_WARNING, "invalid new value for PWM frequency: %d",	val);
+			return 2;
+		}
+	}
+
+	return 1;
+}
+
+
 struct cmd_t display_commands[] = {
 	{ "LAYOUTR",   7, NULL,              cmd_display_layout_r },
 	{ "LOGO",      4, NULL,              cmd_display_logo },
@@ -942,6 +990,7 @@ struct cmd_t system_commands[] = {
 	{ "LOG",       3, NULL,              cmd_log_level },
 	{ "MEMory",    3, NULL,              cmd_memory },
 	{ "NAME",      4, NULL,              cmd_name },
+	{ "PWMFREQ",   7, NULL,              cmd_pwm_freq },
 	{ "SERIAL",    6, NULL,              cmd_serial },
 	{ "SPI",       3, NULL,              cmd_spi },
 	{ "SYSLOG",    6, NULL,              cmd_syslog_level },
@@ -955,6 +1004,7 @@ struct cmd_t system_commands[] = {
 };
 
 struct cmd_t output_c_commands[] = {
+	{ "DEFault",   3, NULL,              cmd_out_default_pwm },
 	{ "MAXpwm",    3, NULL,              cmd_out_max_pwm },
 	{ "MINpwm",    3, NULL,              cmd_out_min_pwm },
 	{ "NAME",      4, NULL,              cmd_out_name },
