@@ -40,11 +40,14 @@
 #include "brickpico.h"
 
 
+static struct brickpico_config core1_config;
+static struct brickpico_state core1_state;
 static struct brickpico_state transfer_state;
-
 static struct brickpico_state system_state;
 struct brickpico_state *brickpico_state = &system_state;
 
+auto_init_mutex(state_mutex_inst);
+mutex_t *state_mutex = &state_mutex_inst;
 bool rebooted_by_watchdog = false;
 
 
@@ -134,11 +137,19 @@ void clear_state(struct brickpico_state *s)
 }
 
 
+void update_core1_state()
+{
+	mutex_enter_blocking(state_mutex);
+	memcpy(&transfer_state, &system_state, sizeof(transfer_state));
+	mutex_exit(state_mutex);
+}
+
 void core1_main()
 {
-	absolute_time_t ABSOLUTE_TIME_INITIALIZED_VAR(t_last, 0);
-	absolute_time_t ABSOLUTE_TIME_INITIALIZED_VAR(t_tick, 0);
-	absolute_time_t t_now;
+	struct brickpico_config *config = &core1_config;
+	struct brickpico_state *state = &core1_state;
+	struct brickpico_state prev_state;
+	absolute_time_t t_now, t_last, t_config, t_state, t_tick;
 	int64_t max_delta = 0;
 	int64_t delta;
 
@@ -147,7 +158,8 @@ void core1_main()
 	/* Allow core0 to pause this core... */
 	multicore_lockout_victim_init();
 
-	t_tick = t_last = get_absolute_time();
+	clear_state(&prev_state);
+	t_last = t_config = t_state = t_tick = get_absolute_time();
 
 	while (1) {
 		t_now = get_absolute_time();
@@ -159,8 +171,37 @@ void core1_main()
 			log_msg(LOG_INFO, "core1: max_loop_time=%lld", max_delta);
 		}
 
-		if (time_passed(&t_tick, 5000)) {
+		if (time_passed(&t_tick, 60000)) {
 			log_msg(LOG_DEBUG, "tick");
+		}
+
+		if (time_passed(&t_config, 2000)) {
+			/* Attempt to update config from core0 */
+			if (mutex_enter_timeout_us(config_mutex, 100)) {
+				memcpy(config, cfg, sizeof(*config));
+				mutex_exit(config_mutex);
+			} else {
+				log_msg(LOG_INFO, "failed to get config_mutex");
+			}
+		}
+
+		if (time_passed(&t_state, 500)) {
+			/* Attempt to update state from core0 */
+			if (mutex_enter_timeout_us(state_mutex, 100)) {
+				memcpy(&prev_state, state, sizeof(prev_state));
+				memcpy(state, &transfer_state, sizeof(*state));
+				mutex_exit(state_mutex);
+
+				/* Check for changes... */
+				for(int i = 0; i < OUTPUT_COUNT; i++) {
+					if (prev_state.pwm[i] != state->pwm[i]) {
+						log_msg(LOG_INFO, "output%d: state change '%u' -> '%u'", i + 1,
+							prev_state.pwm[i], state->pwm[i]);
+					}
+				}
+			} else {
+				log_msg(LOG_INFO, "failed to get state_mutex");
+			}
 		}
 	}
 }
@@ -191,6 +232,9 @@ int main()
 		print_mallinfo();
 
 	/* Start second core (core1)... */
+	memcpy(&core1_config, cfg, sizeof(core1_config));
+	memcpy(&core1_state, &system_state, sizeof(core1_state));
+	update_core1_state();
 	multicore_launch_core1(core1_main);
 
 #if WATCHDOG_ENABLED
@@ -211,7 +255,7 @@ int main()
 			log_msg(LOG_INFO, "core0: max_loop_time=%lld", max_delta);
 		}
 
-		if (time_passed(&t_network, 1)) {
+		if (time_passed(&t_network, 100)) {
 			network_poll();
 		}
 
@@ -238,6 +282,7 @@ int main()
 		/* Update display every 1000ms */
 		if (time_passed(&t_display, 1000)) {
 			log_msg(LOG_DEBUG, "Update display");
+			update_core1_state();
 			display_status(brickpico_state, cfg);
 		}
 
@@ -256,6 +301,7 @@ int main()
 				if (i_ptr > 0) {
 					process_command(brickpico_state, (struct brickpico_config *)cfg, input_buf);
 					i_ptr = 0;
+					update_core1_state();
 				}
 				continue;
 			}

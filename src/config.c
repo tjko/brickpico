@@ -305,8 +305,9 @@ void read_config(bool multicore)
 
 	if (multicore)
 		multicore_lockout_start_blocking();
-
 	res = flash_read_file(&buf, &file_size, "brickpico.cfg", true);
+	if (multicore)
+		multicore_lockout_end_blocking();
 	if (res == 0 && buf != NULL) {
 		/* parse saved config... */
 		config = cJSON_Parse(buf);
@@ -317,9 +318,6 @@ void read_config(bool multicore)
 		}
 		free(buf);
 	}
-
-	if (multicore)
-		multicore_lockout_end_blocking();
 
 	clear_config(&brickpico_config);
 
