@@ -991,7 +991,7 @@ struct cmd_t system_commands[] = {
 	{ "LOG",       3, NULL,              cmd_log_level },
 	{ "MEMory",    3, NULL,              cmd_memory },
 	{ "NAME",      4, NULL,              cmd_name },
-	{ "PWMFREQ",   7, NULL,              cmd_pwm_freq },
+	{ "PWMfreq",   3, NULL,              cmd_pwm_freq },
 	{ "SERIAL",    6, NULL,              cmd_serial },
 	{ "SPI",       3, NULL,              cmd_spi },
 	{ "SYSLOG",    6, NULL,              cmd_syslog_level },

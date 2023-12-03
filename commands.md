@@ -47,6 +47,8 @@ BrickPico supports following commands:
 * [SYStem:LED?](#systemled-1)
 * [SYStem:NAME](#systemname)
 * [SYStem:NAME?](#systemname-1)
+* [SYStem:PWMfreq](#systempwmfreq)
+* [SYStem:PWMfreq?](#systempwmfreq-1)
 * [SYStem:SERIAL](#systemserial)
 * [SYStem:SERIAL?](#systemserial-1)
 * [SYStem:SPI](#systemspi)
@@ -630,6 +632,30 @@ Example:
 ```
 SYS:NAME?
 HomeServer
+```
+
+
+#### SYStem:PWMfreq
+Set PWM frequency for the outputs. Supported range 10Hz - 100kHz.
+When changing the frequency, chang will take effect after unit has been rebooted.
+
+Default: 1000  (1kHz)
+
+Example, set PWM frequency to 1.5kHz:
+```
+SYS:PWM 1500
+CONF:SAVE
+*RST
+```
+
+
+#### SYStem:PWMfreq?
+Get current PWM frequency for the outputs.
+
+Example:
+```
+SYS:PWM?
+1000
 ```
 
 
