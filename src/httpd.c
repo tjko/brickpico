@@ -26,9 +26,13 @@
 #include "hardware/rtc.h"
 #include "pico/stdlib.h"
 #include "cJSON.h"
+#ifdef LIB_PICO_CYW43_ARCH
+#include "lwip/apps/httpd.h"
+#endif
 
 #include "brickpico.h"
 
+#ifdef WIFI_SUPPORT
 
 #define BUF_LEN 1024
 
@@ -147,22 +151,63 @@ panic:
 }
 
 
+
+int extract_tag_index(const char *tag)
+{
+	if (!tag)
+		return -1;
+
+	uint32_t tag_len = strnlen(tag, 64);
+	if (tag_len > 2) {
+		char a = tag[tag_len - 2];
+		char b = tag[tag_len - 1];
+
+		if (isdigit(a) && isdigit(b)) {
+			return (a - '0') * 10 + (b - '0') - 1;
+		}
+	}
+
+	return -1;
+}
+
+
 u16_t brickpico_ssi_handler(const char *tag, char *insert, int insertlen,
 			u16_t current_tag_part, u16_t *next_tag_part)
 {
 	const struct brickpico_state *st = brickpico_state;
 	size_t printed = 0;
+	uint32_t tag_len = strlen(tag);
+	int idx = -1;
 
-	/* printf("ssi_handler(\"%s\",%lx,%d,%u,%u)\n", tag, (uint32_t)insert, insertlen, current_tag_part, *next_tag_part); */
 
-	if (!strncmp(tag, "datetime", 8)) {
+	if (tag_len > 2) {
+		/* Check for 2 digit index in the end of tag... */
+		char a = tag[tag_len - 2];
+		char b = tag[tag_len - 1];
+
+		if (isdigit(a) && isdigit(b)) {
+			idx = (a - '0') * 10 + (b - '0') - 1;
+		}
+	}
+
+	if (idx >= 0) {
+		if (!strncmp(tag, "o_pwm", 5)) {
+			if (idx < OUTPUT_COUNT)
+				printed = snprintf(insert, insertlen, "%u", st->pwm[idx]);
+		}
+		else if (!strncmp(tag, "o_name", 6)) {
+			if (idx < OUTPUT_COUNT)
+				printed = snprintf(insert, insertlen, "%s", cfg->outputs[idx].name);
+		}
+	}
+	else if (!strncmp(tag, "datetime", 8)) {
 		datetime_t t;
 		if (rtc_get_datetime(&t)) {
 			printed = snprintf(insert, insertlen, "%04d-%02d-%02d %02d:%02d:%02d",
 					t.year, t.month, t.day, t.hour, t.min, t.sec);
 		}
 	}
-	if (!strncmp(tag, "uptime", 6)) {
+	else if (!strncmp(tag, "uptime", 6)) {
 		uint32_t secs = to_us_since_boot(get_absolute_time()) / 1000000;
 		uint32_t mins =  secs / 60;
 		uint32_t hours = mins / 60;
@@ -174,7 +219,7 @@ u16_t brickpico_ssi_handler(const char *tag, char *insert, int insertlen,
 				mins % 60,
 				secs % 60);
 	}
-	if (!strncmp(tag, "watchdog", 8)) {
+	else if (!strncmp(tag, "watchdog", 8)) {
 		printed = snprintf(insert, insertlen, "%s",
 				(rebooted_by_watchdog ? "&#x2639;" : "&#x263a;"));
 	}
@@ -186,15 +231,6 @@ u16_t brickpico_ssi_handler(const char *tag, char *insert, int insertlen,
 	}
 	else if (!strncmp(tag, "name", 4)) {
 		printed = snprintf(insert, insertlen, "%s", cfg->name);
-	}
-	else if (!strncmp(tag, "outrow", 6)) {
-		uint8_t i = tag[6] - '1';
-		if (i < OUTPUT_COUNT) {
-			printed = snprintf(insert, insertlen, "<td>%d<td>%s<td align=\"right\">%d %%",
-					i + 1,
-					cfg->outputs[i].name,
-					st->pwm[i]);
-		}
 	}
 	else if (!strncmp(tag, "csvstat", 7)) {
 		printed = csv_stats(insert, insertlen, current_tag_part, next_tag_part);
@@ -215,3 +251,48 @@ u16_t brickpico_ssi_handler(const char *tag, char *insert, int insertlen,
 	return printed;
 }
 
+
+static const char* brickpico_cgi_handler(int index, int numparams, char *param[], char *value[])
+{
+	struct brickpico_state *st = brickpico_state;
+
+	// log_msg(LOG_DEBUG,"cgi: index=%d, numparams=%d", index, numparams);
+
+	if (index != 0)
+		return "/404.html";
+
+	if (numparams > 0) {
+		for (int i = 0; i < numparams; i++) {
+			char *p = param[i];
+			char *v = value[i];
+			int idx = extract_tag_index(p);
+
+			log_msg(LOG_DEBUG, "cgi param[%d]: param='%s' value='%s' idx=%d", i, p, v, idx);
+
+			if (idx >= 0 && !strncmp(p, "pwm", 3)) {
+				int pwm;
+				if (str_to_int(v, &pwm, 10)) {
+					if (pwm >= 0 && pwm <= 100) {
+						st->pwm[idx] = pwm;
+					}
+				}
+			}
+		}
+	}
+
+	return "/303.main";
+}
+
+static const tCGI cgi_handlers[] = {
+	{ "/cgi", brickpico_cgi_handler }
+};
+
+
+void brickpico_setup_http_handlers()
+{
+	http_set_ssi_handler(brickpico_ssi_handler, NULL, 0);
+	http_set_cgi_handlers(cgi_handlers, LWIP_ARRAYSIZE(cgi_handlers));
+}
+
+
+#endif /* WIFI_SUPPORT */

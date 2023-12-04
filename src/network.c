@@ -204,7 +204,7 @@ void wifi_init()
 		httpd_inits(tls_config);
 	}
 #endif
-	http_set_ssi_handler(brickpico_ssi_handler, NULL, 0);
+	brickpico_setup_http_handlers();
 
 	cyw43_arch_lwip_end();
 

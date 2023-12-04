@@ -176,8 +176,8 @@ void oled_display_status(const struct brickpico_state *state,
 
 
 	for (i = 0; i < OUTPUT_COUNT; i++) {
-		pwm = state->pwm[i];
-		snprintf(buf, sizeof(buf), "%d:% %3.0lf%%", i + 1, pwm);
+		uint pwm = state->pwm[i];
+		snprintf(buf, sizeof(buf), "%02d: %3u%%", i + 1, pwm);
 		oledWriteString(&oled, 0 , 0, i + fan_row_offset, buf, FONT_6x8, 0, 1);
 	}
 

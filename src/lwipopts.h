@@ -72,6 +72,7 @@ void pico_set_system_time(long int sec);
 
 #define HTTPD_FSDATA_FILE               "brickpico_fsdata.c"
 #define HTTPD_USE_MEM_POOL              0
+#define LWIP_HTTPD_CGI                  1
 #define LWIP_HTTPD_SSI                  1
 #define LWIP_HTTPD_SSI_RAW              1
 #define LWIP_HTTPD_SSI_MULTIPART        1

@@ -29,69 +29,42 @@
 	  <table width="100%">
 	    <tr>
 	      <td valign="top">
-		Fans:<br>
+		Outpus:<br>
 		<table width="100%">
 		  <tr><td id="l1">
 		      <table class="pretty" width="100%">
-			<tr style="font-size: 14px;"><th>#</th><th>Name</th><th>RPM&darr;</th><th>PWM&uarr;</th></tr>
-			<tr><!--#fanrow1--></tr>
-			<tr><!--#fanrow2--></tr>
-			<tr><!--#fanrow3--></tr>
-			<tr><!--#fanrow4--></tr>
-			<tr><!--#fanrow5--></tr>
-			<tr><!--#fanrow6--></tr>
-			<tr><!--#fanrow7--></tr>
-			<tr><!--#fanrow8--></tr>
+			<tr style="font-size: 14px;"><th>#</th><th>Name</th><th>PWM</th><th>Brightness</th><th>Power</th></tr>
+			<tr>
+			  <td>1
+			  <td><!--#o_name01-->
+			  <td><span id="v01"><!--#o_pwm01--></span>%
+			  <td><div class="x1"><form action="/cgi" method="get"><input type="range" min="0" max="100" value="<!--#o_pwm01-->" class="s" id="s01" name="pwm01"> <button type="submit" class="button">Set</button></form></div>
+			  <td>ON/OFF
+			</tr>
+			<tr>
+			  <td>2
+			  <td><!--#o_name02-->
+			  <td><span id="v02"><!--#o_pwm02--></span>%
+			  <td><div class="x1"><form action="/cgi" method="get"><input type="range" min="0" max="100" value="<!--#o_pwm02-->" class="s" id="s02" name="pwm02"> <button type="submit" class="button">Set</button></form></div>
+			  <td>ON/OFF
+			</tr>
+			<tr><td>3<td><!--#o_name03--><td><!--#o_pwm03-->%</tr>
+			<tr><td>4<td><!--#o_name04--><td><!--#o_pwm04-->%</tr>
+			<tr><td>5<td><!--#o_name05--><td><!--#o_pwm05-->%</tr>
+			<tr><td>6<td><!--#o_name06--><td><!--#o_pwm06-->%</tr>
+			<tr><td>7<td><!--#o_name07--><td><!--#o_pwm07-->%</tr>
+			<tr><td>8<td><!--#o_name08--><td><!--#o_pwm08-->%</tr>
+			<tr><td>9<td><!--#o_name09--><td><!--#o_pwm09-->%</tr>
+			<tr><td>10<td><!--#o_name10--><td><!--#o_pwm10-->%</tr>
+			<tr><td>11<td><!--#o_name11--><td><!--#o_pwm11-->%</tr>
+			<tr><td>12<td><!--#o_name12--><td><!--#o_pwm12-->%</tr>
+			<tr><td>13<td><!--#o_name13--><td><!--#o_pwm13-->%</tr>
+			<tr><td>14<td><!--#o_name14--><td><!--#o_pwm14-->%</tr>
+			<tr><td>15<td><!--#o_name15--><td><!--#o_pwm15-->%</tr>
+			<tr><td>16<td><!--#o_name16--><td><!--#o_pwm16-->%</tr>
 		      </table>
 		  </td></tr>
 		</table>
-	      <br>
-		MB Fans:<br>
-		<table width="100%">
-		  <tr><td id="l1">
-		      <table class="pretty" width="100%">
-			<tr style="font-size: 14px;"><th>#</th><th>Name</th><th>RPM&uarr;</th><th>PWM&darr;</th></tr>
-			<tr><!--#mfanrow1--></tr>
-			<tr><!--#mfanrow2--></tr>
-			<tr><!--#mfanrow3--></tr>
-			<tr><!--#mfanrow4--></tr>
-		      </table>
-		  </td></tr>
-		</table>
-
-	      </td>
-
-	      <td valign="top">
-		Sensors:<br>
-		<table width="100%">
-		  <tr><td id="l1">
-		      <table class="pretty" width="100%">
-			<tr style="font-size: 14px;"><th>#</th><th>Name</th><th>Temp &#x2600;</th></tr>
-			<tr><!--#sensrow1--></tr>
-			<tr><!--#sensrow2--></tr>
-			<tr><!--#sensrow3--></tr>
-		      </table>
-		  </td></tr>
-		</table>
-	      <br>
-		Virtual Sensors:<br>
-		<table width="100%">
-		  <tr><td id="l1">
-		      <table class="pretty" width="100%">
-			<tr style="font-size: 14px;"><th>#</th><th>Name</th><th>Temp &#x2600;</th></tr>
-			<tr><!--#vsenrow1--></tr>
-			<tr><!--#vsenrow2--></tr>
-			<tr><!--#vsenrow3--></tr>
-			<tr><!--#vsenrow4--></tr>
-			<tr><!--#vsenrow5--></tr>
-			<tr><!--#vsenrow6--></tr>
-			<tr><!--#vsenrow7--></tr>
-			<tr><!--#vsenrow8--></tr>
-		      </table>
-		  </td></tr>
-		</table>
-	      </td>
-
 	    </tr>
 	  </table>
 	  <br>
@@ -109,5 +82,17 @@
 	</td>
       </tr>
     </table>
+
+    <script>
+      var s1=document.getElementById("s01");
+      var o1=document.getElementById("v01");
+      o1.innerHTML=s1.value;
+      s1.oninput=function() { o1.innerHTML=this.value; };
+
+      var s2=document.getElementById("s02");
+      var o2=document.getElementById("v02");
+      o2.innerHTML=s2.value;
+      s2.oninput=function() { o2.innerHTML=this.value; };
+    </script>
   </body>
 </html>

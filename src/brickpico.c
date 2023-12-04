@@ -197,6 +197,7 @@ void core1_main()
 					if (prev_state.pwm[i] != state->pwm[i]) {
 						log_msg(LOG_INFO, "output%d: state change '%u' -> '%u'", i + 1,
 							prev_state.pwm[i], state->pwm[i]);
+						set_pwm_duty_cycle(i, state->pwm[i]);
 					}
 				}
 			} else {

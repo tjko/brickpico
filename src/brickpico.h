@@ -141,8 +141,7 @@ const char *network_ip();
 
 /* httpd.c */
 #if WIFI_SUPPORT
-u16_t brickpico_ssi_handler(const char *tag, char *insert, int insertlen,
-			u16_t current_tag_part, u16_t *next_tag_part);
+void brickpico_setup_http_handlers();
 #endif
 
 /* tls.c */
