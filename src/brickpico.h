@@ -90,6 +90,7 @@ struct brickpico_config {
 struct brickpico_state {
 	/* outputs */
 	uint8_t pwm[OUTPUT_MAX_COUNT];
+	uint8_t pwr[OUTPUT_MAX_COUNT];
 };
 
 

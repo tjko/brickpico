@@ -4,7 +4,7 @@
     <link rel="stylesheet" href="brickpico.css">
     <link rel="icon" type="image/png" href="img/brickpico-icon.png">
     <meta http-equiv="refresh" content="<!--#refresh-->">
-    <meta name="viewport" content="width=device-width,initial-scale=0.93,user-scaleable=yes">
+    <meta name="viewport" content="width=device-width,initial-scale=0.93,user-scalable=yes">
   </head>
   <body bgcolor="white" text="black">
     <table id="b1">
@@ -39,16 +39,23 @@
 			  <td><!--#o_name01-->
 			  <td><span id="v01"><!--#o_pwm01--></span>%
 			  <td><div class="x1"><form action="/cgi" method="get"><input type="range" min="0" max="100" value="<!--#o_pwm01-->" class="s" id="s01" name="pwm01"> <button type="submit" class="button">Set</button></form></div>
-			  <td>ON/OFF
+			  <td><form action="/cgi" method="get"><label class="switch"><input type="checkbox" id="pwr01" name="pwr01" value="<!--#o_pwr01-->" <!--#o_pwrr01--> onclick="power_toggle(this);" /><span class="slider round"></span></label></form>
 			</tr>
 			<tr>
 			  <td>2
 			  <td><!--#o_name02-->
 			  <td><span id="v02"><!--#o_pwm02--></span>%
 			  <td><div class="x1"><form action="/cgi" method="get"><input type="range" min="0" max="100" value="<!--#o_pwm02-->" class="s" id="s02" name="pwm02"> <button type="submit" class="button">Set</button></form></div>
-			  <td>ON/OFF
+			  <td><form action="/cgi" method="get"><label class="switch"><input type="checkbox" id="pwr02" name="pwr02" value="<!--#o_pwr02-->" <!--#o_pwrr02--> onclick="power_toggle(this);" /><span class="slider round"></span></label></form>
 			</tr>
-			<tr><td>3<td><!--#o_name03--><td><!--#o_pwm03-->%</tr>
+			<tr>
+			  <td>3
+			  <td><!--#o_name03-->
+			  <td><span id="v03"><!--#o_pwm03--></span>%
+			  <td><div class="x1"><form action="/cgi" method="get"><input type="range" min="0" max="100" value="<!--#o_pwm03-->" class="s" id="s03" name="pwm03"> <button type="submit" class="button">Set</button></form></div>
+			  <td><form action="/cgi" method="get"><label class="switch"><input type="checkbox" id="pwr03" name="pwr03" value="<!--#o_pwr03-->" <!--#o_pwrr03--> onclick="power_toggle(this);" /><span class="slider round"></span></label></form>
+			</tr>
+
 			<tr><td>4<td><!--#o_name04--><td><!--#o_pwm04-->%</tr>
 			<tr><td>5<td><!--#o_name05--><td><!--#o_pwm05-->%</tr>
 			<tr><td>6<td><!--#o_name06--><td><!--#o_pwm06-->%</tr>
@@ -84,15 +91,25 @@
     </table>
 
     <script>
-      var s1=document.getElementById("s01");
-      var o1=document.getElementById("v01");
-      o1.innerHTML=s1.value;
-      s1.oninput=function() { o1.innerHTML=this.value; };
-
-      var s2=document.getElementById("s02");
-      var o2=document.getElementById("v02");
-      o2.innerHTML=s2.value;
-      s2.oninput=function() { o2.innerHTML=this.value; };
+      function power_toggle(o) {
+	  o.value = o.checked ? "1" : "0";
+	  console.log("Clicked: " + o.id + " value: " + o.value);
+	  o.checked = true;
+	  o.closest("form").submit();
+      }
+      
+      // Make sliders update the PWM value when moved...
+      for(let i = 1; i <= 16; i++) {
+	  let tag = ("0" + i).slice(-2);
+	  let stag = "s" + tag;
+	  let vtag = "v" + tag;
+	  if (document.getElementById(stag)) {
+	      // console.log("found tag: " + stag);
+	      let s=document.getElementById(stag);
+	      let o=document.getElementById(vtag);
+	      s.oninput=function() { o.innerHTML=this.value; o.style.color = "blue"; };
+	  }
+      }
     </script>
   </body>
 </html>

@@ -195,6 +195,14 @@ u16_t brickpico_ssi_handler(const char *tag, char *insert, int insertlen,
 			if (idx < OUTPUT_COUNT)
 				printed = snprintf(insert, insertlen, "%u", st->pwm[idx]);
 		}
+		else if (!strncmp(tag, "o_pwrr", 6)) {
+			if (idx < OUTPUT_COUNT)
+				printed = snprintf(insert, insertlen, "%s", (st->pwr[idx] ? "checked=\"true\"" : ""));
+		}
+		else if (!strncmp(tag, "o_pwr", 5)) {
+			if (idx < OUTPUT_COUNT)
+				printed = snprintf(insert, insertlen, "%s", (st->pwr[idx] ? "1" : "0"));
+		}
 		else if (!strncmp(tag, "o_name", 6)) {
 			if (idx < OUTPUT_COUNT)
 				printed = snprintf(insert, insertlen, "%s", cfg->outputs[idx].name);
@@ -256,7 +264,7 @@ static const char* brickpico_cgi_handler(int index, int numparams, char *param[]
 {
 	struct brickpico_state *st = brickpico_state;
 
-	// log_msg(LOG_DEBUG,"cgi: index=%d, numparams=%d", index, numparams);
+	log_msg(LOG_INFO,"cgi: index=%d, numparams=%d", index, numparams);
 
 	if (index != 0)
 		return "/404.html";
@@ -267,13 +275,21 @@ static const char* brickpico_cgi_handler(int index, int numparams, char *param[]
 			char *v = value[i];
 			int idx = extract_tag_index(p);
 
-			log_msg(LOG_DEBUG, "cgi param[%d]: param='%s' value='%s' idx=%d", i, p, v, idx);
+			log_msg(LOG_INFO, "cgi param[%d]: param='%s' value='%s' idx=%d", i, p, v, idx);
 
-			if (idx >= 0 && !strncmp(p, "pwm", 3)) {
-				int pwm;
-				if (str_to_int(v, &pwm, 10)) {
-					if (pwm >= 0 && pwm <= 100) {
-						st->pwm[idx] = pwm;
+			if (idx >= 0) {
+				if (!strncmp(p, "pwm", 3)) {
+					int pwm;
+					if (str_to_int(v, &pwm, 10)) {
+						if (pwm >= 0 && pwm <= 100) {
+							st->pwm[idx] = pwm;
+						}
+					}
+				}
+				else if (!strncmp(p, "pwr", 3)) {
+					int pwr;
+					if (str_to_int(v, &pwr, 10)) {
+						st->pwr[idx] = pwr ? 1 : 0;
 					}
 				}
 			}

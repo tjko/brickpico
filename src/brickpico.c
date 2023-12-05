@@ -133,6 +133,7 @@ void clear_state(struct brickpico_state *s)
 
 	for (i = 0; i < OUTPUT_MAX_COUNT; i++) {
 		s->pwm[i] = 0;
+		s->pwr[i] = 0;
 	}
 }
 
