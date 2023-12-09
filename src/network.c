@@ -368,12 +368,6 @@ void pico_set_system_time(long int sec)
 	struct tm *ntp;
 	time_t ntp_time = sec;
 
-	if (strlen(cfg->timezone) > 1) {
-		log_msg(LOG_NOTICE, "Set Timezone: %s", cfg->timezone);
-		setenv("TZ", cfg->timezone, 1);
-		tzset();
-	}
-
 	if (!(ntp = localtime(&ntp_time)))
 		return;
 

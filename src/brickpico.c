@@ -123,6 +123,13 @@ void setup()
 		brickpico_state->pwm[i] = duty;
 	}
 
+	/* Set Timezone */
+	if (strlen(cfg->timezone) > 1) {
+		log_msg(LOG_NOTICE, "Set Timezone: %s", cfg->timezone);
+		setenv("TZ", cfg->timezone, 1);
+		tzset();
+	}
+
 	log_msg(LOG_NOTICE, "System initialization complete.");
 }
 
