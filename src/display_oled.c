@@ -53,6 +53,7 @@ void oled_display_init()
 	uint8_t disp_brightness = 0;
 	int val;
 	char *tok, *args, *saveptr;
+	const char *oled_ctrl;
 
 	/* Check if display settings are configured using SYS:DISP command... */
 	if (cfg) {
@@ -103,26 +104,27 @@ void oled_display_init()
 
 	switch (res) {
 	case OLED_SSD1306_3C:
-		log_msg(LOG_NOTICE, "OLED Display: SSD1306 (at 0x3c)");
+		oled_ctrl = "SSD1306 (at 0x3c)";
 		break;
 	case OLED_SSD1306_3D:
-		log_msg(LOG_NOTICE, "OLED Display: SSD1306 (at 0x3d)");
+		oled_ctrl = "SSD1306 (at 0x3d)";
 		break;
 	case OLED_SH1106_3C:
-		log_msg(LOG_NOTICE, "OLED Display: SH1106 (at 0x3c)");
+		oled_ctrl = "SH1106 (at 0x3c)";
 		break;
 	case OLED_SH1106_3D:
-		log_msg(LOG_NOTICE, "OLED Display: SH1106 (at 0x3d)");
+		oled_ctrl = "SH1106 (at 0x3d)";
 		break;
 	case OLED_SH1107_3C:
-		log_msg(LOG_NOTICE, "OLED Display: SH1107 (at 0x3c)");
+		oled_ctrl = "SH1107 (at 0x3c)";
 		break;
 	case OLED_SH1107_3D:
-		log_msg(LOG_NOTICE, "OLED Display: SH1107 (at 0x3d)");
+		oled_ctrl = "SH1107 (at 0x3d)";
 		break;
 	default:
-		log_msg(LOG_ERR, "Unknown OLED Display.");
+		oled_ctrl = "Unknown";
 	}
+	log_msg(LOG_NOTICE, "%ux%u OLED display: %s", oled_width, oled_height, oled_ctrl);
 
 	/* Initialize screen. */
 	oledSetBackBuffer(&oled, ucBuffer);
@@ -151,68 +153,77 @@ void oled_display_status(const struct brickpico_state *state,
 {
 	char buf[64];
 	int i;
-	double rpm, pwm, temp;
 	datetime_t t;
-	static uint32_t counter = 0;
 	static int bg_drawn = 0;
 
 
 	if (!oled_found || !state)
 		return;
 
-	int h_pos = 70;
-	int fan_row_offset = (oled_height > 64 ? 1 : 0);
+	int out_row_offset = (oled_height > 64 ? 1 : 0);
 
 	if (!bg_drawn) {
 		/* Draw "background" only once... */
 		oled_clear_display();
 
 		if (oled_height > 64) {
-			oledWriteString(&oled, 0,  0, 0, "Fans", FONT_6x8, 0, 1);
+			oledWriteString(&oled, 0,  0, 0, "Outputs", FONT_6x8, 0, 1);
 		}
 
 		bg_drawn = 1;
 	}
 
-
+	/* Output port states (PWM) */
 	for (i = 0; i < OUTPUT_COUNT; i++) {
 		uint pwm = state->pwm[i];
-		snprintf(buf, sizeof(buf), "%02d: %3u%%", i + 1, pwm);
-		oledWriteString(&oled, 0 , 0, i + fan_row_offset, buf, FONT_6x8, 0, 1);
+		int row = i / 3 + out_row_offset;
+		int col = i % 3;
+		snprintf(buf, sizeof(buf), "%2d:%3u", i + 1, pwm);
+		oledWriteString(&oled, 0 , col * 7 * 6 + col * 4 , row, buf, FONT_6x8, 0, 1);
 	}
 
-	if (oled_height > 64) {
-		/* IP */
-		const char *ip = network_ip();
-		if (ip) {
-			/* Center align the IP string */
-			int delta = (15 + 1) - strlen(ip);
-			if (delta < 0)
-				delta = 0;
-			int offset = delta / 2;
-			memset(buf, ' ', 8);
-			snprintf(buf + offset, sizeof(buf), " %s", ip);
-			oledWriteString(&oled, 0, 10 + (delta % 2 ? 3 : 0), 15, buf, FONT_6x8, 0, 1);
-		}
 
-		/* Uptime & NTP time */
-		uint32_t secs = to_us_since_boot(get_absolute_time()) / 1000000;
-		uint32_t mins =  secs / 60;
-		uint32_t hours = mins / 60;
-		uint32_t days = hours / 24;
-		snprintf(buf, sizeof(buf), "%03lu+%02lu:%02lu:%02lu",
-			days,
-			hours % 24,
-			mins % 60,
-			secs % 60);
-		if (rtc_get_datetime(&t)) {
+	/* IP */
+	const char *ip = network_ip();
+	if (ip) {
+		int row = (oled_height > 64 ? 15 : 7);
+
+		/* Center align the IP string */
+		int delta = (15 + 1) - strlen(ip);
+		if (delta < 0)
+			delta = 0;
+		int offset = delta / 2;
+		memset(buf, ' ', 8);
+		snprintf(buf + offset, sizeof(buf), " %s", ip);
+		oledWriteString(&oled, 0, 10 + (delta % 2 ? 3 : 0), row, buf, FONT_6x8, 0, 1);
+	}
+
+	/* Uptime & NTP time */
+	uint32_t secs = to_us_since_boot(get_absolute_time()) / 1000000;
+	uint32_t mins =  secs / 60;
+	uint32_t hours = mins / 60;
+	uint32_t days = hours / 24;
+	snprintf(buf, sizeof(buf), "%03lu+%02lu:%02lu:%02lu",
+		days,
+		hours % 24,
+		mins % 60,
+		secs % 60);
+	if (rtc_get_datetime(&t)) {
+		if (oled_height > 64)
 			oledWriteString(&oled, 0, 28, 14, buf, FONT_6x8, 0, 1);
+		if (oled_height > 64) {
 			snprintf(buf, sizeof(buf), "%02d:%02d:%02d", t.hour, t.min, t.sec);
 			oledWriteString(&oled, 0, 16, 11, buf, FONT_12x16, 0, 1);
-		} else {
-			oledWriteString(&oled, 0, 28, 12, buf, FONT_6x8, 0, 1);
 		}
+		else {
+			snprintf(buf, sizeof(buf), " %02d:%02d:%02d ", t.hour, t.min, t.sec);
+			oledWriteString(&oled, 0, 24, 6, buf, FONT_8x8, 0, 1);
+		}
+	} else {
+		int row = (oled_height > 64 ? 12 : 6);
+		oledWriteString(&oled, 0, 28, row, buf, FONT_6x8, 0, 1);
 	}
+
 }
 
 void oled_display_message(int rows, const char **text_lines)
