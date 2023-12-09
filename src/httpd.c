@@ -34,7 +34,9 @@
 
 #ifdef WIFI_SUPPORT
 
+#define INDEX_URL "/brickpico-" BRICKPICO_BOARD ".shtml"
 #define BUF_LEN 1024
+
 
 u16_t csv_stats(char *insert, int insertlen, u16_t current_tag_part, u16_t *next_tag_part)
 {
@@ -266,9 +268,6 @@ static const char* brickpico_cgi_handler(int index, int numparams, char *param[]
 
 	log_msg(LOG_INFO,"cgi: index=%d, numparams=%d", index, numparams);
 
-	if (index != 0)
-		return "/404.html";
-
 	if (numparams > 0) {
 		for (int i = 0; i < numparams; i++) {
 			char *p = param[i];
@@ -299,8 +298,18 @@ static const char* brickpico_cgi_handler(int index, int numparams, char *param[]
 	return "/303.main";
 }
 
+
+static const char* index_handler(int index, int numparams, char *param[], char *value[])
+{
+	/* log_msg(LOG_INFO, "index_handler: index=%d, numparams=%d (%s)", index, numparams, INDEX_URL); */
+
+	return INDEX_URL;
+}
+
 static const tCGI cgi_handlers[] = {
-	{ "/cgi", brickpico_cgi_handler }
+	{ "/", index_handler },
+	{ "/cgi", brickpico_cgi_handler },
+	{ "/index.shtml", index_handler },
 };
 
 
