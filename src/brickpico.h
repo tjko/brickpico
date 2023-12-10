@@ -50,6 +50,23 @@
 #define WATCHDOG_REBOOT_DELAY 5000
 #endif
 
+#define MAX_EVENT_NAME_LEN  30
+#define MAX_EVENT_COUNT     20
+
+enum timer_action_types {
+	ACTION_NONE = 0,
+	ACTION_ON = 1,
+	ACTION_OFF = 2,
+};
+
+struct timer_event {
+	char name[MAX_EVENT_NAME_LEN];
+	int8_t minute;          /* 0-59 */
+	int8_t hour;            /* 0-23 */
+	uint8_t wday;            /* bitmask for weekdays */
+	enum timer_action_types action;
+	uint16_t mask;          /* bitmask of outputs this applies to */
+};
 
 struct pwm_output {
 	char name[MAX_NAME_LEN];
@@ -75,6 +92,8 @@ struct brickpico_config {
 	bool spi_active;
 	bool serial_active;
 	uint pwm_freq;
+	struct timer_event events[MAX_EVENT_COUNT];
+	uint8_t event_count;
 #ifdef WIFI_SUPPORT
 	char wifi_ssid[WIFI_SSID_MAX_LEN + 1];
 	char wifi_passwd[WIFI_PASSWD_MAX_LEN + 1];
@@ -96,7 +115,7 @@ struct brickpico_state {
 };
 
 
-/* fanpico.c */
+/* brickpico.c */
 extern struct brickpico_state *brickpico_state;
 extern bool rebooted_by_watchdog;
 extern mutex_t *state_mutex;
@@ -174,6 +193,10 @@ void set_log_level(int level);
 int get_syslog_level();
 void set_syslog_level(int level);
 void debug(int debug_level, const char *fmt, ...);
+
+/* timer.c */
+int parse_timer_event_str(const char *str, struct timer_event *event);
+const char* timer_event_str(const struct timer_event *event);
 
 /* util.c */
 void print_mallinfo();

@@ -58,6 +58,17 @@ void clear_config(struct brickpico_config *cfg)
 		o->type = 0;
 	}
 
+	for (i = 0; i < MAX_EVENT_COUNT; i++) {
+		struct timer_event *e = &cfg->events[i];
+		e->name[0] = 0;
+		e->minute = -1;
+		e->hour = -1;
+		e->wday = 0;
+		e->action = ACTION_NONE;
+		e->mask = 0;
+	}
+	cfg->event_count = 0;
+
 	cfg->local_echo = false;
 	cfg->spi_active = false;
 	cfg->serial_active = true;

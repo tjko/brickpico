@@ -76,6 +76,7 @@ add_executable(brickpico
   src/display.c
   src/display_oled.c
   src/network.c
+  src/timer.c
   src/tls.c
   src/pwm.c
   src/util.c
