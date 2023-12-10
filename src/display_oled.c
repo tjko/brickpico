@@ -168,6 +168,7 @@ void oled_display_status(const struct brickpico_state *state,
 
 		if (oled_height > 64) {
 			oledWriteString(&oled, 0,  0, 0, "Outputs", FONT_6x8, 0, 1);
+			oledDrawLine(&oled, 0, 64, oled_width - 1, 64, 1);
 		}
 
 		bg_drawn = 1;
@@ -176,9 +177,14 @@ void oled_display_status(const struct brickpico_state *state,
 	/* Output port states (PWM) */
 	for (i = 0; i < OUTPUT_COUNT; i++) {
 		uint pwm = state->pwm[i];
+		uint pwr = state->pwr[i];
 		int row = i / 3 + out_row_offset;
 		int col = i % 3;
-		snprintf(buf, sizeof(buf), "%2d:%3u", i + 1, pwm);
+		if (pwr) {
+			snprintf(buf, sizeof(buf), "%2d:%-3u", i + 1, pwm);
+		} else {
+			snprintf(buf, sizeof(buf), "%2d:---", i + 1);
+		}
 		oledWriteString(&oled, 0 , col * 7 * 6 + col * 4 , row, buf, FONT_6x8, 0, 1);
 	}
 

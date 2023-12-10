@@ -466,6 +466,30 @@ int cmd_out_default_pwm(const char *cmd, const char *args, int query, char *prev
 	return 1;
 }
 
+int cmd_out_default_state(const char *cmd, const char *args, int query, char *prev_cmd)
+{
+	int out, val;
+
+	out = atoi(&prev_cmd[6]) - 1;
+	if (out >= 0 && out < OUTPUT_COUNT) {
+		if (query) {
+			printf("%d\n", conf->outputs[out].default_state);
+		} else if (str_to_int(args, &val, 10)) {
+			if (val >= 0 && val <= 1) {
+				log_msg(LOG_NOTICE, "output%d: change default state %d --> %d",
+					out + 1, conf->outputs[out].default_state, val);
+				conf->outputs[out].default_state = val;
+			} else {
+				log_msg(LOG_WARNING, "output%d: invalid new value for state: %d", out + 1,
+					val);
+				return 2;
+			}
+		}
+		return 0;
+	}
+	return 1;
+}
+
 int cmd_out_read(const char *cmd, const char *args, int query, char *prev_cmd)
 {
 	int out;
@@ -1025,10 +1049,11 @@ struct cmd_t system_commands[] = {
 };
 
 struct cmd_t output_c_commands[] = {
-	{ "DEFault",   3, NULL,              cmd_out_default_pwm },
 	{ "MAXpwm",    3, NULL,              cmd_out_max_pwm },
 	{ "MINpwm",    3, NULL,              cmd_out_min_pwm },
 	{ "NAME",      4, NULL,              cmd_out_name },
+	{ "PWM",       3, NULL,              cmd_out_default_pwm },
+	{ "STAte",     3, NULL,              cmd_out_default_state },
 	{ 0, 0, 0, 0 }
 };
 

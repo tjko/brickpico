@@ -7,13 +7,13 @@
 }
 
 #l1 {
-    background: #03a3aa;
+    background: #e3e3e3;
     border-radius: 5px;
     padding: 10px;
 }
 
 .pretty tr:nth-child(even) td {
-    background: #019367;
+    background: #d3d3d3;
 }
 
 .sc {
@@ -115,11 +115,11 @@
 }
 
 input:checked + .slider {
-  background-color: #2196F3;
+  background-color: #4caf50;
 }
 
 input:focus + .slider {
-  box-shadow: 0 0 1px #2196F3;
+  box-shadow: 0 0 1px #4caf50;
 }
 
 input:checked + .slider:before {

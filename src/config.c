@@ -53,7 +53,8 @@ void clear_config(struct brickpico_config *cfg)
 		snprintf(o->name, sizeof(o->name), "Output %d", i + 1);
 		o->min_pwm = 0;
 		o->max_pwm = 100;
-		o->default_pwm = 0;
+		o->default_pwm = 100;
+		o->default_state = 0;
 		o->type = 0;
 	}
 
@@ -160,6 +161,7 @@ cJSON *config_to_json(const struct brickpico_config *cfg)
 		cJSON_AddItemToObject(o, "min_pwm", cJSON_CreateNumber(f->min_pwm));
 		cJSON_AddItemToObject(o, "max_pwm", cJSON_CreateNumber(f->max_pwm));
 		cJSON_AddItemToObject(o, "default_pwm", cJSON_CreateNumber(f->default_pwm));
+		cJSON_AddItemToObject(o, "default_state", cJSON_CreateNumber(f->default_state));
 		cJSON_AddItemToObject(o, "type", cJSON_CreateNumber(f->type));
 		cJSON_AddItemToArray(outputs, o);
 	}
@@ -287,10 +289,21 @@ int json_to_config(cJSON *config, struct brickpico_config *cfg)
 			name = cJSON_GetStringValue(cJSON_GetObjectItem(item, "name"));
 			if (name) strncopy(f->name, name ,sizeof(f->name));
 
-			f->min_pwm = cJSON_GetNumberValue(cJSON_GetObjectItem(item, "min_pwm"));
-			f->max_pwm = cJSON_GetNumberValue(cJSON_GetObjectItem(item, "max_pwm"));
-			f->default_pwm = cJSON_GetNumberValue(cJSON_GetObjectItem(item, "default_pwm"));
-			f->type = cJSON_GetNumberValue(cJSON_GetObjectItem(item, "type"));
+			if ((ref = cJSON_GetObjectItem(item, "min_pwm"))) {
+				f->min_pwm = cJSON_GetNumberValue(ref);
+			}
+			if ((ref = cJSON_GetObjectItem(item, "max_pwm"))) {
+				f->max_pwm = cJSON_GetNumberValue(ref);
+			}
+			if ((ref = cJSON_GetObjectItem(item, "default_pwm"))) {
+				f->default_pwm = cJSON_GetNumberValue(ref);
+			}
+			if ((ref = cJSON_GetObjectItem(item, "default_state"))) {
+				f->default_state = cJSON_GetNumberValue(ref);
+			}
+			if ((ref = cJSON_GetObjectItem(item, "type"))) {
+				f->type = cJSON_GetNumberValue(ref);
+			}
 		}
 	}
 

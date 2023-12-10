@@ -32,7 +32,7 @@
 #endif
 
 #ifndef BRICKPICO_MODEL
-cat#error unknown board model
+#error unknown board model
 #endif
 
 #define OUTPUT_MAX_COUNT     16   /* Max number of PWM outputs on the board */
@@ -57,7 +57,8 @@ struct pwm_output {
 	/* output PWM signal settings */
 	uint8_t min_pwm;
 	uint8_t max_pwm;
-	uint8_t default_pwm;
+	uint8_t default_pwm;   /* 0..100 (PWM duty cycle) */
+	uint8_t default_state; /* 0 = off, 1 = on */
 	uint8_t type; /* 0 = Dimmer, 1 = Toggle (on/off) */
 };
 

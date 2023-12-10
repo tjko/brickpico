@@ -56,9 +56,10 @@ u16_t csv_stats(char *insert, int insertlen, u16_t current_tag_part, u16_t *next
 		buf[0] = 0;
 
 		for (i = 0; i < OUTPUT_COUNT; i++) {
-			snprintf(row, sizeof(row), "output%d,\"%s\",%d\n",
+			snprintf(row, sizeof(row), "output%d,\"%s\",%u,%u\n",
 				i+1,
 				cfg->outputs[i].name,
+				st->pwr[i],
 				st->pwm[i]);
 			strncatenate(buf, row, BUF_LEN);
 		}
@@ -115,6 +116,7 @@ u16_t json_stats(char *insert, int insertlen, u16_t current_tag_part, u16_t *nex
 			cJSON_AddItemToObject(o, "output", cJSON_CreateNumber(i+1));
 			cJSON_AddItemToObject(o, "name", cJSON_CreateString(cfg->outputs[i].name));
 			cJSON_AddItemToObject(o, "duty_cycle", cJSON_CreateNumber(round_decimal(st->pwm[i], 1)));
+			cJSON_AddItemToObject(o, "power", cJSON_CreateNumber(round_decimal(st->pwr[i], 1)));
 			cJSON_AddItemToArray(array, o);
 		}
 		cJSON_AddItemToObject(json, "outputs", array);
@@ -277,7 +279,13 @@ static const char* brickpico_cgi_handler(int index, int numparams, char *param[]
 			log_msg(LOG_INFO, "cgi param[%d]: param='%s' value='%s' idx=%d", i, p, v, idx);
 
 			if (idx >= 0) {
-				if (!strncmp(p, "pwm", 3)) {
+				if (!strncmp(p, "pwr", 3)) {
+					int pwr;
+					if (str_to_int(v, &pwr, 10)) {
+						st->pwr[idx] = pwr ? 1 : 0;
+					}
+				}
+				else if (!strncmp(p, "pwm", 3)) {
 					int pwm;
 					if (str_to_int(v, &pwm, 10)) {
 						if (pwm >= 0 && pwm <= 100) {
@@ -285,10 +293,14 @@ static const char* brickpico_cgi_handler(int index, int numparams, char *param[]
 						}
 					}
 				}
-				else if (!strncmp(p, "pwr", 3)) {
-					int pwr;
-					if (str_to_int(v, &pwr, 10)) {
-						st->pwr[idx] = pwr ? 1 : 0;
+			} else {
+				if (!strncmp(p, "pwrall", 6)) {
+					int mode;
+					if (str_to_int(v, &mode, 10)) {
+						mode = (mode ? 1 : 0);
+						for (int j = 0; j < OUTPUT_COUNT; j++) {
+							st->pwr[j] = mode;
+						}
 					}
 				}
 			}

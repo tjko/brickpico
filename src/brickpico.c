@@ -119,8 +119,10 @@ void setup()
 
 	for (i = 0; i < OUTPUT_COUNT; i++) {
 		uint8_t duty = cfg->outputs[i].default_pwm;
-		set_pwm_duty_cycle(i, duty);
+		uint8_t state = cfg->outputs[i].default_state;
+		set_pwm_duty_cycle(i, (state ? duty : 0));
 		brickpico_state->pwm[i] = duty;
+		brickpico_state->pwr[i] = state;
 	}
 
 	/* Set Timezone */
@@ -203,9 +205,15 @@ void core1_main()
 				/* Check for changes... */
 				for(int i = 0; i < OUTPUT_COUNT; i++) {
 					if (prev_state.pwm[i] != state->pwm[i]) {
-						log_msg(LOG_INFO, "output%d: state change '%u' -> '%u'", i + 1,
+						log_msg(LOG_INFO, "output%d: PWM change '%u' -> '%u'", i + 1,
 							prev_state.pwm[i], state->pwm[i]);
-						set_pwm_duty_cycle(i, state->pwm[i]);
+						if (state->pwr[i])
+							set_pwm_duty_cycle(i, state->pwm[i]);
+					}
+					if (prev_state.pwr[i] != state->pwr[i]) {
+						log_msg(LOG_INFO, "output%d: state change %u -> %u", i + 1,
+							prev_state.pwr[i], state->pwr[i]);
+						set_pwm_duty_cycle(i, (state->pwr[i] ? state->pwm[i] : 0));
 					}
 				}
 			} else {

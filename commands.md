@@ -20,6 +20,8 @@ BrickPico supports following commands:
 * [CONFigure:OUTPUTx:MINpwm?](#configureoutputxminpwm-1)
 * [CONFigure:OUTPUTx:MAXpwm](#configureoutputxmaxpwm)
 * [CONFigure:OUTPUTx:MAXpwm?](#configureoutputxmaxpwm-1)
+* [CONFigure:OUTPUTx:PWM](#configureoutputxpwm)
+* [CONFigure:OUTPUTx:PWM?](#configureoutputxpwm-1)
 * [MEASure:Read?](#measureread)
 * [MEASure:OUTPUTx?](#measureoutputx)
 * [MEASure:OUTPUTx:Read?](#measureoutputxread)
@@ -187,24 +189,24 @@ Front Lights
 ```
 
 #### CONFigure:OUTPUTx:DEFault
-Set default PWM duty cycle (%) for given output port.
-This is value set when unit boots up and normally defaults
-to 0% (off).
+Controls whether output is ON or OFF when unit boots up.
 
-Default: 0 %
+Values: 0 = OFF, 1 = ON
 
-Example: Set default PWM duty cycle to 5% for OUTPUT1
+Default: 0 (OFF)
+
+Example: Set Output 5 to be ON when system boots up.
 ```
-CONF:OUTPUT1:DEF 5
+CONF:OUTPUT5:DEF 1
 ```
 
 #### CONFigure:OUTPUTx:DEFault?
-Query current default PWM duty cycle for a output port.
+Query whether output is set to default to ON or OFF when unit boots up.
 
 Example:
 ```
 CONF:OUTPUT1:DEF?
-5
+0
 ```
 
 #### CONFigure:OUTPUTx:MINpwm
@@ -247,6 +249,27 @@ Example:
 ```
 CONF:OUTPUT1:MAX?
 95
+```
+
+#### CONFigure:OUTPUTx:PWM
+Set default PWM duty cycle (%) for given output port.
+This is value set when unit boots up and normally defaults
+to 100% (full brightness).
+
+Default: 100%
+
+Example: Set default PWM duty cycle to 50% for OUTPUT1
+```
+CONF:OUTPUT1:PWM 50
+```
+
+#### CONFigure:OUTPUTx:PWM?
+Query current default PWM duty cycle for an output port.
+
+Example:
+```
+CONF:OUTPUT1:PWM?
+50
 ```
 
 
