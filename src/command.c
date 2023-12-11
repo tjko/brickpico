@@ -1024,6 +1024,30 @@ int cmd_timer_add(const char *cmd, const char *args, int query, char *prev_cmd)
 	return 0;
 }
 
+int cmd_timer_del(const char *cmd, const char *args, int query, char *prev_cmd)
+{
+	int idx = -1;
+	int res = 2;
+
+	if (query)
+		return 1;
+
+	if (str_to_int(args, &idx, 10)) {
+		if (idx >= 1 && idx <= conf->event_count) {
+			log_msg(LOG_NOTICE, "Remove timer event: %d", idx);
+			for (int i = idx - 1; i < conf->event_count - 1; i++) {
+				memcpy(&conf->events[i], &conf->events[i + 1], sizeof(struct timer_event));
+			}
+			conf->event_count--;
+			res = 0;
+		} else {
+			log_msg(LOG_WARNING, "Timer event does not exist: %d", idx);
+		}
+	}
+
+	return res;
+}
+
 
 
 struct cmd_t display_commands[] = {
@@ -1096,7 +1120,7 @@ struct cmd_t output_c_commands[] = {
 
 struct cmd_t timer_c_commands[] = {
 	{ "ADD",       3, NULL,              cmd_timer_add },
-	{ "DEL",       3, NULL,              cmd_timer },
+	{ "DEL",       3, NULL,              cmd_timer_del },
 	{ 0, 0, 0, 0 }
 };
 
