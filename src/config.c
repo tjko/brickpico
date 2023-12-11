@@ -100,7 +100,7 @@ void clear_config(struct brickpico_config *cfg)
 cJSON *config_to_json(const struct brickpico_config *cfg)
 {
 	cJSON *config = cJSON_CreateObject();
-	cJSON *outputs, *o;
+	cJSON *outputs, *events, *o;
 	int i;
 
 	if (!config)
@@ -178,6 +178,23 @@ cJSON *config_to_json(const struct brickpico_config *cfg)
 	}
 	cJSON_AddItemToObject(config, "outputs", outputs);
 
+	/* Timers */
+	if ((events = cJSON_CreateArray()) == NULL)
+		goto panic;
+	for (i = 0; i < cfg->event_count; i++) {
+		const struct timer_event *e = &cfg->events[i];
+
+		if ((o = cJSON_CreateObject()) == NULL)
+			goto panic;
+		cJSON_AddItemToObject(o, "name", cJSON_CreateString(e->name));
+		cJSON_AddItemToObject(o, "minute", cJSON_CreateNumber(e->minute));
+		cJSON_AddItemToObject(o, "hour", cJSON_CreateNumber(e->hour));
+		cJSON_AddItemToObject(o, "wday", cJSON_CreateNumber(e->wday));
+		cJSON_AddItemToObject(o, "action", cJSON_CreateNumber(e->action));
+		cJSON_AddItemToObject(o, "mask", cJSON_CreateNumber(e->mask));
+		cJSON_AddItemToArray(events, o);
+	}
+	cJSON_AddItemToObject(config, "timers", events);
 
 	return config;
 
@@ -314,6 +331,35 @@ int json_to_config(cJSON *config, struct brickpico_config *cfg)
 			}
 			if ((ref = cJSON_GetObjectItem(item, "type"))) {
 				f->type = cJSON_GetNumberValue(ref);
+			}
+		}
+	}
+
+	/* Timers */
+	cfg->event_count = 0;
+	ref = cJSON_GetObjectItem(config, "timers");
+	cJSON_ArrayForEach(item, ref) {
+		if (cfg->event_count  < MAX_EVENT_COUNT) {
+			struct timer_event *e = &cfg->events[cfg->event_count++];
+
+			e->name[0] = 0;
+			name = cJSON_GetStringValue(cJSON_GetObjectItem(item, "name"));
+			if (name) strncopy(e->name, name ,sizeof(e->name));
+
+			if ((ref = cJSON_GetObjectItem(item, "minute"))) {
+				e->minute = cJSON_GetNumberValue(ref);
+			}
+			if ((ref = cJSON_GetObjectItem(item, "hour"))) {
+				e->hour = cJSON_GetNumberValue(ref);
+			}
+			if ((ref = cJSON_GetObjectItem(item, "wday"))) {
+				e->wday = cJSON_GetNumberValue(ref);
+			}
+			if ((ref = cJSON_GetObjectItem(item, "action"))) {
+				e->action = cJSON_GetNumberValue(ref);
+			}
+			if ((ref = cJSON_GetObjectItem(item, "mask"))) {
+				e->mask = cJSON_GetNumberValue(ref);
 			}
 		}
 	}

@@ -945,7 +945,6 @@ int cmd_serial(const char *cmd, const char *args, int query, char *prev_cmd)
 	return 1;
 }
 
-
 int cmd_spi(const char *cmd, const char *args, int query, char *prev_cmd)
 {
 	int val;
@@ -963,7 +962,6 @@ int cmd_spi(const char *cmd, const char *args, int query, char *prev_cmd)
 	}
 	return 1;
 }
-
 
 int cmd_pwm_freq(const char *cmd, const char *args, int query, char *prev_cmd)
 {
@@ -983,10 +981,49 @@ int cmd_pwm_freq(const char *cmd, const char *args, int query, char *prev_cmd)
 			log_msg(LOG_WARNING, "invalid new value for PWM frequency: %d",	val);
 			return 2;
 		}
+		return 0;
 	}
-
 	return 1;
 }
+
+int cmd_timer(const char *cmd, const char *args, int query, char *prev_cmd)
+{
+	int i;
+
+	if (!query)
+		return 1;
+
+	for (i = 0; i < conf->event_count; i++) {
+		printf("%d: %s\n", i + 1, timer_event_str(&conf->events[i]));
+	}
+
+	return 0;
+}
+
+int cmd_timer_add(const char *cmd, const char *args, int query, char *prev_cmd)
+{
+	struct timer_event e;
+	int res;
+
+	if (query)
+		return 1;
+
+	res = parse_timer_event_str(args, &e);
+	if (res != 0) {
+		log_msg(LOG_WARNING, "Invalid timer event: %s", args);
+		return 2;
+	}
+	if (conf->event_count >= MAX_EVENT_COUNT) {
+		log_msg(LOG_WARNING, "Timer event table full: %u", conf->event_count);
+		return 2;
+	}
+	memcpy(&conf->events[conf->event_count], &e, sizeof(struct timer_event));
+	conf->event_count++;
+	log_msg(LOG_NOTICE, "Added new timer entry: %s", timer_event_str(&e));
+
+	return 0;
+}
+
 
 
 struct cmd_t display_commands[] = {
@@ -1057,11 +1094,18 @@ struct cmd_t output_c_commands[] = {
 	{ 0, 0, 0, 0 }
 };
 
+struct cmd_t timer_c_commands[] = {
+	{ "ADD",       3, NULL,              cmd_timer_add },
+	{ "DEL",       3, NULL,              cmd_timer },
+	{ 0, 0, 0, 0 }
+};
+
 struct cmd_t config_commands[] = {
 	{ "DELete",    3, NULL,              cmd_delete_config },
 	{ "OUTPUT",    6, output_c_commands, NULL },
 	{ "Read",      1, NULL,              cmd_print_config },
 	{ "SAVe",      3, NULL,              cmd_save_config },
+	{ "TIMER",     5, timer_c_commands,  cmd_timer },
 	{ 0, 0, 0, 0 }
 };
 

@@ -22,6 +22,9 @@ BrickPico supports following commands:
 * [CONFigure:OUTPUTx:MAXpwm?](#configureoutputxmaxpwm-1)
 * [CONFigure:OUTPUTx:PWM](#configureoutputxpwm)
 * [CONFigure:OUTPUTx:PWM?](#configureoutputxpwm-1)
+* [CONFigure:TIMERS?](#configuretimers)
+* [CONFigure:TIMERS:ADD](#configuretimersadd)
+* [CONFigure:TIMERS:DEL](#configuretimersdel)
 * [MEASure:Read?](#measureread)
 * [MEASure:OUTPUTx?](#measureoutputx)
 * [MEASure:OUTPUTx:Read?](#measureoutputxread)
@@ -272,6 +275,61 @@ CONF:OUTPUT1:PWM?
 50
 ```
 
+#### CONFigure:TIMERS?
+List currently configured timers (events).
+
+Output format:
+```
+<#>: <minute> <hour> <weekdays> <action> <outpus> <comment>
+```
+
+Example:
+```
+CONF:TIMERS?
+1: 00 18 1-5 ON 1-6 turn on lights during the week
+1: 00 17 6-7 ON 1-6 turn on lights on the weekends
+2: 30 05 0-6 OFF 1-16 turn off lights in the morning
+```
+
+#### CONFigure:TIMERS:ADD
+Add new timer entry.
+
+Timer entry format:
+```
+<minute> <hour> <weekdays> <action> <outputs> [<comment>]
+```
+
+Field|Valid Values|Description
+-----|------|-----
+minute|00..59|Minute
+hour|00.23|Hour (24h clock)
+weekdays|1..7|1=Monday, 2=Tuesday, ... 7=Sunday
+action|ON, OFF|
+outputs|1..n|Outputs that the event affects.
+
+Specifying _weekdays_ and _outputs_:
+
+* = Match all
+1,3,5 = List
+1-5 = Range
+
+
+Example:
+```
+CONF:TIMERS:ADD 00 18 1-5 ON 1-6 Turn on during the week
+CONF:TIMERS:ADD 00 17 6-7 ON 1-8 Turn on during weekends
+CONF:TIMERS:ADD 00 06 * OFF * Turn everything off in the morning 
+```
+
+#### CONFigure:TIMERS:DEL
+Remove timer event. Command takes the event number as parameter.
+Currently configured timer events along with their numbers can be
+viewed using: _CONF:TIMERS?_
+
+Example (remove second timer event):
+```
+CONF:TIMERS:DEL 2
+```
 
 
 ### MEASure Commands
