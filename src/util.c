@@ -164,6 +164,17 @@ int str_to_datetime(const char *str, datetime_t *t)
 	return 1;
 }
 
+char* datetime_str(char *buf, size_t size, const datetime_t *t)
+{
+	if (!t || !buf)
+		return NULL;
+
+	snprintf(buf, size, "%04d-%02d-%02d %02d:%02d:%02d",
+		t->year, t->month, t->day, t->hour, t->min, t->sec);
+
+	return buf;
+}
+
 const char *rp2040_model_str()
 {
 	static char buf[32];

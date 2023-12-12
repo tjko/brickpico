@@ -197,6 +197,7 @@ void debug(int debug_level, const char *fmt, ...);
 /* timer.c */
 int parse_timer_event_str(const char *str, struct timer_event *event);
 const char* timer_event_str(const struct timer_event *event);
+int handle_timer_events(const struct brickpico_config *conf, struct brickpico_state *state);
 
 /* util.c */
 void print_mallinfo();
@@ -205,6 +206,7 @@ char *trim_str(char *s);
 int str_to_int(const char *str, int *val, int base);
 int str_to_float(const char *str, float *val);
 int str_to_datetime(const char *str, datetime_t *t);
+char* datetime_str(char *buf, size_t size, const datetime_t *t);
 const char *rp2040_model_str();
 const char *pico_serial_str();
 const char *mac_address_str(const uint8_t *mac);

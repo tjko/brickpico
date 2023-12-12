@@ -23,6 +23,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "pico/stdlib.h"
+#include "hardware/rtc.h"
 
 #include "brickpico.h"
 
@@ -89,7 +90,7 @@ char *bitmask_to_str(uint32_t mask, uint16_t len, uint8_t base, bool range)
 		}
 	}
 	if (range && state == 2) {
-		snprintf(s , 4, "-%d", last + base);
+		snprintf(s , 12, "-%d", last + base);
 	}
 
 	return buf;
@@ -306,5 +307,74 @@ const char* timer_event_str(const struct timer_event *e)
 }
 
 
+int check_timer_event(const struct timer_event *e, const datetime_t *t)
+{
+	if (!e || !t)
+		return 0;
+
+
+	if (e->minute >= 0 && e->minute != t->min)
+		return 0;
+	if (e->hour >= 0 && e->hour != t->hour)
+		return 0;
+	if (e->wday) {
+		if (e->wday & ((1 << t->dotw) == 0))
+			return 0;
+	}
+
+	return 1;
+}
+
+int handle_timer_events(const struct brickpico_config *conf, struct brickpico_state *state)
+{
+	static time_t lastevent[MAX_EVENT_COUNT];
+	static uint8_t initialized = 0;
+	char tmp[32];
+	datetime_t t;
+	time_t t_now;
+	int res = 0;
+	int i, o;
+
+
+	if (!initialized) {
+		for (i = 0; i < MAX_EVENT_COUNT; i++) {
+			lastevent[i] = 0;
+		}
+		initialized = 1;
+	}
+
+	/* Get current time from RTC */
+	if (!rtc_get_datetime(&t))
+		return -1;
+
+	t_now = datetime_to_time(&t);
+
+	/* Check if any of the timer events match current RTC time... */
+	for (i = 0; i < conf->event_count; i++) {
+		const struct timer_event *e = &conf->events[i];
+
+		if (t_now < lastevent[i] + 60)
+			continue;
+		if (!check_timer_event(e, &t))
+			continue;
+
+		log_msg(LOG_NOTICE,"timer_event[%d]: outputs=%s, action=%s, time=%s",
+			i + 1,
+			bitmask_to_str(e->mask, OUTPUT_COUNT, 1, true),
+			timer_action_type_str(e->action),
+			datetime_str(tmp, sizeof(tmp), &t));
+
+		for (o = 0; o < OUTPUT_COUNT; o++) {
+			if (e->mask & (1 << o)) {
+				state->pwr[o] = (e->action == ACTION_ON ? 1 : 0);
+			}
+		}
+
+		lastevent[i] = t_now;
+		res++;
+	}
+
+	return res;
+}
 
 /* eof :-) */
