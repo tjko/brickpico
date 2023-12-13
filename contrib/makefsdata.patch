@@ -1,0 +1,39 @@
+--- a/src/apps/http/makefsdata/makefsdata.c
++++ b/src/apps/http/makefsdata/makefsdata.c
+@@ -882,7 +882,7 @@ static int checkSsiByFilelist(const char* filename_listfile)
+     ssi_file_lines = lines;
+     ssi_file_num_lines = l;
+   }
+-  return 0;
++  return 1;
+ }
+ 
+ static int is_ssi_file(const char *filename)
+@@ -1093,6 +1093,11 @@ int file_write_http_header(FILE *data_file, const char *filename, int file_size,
+ 
+   memset(hdr_buf, 0, sizeof(hdr_buf));
+ 
++
++  if (strstr(filename, "303.") == filename) {
++	  return written;
++  }
++
+   if (useHttp11) {
+     response_type = HTTP_HDR_OK_11;
+   }
+@@ -1254,6 +1259,15 @@ int file_write_http_header(FILE *data_file, const char *filename, int file_size,
+   LWIP_UNUSED_ARG(is_compressed);
+ #endif
+ 
++  if (file_type != HTTP_HDR_SSI && is_ssi_file(filename)) {
++	  const char *no_cache_str = "Expires: Fri, 10 Apr 2008 14:00:00 GMT\r\nPragma: no-cache\r\n";
++	  cur_string = no_cache_str;
++	  cur_len = strlen(cur_string);
++	  fprintf(data_file, NEWLINE "/* \"%s\" (%"SZT_F" bytes) */" NEWLINE, cur_string, cur_len);
++	  written += file_put_ascii(data_file, cur_string, cur_len, &i);
++	  i = 0;
++  }
++
+   /* write content-type, ATTENTION: this includes the double-CRLF! */
+   cur_string = file_type;
+   cur_len = strlen(cur_string);

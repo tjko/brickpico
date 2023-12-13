@@ -1,0 +1,199 @@
+<html>
+  <head>
+    <title>BrickPico: <!--#name--></title>
+    <link rel="stylesheet" href="brickpico.css">
+    <link rel="icon" type="image/png" href="img/brickpico-icon.png">
+    <meta http-equiv="refresh" content="<!--#refresh-->">
+    <meta name="viewport" content="width=device-width,initial-scale=0.93,user-scalable=yes">
+  </head>
+  <body bgcolor="white" text="black">
+    <table id="b1">
+      <tr>
+	<td>
+	  <table border=0 width="99%">
+	    <tr>
+	      <td>
+		<a href="https://github.com/tjko/brickpico/">
+		  <img src="img/brickpico.png" border="0" alt="BrickPico logo" title="FanPico logo">
+		</a>
+	      </td>
+	      <td valign="bottom">
+		<h2><font color="#03a3aa">BrickPico: <!--#name--></h2>
+	      </td>
+	      <td>&nbsp;</td>
+	      <td valign="bottom" align="right">
+		<form action="/cgi" method="get"><input type="hidden" name="pwrall" value="1"><button class="button" type="submit">ON</button></form>
+	      </td>
+	      <td valign="bottom" align="right">
+		<form action="/cgi" method="get"><input type="hidden" name="pwrall" value="0"><button class="button" type="submit">OFF</button></form>
+	      </td>
+	    </tr>
+	  </table>
+	</td>
+      </tr>
+      <tr>
+	<td>
+	  <table width="100%">
+	    <tr>
+	      <td valign="top">
+		Outputs:<br>
+		<table width="100%">
+		  <tr><td id="l1">
+		      <table class="pretty" width="100%">
+			<tr style="font-size: 14px;"><th>#</th><th>Name</th><th>PWM</th><th>Brightness</th><th>Power</th></tr>
+			<tr>
+			  <td>1
+			  <td><!--#o_name01-->
+			  <td><span id="v01"><!--#o_pwm01--></span>%
+			  <td><div class="x1"><form action="/cgi" method="get"><input type="range" min="0" max="100" value="<!--#o_pwm01-->" class="s" id="s01" name="pwm01"> <button type="submit" class="button">Set</button></form></div>
+			  <td><form action="/cgi" method="get"><label class="switch"><input type="checkbox" id="pwr01" name="pwr01" value="<!--#o_pwr01-->" <!--#o_pwrr01--> onclick="power_toggle(this);" /><span class="slider round"></span></label></form>
+			</tr>
+			<tr>
+			  <td>2
+			  <td><!--#o_name02-->
+			  <td><span id="v02"><!--#o_pwm02--></span>%
+			  <td><div class="x1"><form action="/cgi" method="get"><input type="range" min="0" max="100" value="<!--#o_pwm02-->" class="s" id="s02" name="pwm02"> <button type="submit" class="button">Set</button></form></div>
+			  <td><form action="/cgi" method="get"><label class="switch"><input type="checkbox" id="pwr02" name="pwr02" value="<!--#o_pwr02-->" <!--#o_pwrr02--> onclick="power_toggle(this);" /><span class="slider round"></span></label></form>
+			</tr>
+			<tr>
+			  <td>3
+			  <td><!--#o_name03-->
+			  <td><span id="v03"><!--#o_pwm03--></span>%
+			  <td><div class="x1"><form action="/cgi" method="get"><input type="range" min="0" max="100" value="<!--#o_pwm03-->" class="s" id="s03" name="pwm03"> <button type="submit" class="button">Set</button></form></div>
+			  <td><form action="/cgi" method="get"><label class="switch"><input type="checkbox" id="pwr03" name="pwr03" value="<!--#o_pwr03-->" <!--#o_pwrr03--> onclick="power_toggle(this);" /><span class="slider round"></span></label></form>
+			</tr>
+			<tr>
+			  <td>4
+			  <td><!--#o_name04-->
+			  <td><span id="v04"><!--#o_pwm04--></span>%
+			  <td><div class="x1"><form action="/cgi" method="get"><input type="range" min="0" max="100" value="<!--#o_pwm04-->" class="s" id="s04" name="pwm04"> <button type="submit" class="button">Set</button></form></div>
+			  <td><form action="/cgi" method="get"><label class="switch"><input type="checkbox" id="pwr04" name="pwr04" value="<!--#o_pwr04-->" <!--#o_pwrr04--> onclick="power_toggle(this);" /><span class="slider round"></span></label></form>
+			</tr>
+			<tr>
+			  <td>5
+			  <td><!--#o_name05-->
+			  <td><span id="v05"><!--#o_pwm05--></span>%
+			  <td><div class="x1"><form action="/cgi" method="get"><input type="range" min="0" max="100" value="<!--#o_pwm05-->" class="s" id="s05" name="pwm05"> <button type="submit" class="button">Set</button></form></div>
+			  <td><form action="/cgi" method="get"><label class="switch"><input type="checkbox" id="pwr05" name="pwr05" value="<!--#o_pwr05-->" <!--#o_pwrr05--> onclick="power_toggle(this);" /><span class="slider round"></span></label></form>
+			</tr>
+			<tr>
+			  <td>6
+			  <td><!--#o_name06-->
+			  <td><span id="v06"><!--#o_pwm06--></span>%
+			  <td><div class="x1"><form action="/cgi" method="get"><input type="range" min="0" max="100" value="<!--#o_pwm06-->" class="s" id="s06" name="pwm06"> <button type="submit" class="button">Set</button></form></div>
+			  <td><form action="/cgi" method="get"><label class="switch"><input type="checkbox" id="pwr06" name="pwr06" value="<!--#o_pwr06-->" <!--#o_pwrr06--> onclick="power_toggle(this);" /><span class="slider round"></span></label></form>
+			</tr>
+			<tr>
+			  <td>7
+			  <td><!--#o_name07-->
+			  <td><span id="v07"><!--#o_pwm07--></span>%
+			  <td><div class="x1"><form action="/cgi" method="get"><input type="range" min="0" max="100" value="<!--#o_pwm07-->" class="s" id="s07" name="pwm07"> <button type="submit" class="button">Set</button></form></div>
+			  <td><form action="/cgi" method="get"><label class="switch"><input type="checkbox" id="pwr07" name="pwr07" value="<!--#o_pwr07-->" <!--#o_pwrr07--> onclick="power_toggle(this);" /><span class="slider round"></span></label></form>
+			</tr>
+			<tr>
+			  <td>8
+			  <td><!--#o_name08-->
+			  <td><span id="v08"><!--#o_pwm08--></span>%
+			  <td><div class="x1"><form action="/cgi" method="get"><input type="range" min="0" max="100" value="<!--#o_pwm08-->" class="s" id="s08" name="pwm08"> <button type="submit" class="button">Set</button></form></div>
+			  <td><form action="/cgi" method="get"><label class="switch"><input type="checkbox" id="pwr08" name="pwr08" value="<!--#o_pwr08-->" <!--#o_pwrr08--> onclick="power_toggle(this);" /><span class="slider round"></span></label></form>
+			</tr>
+			<tr>
+			  <td>9
+			  <td><!--#o_name09-->
+			  <td><span id="v09"><!--#o_pwm09--></span>%
+			  <td><div class="x1"><form action="/cgi" method="get"><input type="range" min="0" max="100" value="<!--#o_pwm09-->" class="s" id="s09" name="pwm09"> <button type="submit" class="button">Set</button></form></div>
+			  <td><form action="/cgi" method="get"><label class="switch"><input type="checkbox" id="pwr09" name="pwr09" value="<!--#o_pwr09-->" <!--#o_pwrr09--> onclick="power_toggle(this);" /><span class="slider round"></span></label></form>
+			</tr>
+			<tr>
+			  <td>10
+			  <td><!--#o_name10-->
+			  <td><span id="v10"><!--#o_pwm10--></span>%
+			  <td><div class="x1"><form action="/cgi" method="get"><input type="range" min="0" max="100" value="<!--#o_pwm10-->" class="s" id="s10" name="pwm10"> <button type="submit" class="button">Set</button></form></div>
+			  <td><form action="/cgi" method="get"><label class="switch"><input type="checkbox" id="pwr10" name="pwr10" value="<!--#o_pwr10-->" <!--#o_pwrr10--> onclick="power_toggle(this);" /><span class="slider round"></span></label></form>
+			</tr>
+			<tr>
+			  <td>11
+			  <td><!--#o_name11-->
+			  <td><span id="v11"><!--#o_pwm11--></span>%
+			  <td><div class="x1"><form action="/cgi" method="get"><input type="range" min="0" max="100" value="<!--#o_pwm11-->" class="s" id="s11" name="pwm11"> <button type="submit" class="button">Set</button></form></div>
+			  <td><form action="/cgi" method="get"><label class="switch"><input type="checkbox" id="pwr11" name="pwr11" value="<!--#o_pwr11-->" <!--#o_pwrr11--> onclick="power_toggle(this);" /><span class="slider round"></span></label></form>
+			</tr>
+			<tr>
+			  <td>12
+			  <td><!--#o_name12-->
+			  <td><span id="v12"><!--#o_pwm12--></span>%
+			  <td><div class="x1"><form action="/cgi" method="get"><input type="range" min="0" max="100" value="<!--#o_pwm12-->" class="s" id="s12" name="pwm12"> <button type="submit" class="button">Set</button></form></div>
+			  <td><form action="/cgi" method="get"><label class="switch"><input type="checkbox" id="pwr12" name="pwr12" value="<!--#o_pwr12-->" <!--#o_pwrr12--> onclick="power_toggle(this);" /><span class="slider round"></span></label></form>
+			</tr>
+			<tr>
+			  <td>13
+			  <td><!--#o_name13-->
+			  <td><span id="v13"><!--#o_pwm13--></span>%
+			  <td><div class="x1"><form action="/cgi" method="get"><input type="range" min="0" max="100" value="<!--#o_pwm13-->" class="s" id="s13" name="pwm13"> <button type="submit" class="button">Set</button></form></div>
+			  <td><form action="/cgi" method="get"><label class="switch"><input type="checkbox" id="pwr13" name="pwr13" value="<!--#o_pwr13-->" <!--#o_pwrr13--> onclick="power_toggle(this);" /><span class="slider round"></span></label></form>
+			</tr>
+			<tr>
+			  <td>14
+			  <td><!--#o_name14-->
+			  <td><span id="v14"><!--#o_pwm14--></span>%
+			  <td><div class="x1"><form action="/cgi" method="get"><input type="range" min="0" max="100" value="<!--#o_pwm14-->" class="s" id="s14" name="pwm14"> <button type="submit" class="button">Set</button></form></div>
+			  <td><form action="/cgi" method="get"><label class="switch"><input type="checkbox" id="pwr14" name="pwr14" value="<!--#o_pwr14-->" <!--#o_pwrr14--> onclick="power_toggle(this);" /><span class="slider round"></span></label></form>
+			</tr>
+			<tr>
+			  <td>15
+			  <td><!--#o_name15-->
+			  <td><span id="v15"><!--#o_pwm15--></span>%
+			  <td><div class="x1"><form action="/cgi" method="get"><input type="range" min="0" max="100" value="<!--#o_pwm15-->" class="s" id="s15" name="pwm15"> <button type="submit" class="button">Set</button></form></div>
+			  <td><form action="/cgi" method="get"><label class="switch"><input type="checkbox" id="pwr15" name="pwr15" value="<!--#o_pwr15-->" <!--#o_pwrr15--> onclick="power_toggle(this);" /><span class="slider round"></span></label></form>
+			</tr>
+			<tr>
+			  <td>16
+			  <td><!--#o_name16-->
+			  <td><span id="v16"><!--#o_pwm16--></span>%
+			  <td><div class="x1"><form action="/cgi" method="get"><input type="range" min="0" max="100" value="<!--#o_pwm16-->" class="s" id="s16" name="pwm16"> <button type="submit" class="button">Set</button></form></div>
+			  <td><form action="/cgi" method="get"><label class="switch"><input type="checkbox" id="pwr16" name="pwr16" value="<!--#o_pwr16-->" <!--#o_pwrr16--> onclick="power_toggle(this);" /><span class="slider round"></span></label></form>
+			</tr>
+		      </table>
+		  </td></tr>
+		</table>
+	    </tr>
+	  </table>
+	  <br>
+	</td>
+      </tr>
+      <tr>
+	<td>
+	  <table width="100%">
+	    <tr valign="bottom">
+	      <td width="45%"><font size=-1>BrickPico-<!--#model--> v<!--#version--></font></td>
+	      <td width="10%"><!--#watchdog--></td>
+	      <td width="45%" align="right"><font size="-1"><!--#datetime--><br>Uptime: <!--#uptime--></font></td>
+	    </tr>
+	  </table>
+	</td>
+      </tr>
+    </table>
+
+    <script>
+      function power_toggle(o) {
+	  o.value = o.checked ? "1" : "0";
+	  console.log("Clicked: " + o.id + " value: " + o.value);
+	  o.checked = true;
+	  o.closest("form").submit();
+      }
+      
+      // Make sliders update the PWM value when moved...
+      for(let i = 1; i <= 16; i++) {
+	  let tag = ("0" + i).slice(-2);
+	  let stag = "s" + tag;
+	  let vtag = "v" + tag;
+	  if (document.getElementById(stag)) {
+	      // console.log("found tag: " + stag);
+	      let s=document.getElementById(stag);
+	      let o=document.getElementById(vtag);
+	      s.oninput=function() { o.innerHTML=this.value; o.style.color = "blue"; };
+	  }
+      }
+    </script>
+  </body>
+</html>
