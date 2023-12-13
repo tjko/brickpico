@@ -1,7 +1,7 @@
 /* boards/8.h */
 
 
-#define FANPICO_MODEL     "08"
+#define BRICKPICO_MODEL     "08"
 
 #define OUTPUT_COUNT     8   /* Number of PWM outputs on the board */
 
