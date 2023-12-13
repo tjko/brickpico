@@ -3,7 +3,7 @@
 
 #define FANPICO_MODEL     "08"
 
-#define PWM_COUNT     8   /* Number of PWM outputs on the board */
+#define OUTPUT_COUNT     8   /* Number of PWM outputs on the board */
 
 #ifdef LIB_PICO_CYW43_ARCH
 #define LED_PIN -1
