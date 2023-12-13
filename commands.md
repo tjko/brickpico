@@ -90,6 +90,8 @@ BrickPico supports following commands:
 * [SYStem:WIFI:PASSword](#systemwifipassword)
 * [SYStem:WIFI:PASSword?](#systemwifipassword-1)
 * [WRIte:OUTPUTx](#writeoutputx)
+* [WRIte:OUTPUTx:POWer](#writeoutputxpower)
+* [WRIte:OUTPUTx:PWM](#writeoutputxpwm)
 
 
 Additionally unit will respond to following standard SCPI commands to provide compatibility in case some program
@@ -1190,14 +1192,48 @@ mynetworkpassword
 
 ### WRIte Commands
 
-These commands are for setting/adjusting output port PWM signal values.
+These commands are for turning output ports ON/OFF and for adjusting ouptut PWM duty cycle.
+
 
 #### WRIte:OUTPUTx
 
-Set/update PWM duty cycle for a outpuyt port.
+Turn output on or off.
 
-Example: Set OUTPUT1 to 50% duty cycle
+Example: Turn OUTPUT1 on.
 ```
-WRITE:OUTPUT1 50.0
+WRITE:OUTPUT1 ON
 ```
+
+Example: Turn OUTPUT1 off.
+```
+WRITE:OUTPUT1 OFF
+```
+
+
+#### WRIte:OUTPUTx:POWer
+
+Turn output on or off. This is same as WRIte:OUTPUTx command.
+
+Example: Turn OUTPUT1 on.
+```
+WRITE:OUTPUT1:POWER ON
+```
+
+Example: Turn OUTPUT1 off.
+```
+WRITE:OUTPUT1:POWER OFF
+```
+
+
+#### WRIte:OUTPUTx:PWM
+
+Set output PWM duty cycle. Valid values are from 0 to 100.
+
+Example: Set OUTPUT2 to 25% duty cycle.
+```
+WRITE:OUTPUT2:PWM 25
+```
+
+
+
 

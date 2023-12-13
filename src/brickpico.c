@@ -185,8 +185,8 @@ void core1_main()
 			log_msg(LOG_DEBUG, "tick");
 		}
 
-		if (time_passed(&t_config, 2000)) {
-			/* Attempt to update config from core0 */
+		if (time_passed(&t_config, 4000)) {
+			/* Attempt to update (read) config from core0 */
 			if (mutex_enter_timeout_us(config_mutex, 100)) {
 				memcpy(config, cfg, sizeof(*config));
 				mutex_exit(config_mutex);
@@ -195,8 +195,8 @@ void core1_main()
 			}
 		}
 
-		if (time_passed(&t_state, 500)) {
-			/* Attempt to update state from core0 */
+		if (time_passed(&t_state, 250)) {
+			/* Attempt to update (read) state from core0 */
 			if (mutex_enter_timeout_us(state_mutex, 100)) {
 				memcpy(&prev_state, state, sizeof(prev_state));
 				memcpy(state, &transfer_state, sizeof(*state));

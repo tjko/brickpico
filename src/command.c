@@ -514,7 +514,7 @@ int cmd_out_read(const char *cmd, const char *args, int query, char *prev_cmd)
 	return 1;
 }
 
-int cmd_out_write(const char *cmd, const char *args, int query, char *prev_cmd)
+int cmd_write_out(const char *cmd, const char *args, int query, char *prev_cmd)
 {
 	int out, val;
 
@@ -528,12 +528,47 @@ int cmd_out_write(const char *cmd, const char *args, int query, char *prev_cmd)
 	}
 
 	if (out >= 0 && out < OUTPUT_COUNT) {
+		if (!strncasecmp(args, "on", 3))
+			val = 1;
+		else if (!strncasecmp(args, "off", 4))
+			val = 0;
+		else
+			val = -1;
+
+		if (val >= 0) {
+			if (st->pwr[out] != val) {
+				log_msg(LOG_INFO, "output%d: change power %s", out + 1,
+					(val ? "ON" : "OFF"));
+				st->pwr[out] = val;
+			}
+			return 0;
+		} else {
+			log_msg(LOG_WARNING, "output%d: invalid new value for power: %s", out + 1,
+				args);
+			return 2;
+		}
+	}
+
+	return 1;
+}
+
+int cmd_write_pwm(const char *cmd, const char *args, int query, char *prev_cmd)
+{
+	int out, val;
+
+	if (query)
+		return 1;
+
+	out = atoi(&prev_cmd[6]) - 1;
+
+	if (out >= 0 && out < OUTPUT_COUNT) {
 		if (str_to_int(args, &val, 10)) {
 			if (val >= 0 && val <= 100) {
-				log_msg(LOG_INFO, "output%d: change PWM %d%% --> %d%%", out + 1,
-					st->pwm[out], val);
-				st->pwm[out] = val;
-				set_pwm_duty_cycle(out, val);
+				if (st->pwm[out] != val) {
+					log_msg(LOG_INFO, "output%d: change PWM %d%% --> %d%%", out + 1,
+						st->pwm[out], val);
+					st->pwm[out] = val;
+				}
 				return 0;
 			} else {
 				log_msg(LOG_WARNING, "output%d: invalid new value for PWM: %d", out + 1,
@@ -820,11 +855,11 @@ int cmd_tls_cert(const char *cmd, const char *args, int query, char *prev_cmd)
 int cmd_time(const char *cmd, const char *args, int query, char *prev_cmd)
 {
 	datetime_t t;
+	char buf[32];
 
 	if (query) {
 		if (rtc_get_datetime(&t)) {
-			printf("%04d-%02d-%02d %02d:%02d:%02d\n",
-				t.year, t.month, t.day,	t.hour, t.min, t.sec);
+			printf("%s\n", datetime_str(buf, sizeof(buf), &t));
 		}
 		return 0;
 	}
@@ -1145,8 +1180,14 @@ struct cmd_t measure_commands[] = {
 	{ 0, 0, 0, 0 }
 };
 
+struct cmd_t write_o_commands[] = {
+	{ "POWer",     3, NULL,              cmd_write_out },
+	{ "PWM",       3, NULL,              cmd_write_pwm },
+	{ 0, 0, 0, 0 }
+};
+
 struct cmd_t write_commands[] = {
-	{ "OUTPUT",    6, NULL,              cmd_out_write },
+	{ "OUTPUT",    6, write_o_commands,  cmd_write_out },
 	{ 0, 0, 0, 0 }
 };
 
