@@ -1,6 +1,6 @@
 # Brickpico: Smart PWM LED Controller
-[![CI](https://github.com/tjko/fanpico/actions/workflows/cmake.yml/badge.svg)](https://github.com/tjko/fanpico/actions/workflows/cmake.yml)
-[![CodeQL](https://github.com/tjko/fanpico/actions/workflows/codeql.yml/badge.svg)](https://github.com/tjko/fanpico/actions/workflows/codeql.yml)
+[![CI](https://github.com/tjko/brickpico/actions/workflows/cmake.yml/badge.svg)](https://github.com/tjko/brickpico/actions/workflows/cmake.yml)
+[![CodeQL](https://github.com/tjko/brickpico/actions/workflows/codeql.yml/badge.svg)](https://github.com/tjko/brickpico/actions/workflows/codeql.yml)
 
 Bricpico is a smart PWM LED controller based around [Raspberry Pi Pico](https://www.raspberrypi.com/documentation/microcontrollers/raspberry-pi-pico.html) (RP2040 MCU).
 Brickpico is mainly meant to controlling various LED lights on LEGO models, but can be used to control any LED lights (or other small loads).
