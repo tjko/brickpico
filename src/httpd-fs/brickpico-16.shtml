@@ -4,7 +4,7 @@
     <link rel="stylesheet" href="brickpico.css">
     <link rel="icon" type="image/png" href="img/brickpico-icon.png">
     <meta http-equiv="refresh" content="<!--#refresh-->">
-    <meta name="viewport" content="width=device-width,initial-scale=0.93,user-scalable=yes">
+    <meta name="viewport" content="width=device-width,user-scalable=yes">
   </head>
   <body bgcolor="white" text="black">
     <table id="b1">
