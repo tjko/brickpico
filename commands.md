@@ -9,19 +9,21 @@ BrickPico supports following commands:
 * [*IDN?](#idn)
 * [*RST](#rst)
 * [CONFigure?](#configure)
-* [CONFigure:SAVe](#configuresave)
-* [CONFigure:Read?](#configureread)
+* [CONFigure:DEFault:PWM](#configuredefaultpwm)
+* [CONFigure:DEFault:STAte](#configuredefaultstate)
 * [CONFigure:DELete](#configuredelete)
+* [CONFigure:Read?](#configureread)
+* [CONFigure:SAVe](#configuresave)
 * [CONFigure:OUTPUTx:NAME](#configureoutputxname)
 * [CONFigure:OUTPUTx:NAME?](#configureoutputxname-1)
-* [CONFigure:OUTPUTx:DEFault](#configureoutputxdefault)
-* [CONFigure:OUTPUTx:DEFault?](#configureoutputxdefault-1)
 * [CONFigure:OUTPUTx:MINpwm](#configureoutputxminpwm)
 * [CONFigure:OUTPUTx:MINpwm?](#configureoutputxminpwm-1)
 * [CONFigure:OUTPUTx:MAXpwm](#configureoutputxmaxpwm)
 * [CONFigure:OUTPUTx:MAXpwm?](#configureoutputxmaxpwm-1)
 * [CONFigure:OUTPUTx:PWM](#configureoutputxpwm)
 * [CONFigure:OUTPUTx:PWM?](#configureoutputxpwm-1)
+* [CONFigure:OUTPUTx:STAte](#configureoutputxstate)
+* [CONFigure:OUTPUTx:STAte?](#configureoutputxstate-1)
 * [CONFigure:TIMERS?](#configuretimers)
 * [CONFigure:TIMERS:ADD](#configuretimersadd)
 * [CONFigure:TIMERS:DEL](#configuretimersdel)
@@ -90,8 +92,8 @@ BrickPico supports following commands:
 * [SYStem:WIFI:PASSword](#systemwifipassword)
 * [SYStem:WIFI:PASSword?](#systemwifipassword-1)
 * [WRIte:OUTPUTx](#writeoutputx)
-* [WRIte:OUTPUTx:POWer](#writeoutputxpower)
 * [WRIte:OUTPUTx:PWM](#writeoutputxpwm)
+* [WRIte:OUTPUTx:STAte](#writeoutputxstate)
 
 
 Additionally unit will respond to following standard SCPI commands to provide compatibility in case some program
@@ -142,12 +144,37 @@ Example:
 CONF?
 ```
 
-#### CONFigure:SAVe
-Save current configuration into flash memory.
+#### CONFigure:DEFault:PWM
+Copy current output PWM (brightess) settings to power-on default PWM settings.
+Alternative to this command is to set default PWM for each port using _CONF:OUTPUTx:PWM_ command.
+
+Configuration must be saved after running this command.
 
 Example:
 ```
+CONF:DEFAULT:PWM
 CONF:SAVE
+```
+
+#### CONFigure:DEFault:STAte
+Copy current output states (ON/OFF) to power-on default states.
+Alternative to this command is to set default power on state using _CONF:OUTPUTx:DEFAULT_ command.
+
+Configuration must be saved after running this command.
+
+Example:
+```
+CONF:DEFAULT:STATE
+CONF:SAVE
+```
+
+#### CONFigure:DELete
+Delete current configuration saved into flash. After unit has been reset it will be using default configuration.
+
+Example:
+```
+CONF:DEL
+*RST
 ```
 
 #### CONFigure:Read?
@@ -158,13 +185,12 @@ Example:
 CONF:READ?
 ```
 
-#### CONFigure:DELete
-Delete current configuration saved into flash. After unit has been reset it will be using default configuration.
+#### CONFigure:SAVe
+Save current configuration into flash memory.
 
 Example:
 ```
-CONF:DEL
-*RST
+CONF:SAVE
 ```
 
 ### CONFigure:OUTPUTx Commands
@@ -191,27 +217,6 @@ For example:
 ```
 CONF:OUTPUT1:NAME?
 Front Lights
-```
-
-#### CONFigure:OUTPUTx:DEFault
-Controls whether output is ON or OFF when unit boots up.
-
-Values: 0 = OFF, 1 = ON
-
-Default: 0 (OFF)
-
-Example: Set Output 5 to be ON when system boots up.
-```
-CONF:OUTPUT5:DEF 1
-```
-
-#### CONFigure:OUTPUTx:DEFault?
-Query whether output is set to default to ON or OFF when unit boots up.
-
-Example:
-```
-CONF:OUTPUT1:DEF?
-0
 ```
 
 #### CONFigure:OUTPUTx:MINpwm
@@ -275,6 +280,27 @@ Example:
 ```
 CONF:OUTPUT1:PWM?
 50
+```
+
+#### CONFigure:OUTPUTx:STAte
+Controls whether output is ON or OFF state when unit boots up.
+
+Values: ON, OFF
+
+Default: OFF
+
+Example: Set Output 5 to be ON when system boots up.
+```
+CONF:OUTPUT5:STATE ON
+```
+
+#### CONFigure:OUTPUTx:STAte?
+Query whether output is set to default to ON or OFF when unit boots up.
+
+Example:
+```
+CONF:OUTPUT1:STATE?
+OFF
 ```
 
 #### CONFigure:TIMERS?
@@ -343,16 +369,16 @@ This command returns current output settings on all OUTPUT ports.
 
 Response format:
 ```
-output<n>,"<name>",<output duty cycle>
+output<n>,"<name>",<output duty cycle>,<output state>
 ```
 
 Example:
 ```
 MEAS:READ?
-output1,"Output 1",100.0
-output2,"Output 2",50.00
-output3,"Output 3",50.00
-output4,"Output 4",0.00
+output1,"Output 1",100.0,OFF
+output2,"Output 2",50.00,OFF
+output3,"Output 3",50.00,ON
+output4,"Output 4",25.00,ON
 ...
 ```
 
@@ -1210,21 +1236,6 @@ WRITE:OUTPUT1 OFF
 ```
 
 
-#### WRIte:OUTPUTx:POWer
-
-Turn output on or off. This is same as WRIte:OUTPUTx command.
-
-Example: Turn OUTPUT1 on.
-```
-WRITE:OUTPUT1:POWER ON
-```
-
-Example: Turn OUTPUT1 off.
-```
-WRITE:OUTPUT1:POWER OFF
-```
-
-
 #### WRIte:OUTPUTx:PWM
 
 Set output PWM duty cycle. Valid values are from 0 to 100.
@@ -1234,6 +1245,18 @@ Example: Set OUTPUT2 to 25% duty cycle.
 WRITE:OUTPUT2:PWM 25
 ```
 
+#### WRIte:OUTPUTx:STAte
 
+Turn output  on or off. This is same as WRIte:OUTPUTx command.
+
+Example: Turn OUTPUT1 on.
+```
+WRITE:OUTPUT1:STATE ON
+```
+
+Example: Turn OUTPUT1 off.
+```
+WRITE:OUTPUT1:STATE OFF
+```
 
 

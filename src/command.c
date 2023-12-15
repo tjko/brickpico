@@ -369,12 +369,35 @@ int cmd_read(const char *cmd, const char *args, int query, char *prev_cmd)
 		return 1;
 
 	for (i = 0; i < OUTPUT_COUNT; i++) {
-		printf("output%d,\"%s\",%d\n", i + 1,
+		printf("output%d,\"%s\",%d,%s\n", i + 1,
 			conf->outputs[i].name,
-			st->pwm[i]);
+			st->pwm[i],
+			st->pwr[i] ? "ON": "OFF");
 	}
 
 	return 0;
+}
+
+int cmd_defaults_pwm(const char *cmd, const char *args, int query, char *prev_cmd)
+{
+	if (query)
+		return 1;
+
+	for (int i = 0; i < OUTPUT_COUNT; i++) {
+		conf->outputs[i].default_pwm = st->pwm[i];
+	}
+	return 0;
+}
+
+int cmd_defaults_state(const char *cmd, const char *args, int query, char *prev_cmd)
+{
+	if (query)
+		return 1;
+
+	for (int i = 0; i < OUTPUT_COUNT; i++) {
+		conf->outputs[i].default_state = st->pwr[i];
+	}
+	return 1;
 }
 
 int cmd_out_name(const char *cmd, const char *args, int query, char *prev_cmd)
@@ -452,9 +475,11 @@ int cmd_out_default_pwm(const char *cmd, const char *args, int query, char *prev
 			printf("%d\n", conf->outputs[out].default_pwm);
 		} else if (str_to_int(args, &val, 10)) {
 			if (val >= 0 && val <= 100) {
-				log_msg(LOG_NOTICE, "output%d: change default PWM %d%% --> %d%%",
-					out + 1, conf->outputs[out].default_pwm, val);
-				conf->outputs[out].default_pwm = val;
+				if (conf->outputs[out].default_pwm != val) {
+					log_msg(LOG_NOTICE, "output%d: change default PWM %d%% --> %d%%",
+						out + 1, conf->outputs[out].default_pwm, val);
+					conf->outputs[out].default_pwm = val;
+				}
 			} else {
 				log_msg(LOG_WARNING, "output%d: invalid new value for max PWM: %d", out + 1,
 					val);
@@ -473,15 +498,23 @@ int cmd_out_default_state(const char *cmd, const char *args, int query, char *pr
 	out = atoi(&prev_cmd[6]) - 1;
 	if (out >= 0 && out < OUTPUT_COUNT) {
 		if (query) {
-			printf("%d\n", conf->outputs[out].default_state);
-		} else if (str_to_int(args, &val, 10)) {
-			if (val >= 0 && val <= 1) {
-				log_msg(LOG_NOTICE, "output%d: change default state %d --> %d",
-					out + 1, conf->outputs[out].default_state, val);
-				conf->outputs[out].default_state = val;
+			printf("%s\n", (conf->outputs[out].default_state ? "ON" : "OFF"));
+		} else {
+			if (!strncasecmp(args, "on", 3))
+				val = 1;
+			else if (!strncasecmp(args, "off", 4))
+				val = 0;
+			else
+				val = 1;
+			if (val >= 0) {
+				if (conf->outputs[out].default_state != val) {
+					log_msg(LOG_NOTICE, "output%d: change default state %s",
+						out + 1, (val ? "ON" : "OFF"));
+					conf->outputs[out].default_state = val;
+				}
 			} else {
-				log_msg(LOG_WARNING, "output%d: invalid new value for state: %d", out + 1,
-					val);
+				log_msg(LOG_WARNING, "output%d: invalid new value for state: %s",
+					out + 1, args);
 				return 2;
 			}
 		}
@@ -514,7 +547,7 @@ int cmd_out_read(const char *cmd, const char *args, int query, char *prev_cmd)
 	return 1;
 }
 
-int cmd_write_out(const char *cmd, const char *args, int query, char *prev_cmd)
+int cmd_write_state(const char *cmd, const char *args, int query, char *prev_cmd)
 {
 	int out, val;
 
@@ -1144,6 +1177,12 @@ struct cmd_t system_commands[] = {
 	{ 0, 0, 0, 0 }
 };
 
+struct cmd_t defaults_c_commands[] = {
+	{ "PWM",       3, NULL,              cmd_defaults_pwm },
+	{ "STAte",     3, NULL,              cmd_defaults_state },
+	{ 0, 0, 0, 0 }
+};
+
 struct cmd_t output_c_commands[] = {
 	{ "MAXpwm",    3, NULL,              cmd_out_max_pwm },
 	{ "MINpwm",    3, NULL,              cmd_out_min_pwm },
@@ -1160,6 +1199,7 @@ struct cmd_t timer_c_commands[] = {
 };
 
 struct cmd_t config_commands[] = {
+	{ "DEFaults",  8, defaults_c_commands, NULL },
 	{ "DELete",    3, NULL,              cmd_delete_config },
 	{ "OUTPUT",    6, output_c_commands, NULL },
 	{ "Read",      1, NULL,              cmd_print_config },
@@ -1181,13 +1221,13 @@ struct cmd_t measure_commands[] = {
 };
 
 struct cmd_t write_o_commands[] = {
-	{ "POWer",     3, NULL,              cmd_write_out },
 	{ "PWM",       3, NULL,              cmd_write_pwm },
+	{ "STAte",     3, NULL,              cmd_write_state },
 	{ 0, 0, 0, 0 }
 };
 
 struct cmd_t write_commands[] = {
-	{ "OUTPUT",    6, write_o_commands,  cmd_write_out },
+	{ "OUTPUT",    6, write_o_commands,  cmd_write_state },
 	{ 0, 0, 0, 0 }
 };
 
