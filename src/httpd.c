@@ -56,11 +56,11 @@ u16_t csv_stats(char *insert, int insertlen, u16_t current_tag_part, u16_t *next
 		buf[0] = 0;
 
 		for (i = 0; i < OUTPUT_COUNT; i++) {
-			snprintf(row, sizeof(row), "output%d,\"%s\",%u,%u\n",
+			snprintf(row, sizeof(row), "output%d,\"%s\",%u,%s\n",
 				i+1,
 				cfg->outputs[i].name,
-				st->pwr[i],
-				st->pwm[i]);
+				st->pwm[i],
+				st->pwr[i] ? "ON" : "OFF");
 			strncatenate(buf, row, BUF_LEN);
 		}
 
@@ -116,7 +116,7 @@ u16_t json_stats(char *insert, int insertlen, u16_t current_tag_part, u16_t *nex
 			cJSON_AddItemToObject(o, "output", cJSON_CreateNumber(i+1));
 			cJSON_AddItemToObject(o, "name", cJSON_CreateString(cfg->outputs[i].name));
 			cJSON_AddItemToObject(o, "duty_cycle", cJSON_CreateNumber(round_decimal(st->pwm[i], 1)));
-			cJSON_AddItemToObject(o, "power", cJSON_CreateNumber(round_decimal(st->pwr[i], 1)));
+			cJSON_AddItemToObject(o, "power", cJSON_CreateString(st->pwr[i] ? "ON" : "OFF"));
 			cJSON_AddItemToArray(array, o);
 		}
 		cJSON_AddItemToObject(json, "outputs", array);
