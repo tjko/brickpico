@@ -10,22 +10,29 @@
     <table id="b1">
       <tr>
 	<td>
-	  <table border=0 width="99%">
+	  <table border="0" width="99%">
 	    <tr>
-	      <td>
+	      <td rowspan="2">
 		<a href="https://github.com/tjko/brickpico/">
-		  <img src="img/brickpico.png" border="0" alt="BrickPico logo" title="FanPico logo">
+		  <img src="img/brickpico.png" border="0" alt="BrickPico logo" title="BrickPico logo">
 		</a>
 	      </td>
-	      <td valign="bottom">
+	      <td colspan="2" valign="bottom">
 		<h2><font color="#03a3aa">BrickPico: <!--#name--></h2>
 	      </td>
+	    </tr>
+	    <tr>
 	      <td>&nbsp;</td>
-	      <td valign="bottom" align="right">
-		<form action="/cgi" method="get"><input type="hidden" name="pwrall" value="1"><button class="button" type="submit">ON</button></form>
-	      </td>
-	      <td valign="bottom" align="right">
-		<form action="/cgi" method="get"><input type="hidden" name="pwrall" value="0"><button class="button" type="submit">OFF</button></form>
+	      <td align="right">
+		<table><tr>
+		    <td valign="bottom" align="right">
+		      <form action="/cgi" method="get"><input type="hidden" name="pwrall" value="1"><button class="button" type="submit">ON</button></form>
+		    </td>
+		    <td valign="bottom" align="right">
+		      <form action="/cgi" method="get"><input type="hidden" name="pwrall" value="0"><button class="button" type="submit">OFF</button></form>
+		    </td>
+		  </tr>
+		</table>
 	      </td>
 	    </tr>
 	  </table>
