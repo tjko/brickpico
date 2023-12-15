@@ -7,7 +7,7 @@ Brickpico is mainly meant to controlling various LED lights on LEGO models, but 
 
 Brickpico operates as standalone controller that can be configured and left running. It does not require any drivers and doesn't care what OS is being used. BrickPico is an Open-source hardware (OSHW) project.
 
-[![FanPico](images/fanpico-small.png)](images/fanpico-0804D-large.jpg?raw=true)
+[![BrickPico](images/brickpico-small.png)](images/brickpico-large.jpg?raw=true)
 
 ## What is it for?
 * Fanpico is for customizing fan "curves" to fine tune how your motherboard controlled fans run.
@@ -38,8 +38,8 @@ For more documentation check [BrickPico Wiki](https://github.com/tjko/brickpico/
 
 
 ## Where can I get one?
-Currently Brickpico is available as a DIY project. 
-Check discussion forums for places to purchase Kits or PCBs: [Places to Purchase FanPico](https://github.com/tjko/fanpico/discussions/12)
+Initially BrickPico will be available as a DIY kit. Initial patch of kits should be available in early January.
+
 
 
 ### DIY Option
@@ -65,7 +65,7 @@ If you are member of press (or YouTuber) and would like to review/test Brickpico
 
 
 ## Hardware
-Fanpico is Open Source Hardware, reference design is provided for the "08" model (8 outputs) and "16" model (16 outputs).
+BrickPico is Open Source Hardware, reference design is provided for the "08" model (8 outputs) and "16" model (16 outputs).
 
 Additional models with different combinations of fan outputs could be easily designed (takining into account limitations of Raspberry Pi Pico I/O limits). New and improved PCB models/designs are most welcome.
 
@@ -77,8 +77,8 @@ Currently following models are available:
 
 |Model|Outputs|Notes|
 |-----|-------|-----|
-|[BRICKPICO-08](boards/brickpico-16/)|8||
-|[BRICKPICO-16](boards/brickpico-08/)|16||
+|[BRICKPICO-08](boards/brickpico-8/)|8||
+|[BRICKPICO-16](boards/brickpico-16/)|16||
 
 
 
@@ -149,7 +149,7 @@ $ cd brickpico
 $ mkdir build
 ```
 
-Select which board to build firmware for (default is "0804") and which Pico is to be used (default is "pico"):
+Select which board to build firmware for (default is "08") and which Pico is to be used (default is "pico_w"):
 ```
 $ cd build
 $ cmake -DBRICKPICO_BOARD=16 -DPICO_BOARD=pico_w ..
