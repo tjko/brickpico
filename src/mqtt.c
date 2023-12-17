@@ -28,6 +28,7 @@
 #include "cJSON.h"
 #ifdef LIB_PICO_CYW43_ARCH
 #include "pico/cyw43_arch.h"
+#include "lwip/dns.h"
 #include "lwip/apps/mqtt.h"
 #if TLS_SUPPORT
 #include "lwip/altcp_tls.h"
@@ -65,18 +66,22 @@ static void mqtt_incoming_data_cb(void *arg, const u8_t *data, u16_t len, u8_t f
 
 static void mqtt_sub_request_cb(void *arg, err_t result)
 {
-  printf("Subscribe result: %d\n", result);
+	if (result != ERR_OK) {
+		log_msg(LOG_WARNING, "MQTT failed to subscribe command topic: %d", result);
+	}
 }
 
 static void mqtt_connection_cb(mqtt_client_t *client, void *arg, mqtt_connection_status_t status)
 {
 	if (status == MQTT_CONNECT_ACCEPTED) {
-		log_msg(LOG_NOTICE, "MQTT connected to %s", ipaddr_ntoa(&mqtt_server_ip));
+		log_msg(LOG_INFO, "MQTT connected to %s", ipaddr_ntoa(&mqtt_server_ip));
 		mqtt_set_inpub_callback(client, mqtt_incoming_publish_cb, mqtt_incoming_data_cb ,arg);
-
-		err_t err = mqtt_subscribe(client, "tjkofi/feeds/command", 1, mqtt_sub_request_cb, arg);
-		if (err != ERR_OK) {
-			log_msg(LOG_WARNING, "mqtt_subscribe(): failed %d", err);
+		if (cfg->mqtt_cmd_topic) {
+			log_msg(LOG_INFO, "MQTT subscribe command topic: %s", cfg->mqtt_cmd_topic);
+			err_t err = mqtt_subscribe(client, cfg->mqtt_cmd_topic, 1, mqtt_sub_request_cb, arg);
+			if (err != ERR_OK) {
+				log_msg(LOG_WARNING, "mqtt_subscribe(): failed %d", err);
+			}
 		}
 	} else {
 		log_msg(LOG_WARNING, "mqtt_connection_cb: disconnected %d", status);
@@ -84,20 +89,41 @@ static void mqtt_connection_cb(mqtt_client_t *client, void *arg, mqtt_connection
 	}
 }
 
+static void mqtt_dns_resolve_cb(const char *name, const ip_addr_t *ipaddr, void *arg)
+{
+	if (ipaddr && ipaddr->addr) {
+		log_msg(LOG_INFO, "DNS resolved: %s -> %s\n", name, ipaddr_ntoa(ipaddr));
+		ip_addr_set(&mqtt_server_ip, ipaddr);
+		mqtt_connect(mqtt_client);
+	} else {
+		log_msg(LOG_WARNING, "Failed to resolve MQTT server name: %s", name);
+	}
+}
+
 void mqtt_connect(mqtt_client_t *client)
 {
 	uint16_t mqtt_port = MQTT_PORT;
+	err_t err;
 
 	if (!client)
 		return;
+
+	err = dns_gethostbyname(cfg->mqtt_server, &mqtt_server_ip, mqtt_dns_resolve_cb, NULL);
+	if (err != ERR_OK) {
+		if (err == ERR_INPROGRESS)
+			log_msg(LOG_INFO, "Resolving hostname: %s...\n", cfg->mqtt_server);
+		else
+			log_msg(LOG_WARNING, "Failed to resolve MQTT server name: %s (%d)" ,
+				cfg->mqtt_server, err);
+
+		return;
+	}
 
 	struct mqtt_connect_client_info_t ci;
 	memset(&ci, 0, sizeof(ci));
 
 	char client_id[64];
 	snprintf(client_id, sizeof(client_id), "brickpico-%s_%s", BRICKPICO_BOARD, pico_serial_str());
-	printf("client_id='%s'\n", client_id);
-
 	ci.client_id = client_id;
 	ci.client_user = cfg->mqtt_user;
 	ci.client_pass = cfg->mqtt_pass;
@@ -116,12 +142,12 @@ void mqtt_connect(mqtt_client_t *client)
 	if (cfg->mqtt_port > 0)
 		mqtt_port = cfg->mqtt_port;
 
-	log_msg(LOG_NOTICE,"MQTT Connecting to %s:%u%s",
+	log_msg(LOG_INFO, "MQTT Connecting to %s:%u%s",
 		cfg->mqtt_server,
 		mqtt_port,
 		cfg->mqtt_tls ? " (TLS)" : "");
 
-	err_t err = mqtt_client_connect(mqtt_client, &mqtt_server_ip, mqtt_port, mqtt_connection_cb, 0, &ci);
+	err = mqtt_client_connect(mqtt_client, &mqtt_server_ip, mqtt_port, mqtt_connection_cb, 0, &ci);
 	if (err != ERR_OK) {
 		log_msg(LOG_WARNING,"mqtt_client_connect(): failed %d", err);
 	}
@@ -129,11 +155,15 @@ void mqtt_connect(mqtt_client_t *client)
 
 static void mqtt_pub_request_cb(void *arg, err_t result)
 {
-	printf("Publish result: %d\n", result);
+	if (result != ERR_OK) {
+		log_msg(LOG_NOTICE, "MQTT failed to publish to topic: %d", result);
+	}
 }
 
 void brickpico_setup_mqtt_client()
 {
+	ip_addr_set_zero(&mqtt_server_ip);
+
 	cyw43_arch_lwip_begin();
 	mqtt_client = mqtt_client_new();
 	if (mqtt_client) {
@@ -150,18 +180,28 @@ void brickpico_mqtt_publish()
 {
 	char buf[32];
 	uint64_t t = to_us_since_boot(get_absolute_time());
+	u8_t qos = 2;
+	u8_t retain = 0;
 
 	if (!mqtt_client)
 		return;
 
-	snprintf(buf, sizeof(buf), "%llu", t);
-	printf("brickpico_mqtt_publish(): '%s'\n", buf);
-
-	u8_t qos = 2;
-	u8_t retain = 0;
+	if (strlen(cfg->mqtt_status_topic) < 1)
+		return;
 
 	cyw43_arch_lwip_begin();
-	err_t err = mqtt_publish(mqtt_client, "tjkofi/feeds/test", buf, strlen(buf), qos, retain, mqtt_pub_request_cb, NULL);
+	u8_t connected = mqtt_client_is_connected(mqtt_client);
+	cyw43_arch_lwip_end();
+	if (!connected)
+		return;
+
+	snprintf(buf, sizeof(buf), "%llu", t);
+	log_msg(LOG_INFO, "MQTT publish to %s: '%s'", cfg->mqtt_status_topic, buf);
+
+
+	cyw43_arch_lwip_begin();
+	err_t err = mqtt_publish(mqtt_client, cfg->mqtt_status_topic, buf, strlen(buf),
+				qos, retain, mqtt_pub_request_cb, NULL);
 	cyw43_arch_lwip_end();
 	if (err != ERR_OK) {
 		log_msg(LOG_WARNING,"mqtt_publish(): failed %d", err);

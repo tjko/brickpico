@@ -50,6 +50,7 @@ static char wifi_hostname[32];
 static ip_addr_t syslog_server;
 static ip_addr_t current_ip;
 
+
 void wifi_mac()
 {
 	printf("%s\n", mac_address_str(cyw43_mac));
@@ -110,7 +111,6 @@ void wifi_init()
 
 	cyw43_arch_enable_sta_mode();
 
-	cyw43_arch_lwip_begin();
 
 	/* Set WiFi interface hostname... */
 	if (strlen(cfg->hostname) > 0) {
@@ -119,6 +119,10 @@ void wifi_init()
 		snprintf(wifi_hostname, sizeof(wifi_hostname), "BrickPico-%s", pico_serial_str());
 	}
 	log_msg(LOG_NOTICE, "WiFi hostname: %s", wifi_hostname);
+
+
+	cyw43_arch_lwip_begin();
+
 	netif_set_hostname(n, wifi_hostname);
 
 	/* Set callback for link/interface status changes */
