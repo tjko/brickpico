@@ -42,7 +42,7 @@
 #define MQTTS_PORT 8883
 
 mqtt_client_t *mqtt_client = NULL;
-ip_addr_t mqtt_server_ip = IPADDR4_INIT_BYTES(52,54,110,50);
+ip_addr_t mqtt_server_ip;
 int incoming_topic = 0;
 
 void mqtt_connect(mqtt_client_t *client);
@@ -50,18 +50,28 @@ void mqtt_connect(mqtt_client_t *client);
 
 static void mqtt_incoming_publish_cb(void *arg, const char *topic, u32_t tot_len)
 {
-	printf("Incoming publish at topic %s with total length %u\n", topic, (unsigned int)tot_len);
+	log_msg(LOG_DEBUG, "MQTT incoming publish at topic %s with total length %u",
+		topic, (unsigned int)tot_len);
+	if (!strncmp(topic, cfg->mqtt_cmd_topic, strlen(cfg->mqtt_cmd_topic) + 1)) {
+		incoming_topic = 1;
+	} else {
+		incoming_topic = 0;
+	}
 }
 
 static void mqtt_incoming_data_cb(void *arg, const u8_t *data, u16_t len, u8_t flags)
 {
-	char buf[64];
-	printf("Incoming publish payload with length %d, flags %u\n", len, (unsigned int)flags);
+	log_msg(LOG_DEBUG, "MQTT incoming publish payload with length %d, flags %u\n",
+		len, (unsigned int)flags);
 
+	if (incoming_topic != 1)
+		return;
+
+	char buf[64];
 	u16_t l = (len < sizeof(buf) ? len : len - 1);
 	memcpy(buf, data, l);
 	buf[l] = 0;
-	printf("DATA: '%s'\n", buf);
+	log_msg(LOG_NOTICE, "MQTT command topic data received: '%s'", buf);
 }
 
 static void mqtt_sub_request_cb(void *arg, err_t result)
@@ -122,8 +132,9 @@ void mqtt_connect(mqtt_client_t *client)
 	struct mqtt_connect_client_info_t ci;
 	memset(&ci, 0, sizeof(ci));
 
-	char client_id[64];
+	char client_id[32];
 	snprintf(client_id, sizeof(client_id), "brickpico-%s_%s", BRICKPICO_BOARD, pico_serial_str());
+	/* printf("client_id='%s', len=%u\n", client_id, strlen(client_id)); */
 	ci.client_id = client_id;
 	ci.client_user = cfg->mqtt_user;
 	ci.client_pass = cfg->mqtt_pass;
@@ -165,8 +176,7 @@ void brickpico_setup_mqtt_client()
 	ip_addr_set_zero(&mqtt_server_ip);
 
 	cyw43_arch_lwip_begin();
-	mqtt_client = mqtt_client_new();
-	if (mqtt_client) {
+	if ((mqtt_client = mqtt_client_new())) {
 		mqtt_connect(mqtt_client);
 	}
 	cyw43_arch_lwip_end();
@@ -178,15 +188,7 @@ void brickpico_setup_mqtt_client()
 
 void brickpico_mqtt_publish()
 {
-	char buf[32];
-	uint64_t t = to_us_since_boot(get_absolute_time());
-	u8_t qos = 2;
-	u8_t retain = 0;
-
-	if (!mqtt_client)
-		return;
-
-	if (strlen(cfg->mqtt_status_topic) < 1)
+	if (!mqtt_client || strlen(cfg->mqtt_status_topic) < 1)
 		return;
 
 	cyw43_arch_lwip_begin();
@@ -195,10 +197,15 @@ void brickpico_mqtt_publish()
 	if (!connected)
 		return;
 
+	char buf[32];
+	u8_t qos = 2;
+	u8_t retain = 0;
+	uint64_t t = to_us_since_boot(get_absolute_time());
+
 	snprintf(buf, sizeof(buf), "%llu", t);
 	log_msg(LOG_INFO, "MQTT publish to %s: '%s'", cfg->mqtt_status_topic, buf);
 
-
+	/* Publish status message to a MQTT topic */
 	cyw43_arch_lwip_begin();
 	err_t err = mqtt_publish(mqtt_client, cfg->mqtt_status_topic, buf, strlen(buf),
 				qos, retain, mqtt_pub_request_cb, NULL);

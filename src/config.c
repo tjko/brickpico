@@ -33,6 +33,8 @@
 #include "brickpico.h"
 
 
+#define DEFAULT_MQTT_STATUS_INTERVAL 60
+
 struct brickpico_config brickpico_config;
 const struct brickpico_config *cfg = &brickpico_config;
 auto_init_mutex(config_mutex_inst);
@@ -97,7 +99,7 @@ void clear_config(struct brickpico_config *cfg)
 	cfg->mqtt_user[0] = 0;
 	cfg->mqtt_pass[0] = 0;
 	cfg->mqtt_status_topic[0] = 0;
-	cfg->mqtt_status_interval = 60;
+	cfg->mqtt_status_interval = DEFAULT_MQTT_STATUS_INTERVAL;
 	cfg->mqtt_cmd_topic[0] = 0;
 #endif
 
@@ -180,8 +182,10 @@ cJSON *config_to_json(const struct brickpico_config *cfg)
 		cJSON_AddItemToObject(config, "mqtt_status_topic", cJSON_CreateString(cfg->mqtt_status_topic));
 	if (strlen(cfg->mqtt_cmd_topic) > 0)
 		cJSON_AddItemToObject(config, "mqtt_cmd_topic", cJSON_CreateString(cfg->mqtt_cmd_topic));
-	cJSON_AddItemToObject(config, "mqtt_tls", cJSON_CreateNumber(cfg->mqtt_tls));
-	cJSON_AddItemToObject(config, "mqtt_status_interval", cJSON_CreateNumber(cfg->mqtt_status_interval));
+	if (cfg->mqtt_tls != true)
+		cJSON_AddItemToObject(config, "mqtt_tls", cJSON_CreateNumber(cfg->mqtt_tls));
+	if (cfg->mqtt_status_interval != DEFAULT_MQTT_STATUS_INTERVAL)
+		cJSON_AddItemToObject(config, "mqtt_status_interval", cJSON_CreateNumber(cfg->mqtt_status_interval));
 #endif
 
 	/* PWM Outputs */
