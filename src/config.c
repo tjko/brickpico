@@ -91,6 +91,14 @@ void clear_config(struct brickpico_config *cfg)
 	ip_addr_set_any(0, &cfg->ip);
 	ip_addr_set_any(0, &cfg->netmask);
 	ip_addr_set_any(0, &cfg->gateway);
+	cfg->mqtt_server[0] = 0;
+	cfg->mqtt_port = 0;
+	cfg->mqtt_tls = true;
+	cfg->mqtt_user[0] = 0;
+	cfg->mqtt_pass[0] = 0;
+	cfg->mqtt_status_topic[0] = 0;
+	cfg->mqtt_status_interval = 60;
+	cfg->mqtt_cmd_topic[0] = 0;
 #endif
 
 	mutex_exit(config_mutex);
@@ -155,6 +163,25 @@ cJSON *config_to_json(const struct brickpico_config *cfg)
 		cJSON_AddItemToObject(config, "netmask", cJSON_CreateString(ipaddr_ntoa(&cfg->netmask)));
 	if (!ip_addr_isany(&cfg->gateway))
 		cJSON_AddItemToObject(config, "gateway", cJSON_CreateString(ipaddr_ntoa(&cfg->gateway)));
+	if (strlen(cfg->mqtt_server) > 0)
+		cJSON_AddItemToObject(config, "mqtt_server", cJSON_CreateString(cfg->mqtt_server));
+	if (cfg->mqtt_port > 0)
+		cJSON_AddItemToObject(config, "mqtt_port", cJSON_CreateNumber(cfg->mqtt_port));
+	if (strlen(cfg->mqtt_user) > 0)
+		cJSON_AddItemToObject(config, "mqtt_user", cJSON_CreateString(cfg->mqtt_user));
+	if (strlen(cfg->mqtt_pass) > 0) {
+		char *p = base64encode(cfg->mqtt_pass);
+		if (p) {
+			cJSON_AddItemToObject(config, "mqtt_pass", cJSON_CreateString(p));
+			free(p);
+		}
+	}
+	if (strlen(cfg->mqtt_status_topic) > 0)
+		cJSON_AddItemToObject(config, "mqtt_status_topic", cJSON_CreateString(cfg->mqtt_status_topic));
+	if (strlen(cfg->mqtt_cmd_topic) > 0)
+		cJSON_AddItemToObject(config, "mqtt_cmd_topic", cJSON_CreateString(cfg->mqtt_cmd_topic));
+	cJSON_AddItemToObject(config, "mqtt_tls", cJSON_CreateNumber(cfg->mqtt_tls));
+	cJSON_AddItemToObject(config, "mqtt_status_interval", cJSON_CreateNumber(cfg->mqtt_status_interval));
 #endif
 
 	/* PWM Outputs */
@@ -304,6 +331,40 @@ int json_to_config(cJSON *config, struct brickpico_config *cfg)
 	if ((ref = cJSON_GetObjectItem(config, "gateway"))) {
 		if ((val = cJSON_GetStringValue(ref)))
 			ipaddr_aton(val, &cfg->gateway);
+	}
+	if ((ref = cJSON_GetObjectItem(config, "mqtt_server"))) {
+		if ((val = cJSON_GetStringValue(ref)))
+			strncopy(cfg->mqtt_server, val, sizeof(cfg->mqtt_server));
+	}
+	if ((ref = cJSON_GetObjectItem(config, "mqtt_port"))) {
+		cfg->mqtt_port = cJSON_GetNumberValue(ref);
+	}
+	if ((ref = cJSON_GetObjectItem(config, "mqtt_tls"))) {
+		cfg->mqtt_tls = cJSON_GetNumberValue(ref);
+	}
+	if ((ref = cJSON_GetObjectItem(config, "mqtt_user"))) {
+		if ((val = cJSON_GetStringValue(ref)))
+			strncopy(cfg->mqtt_user, val, sizeof(cfg->mqtt_user));
+	}
+	if ((ref = cJSON_GetObjectItem(config, "mqtt_pass"))) {
+		if ((val = cJSON_GetStringValue(ref))) {
+			char *p = base64decode(val);
+			if (p) {
+				strncopy(cfg->mqtt_pass, p, sizeof(cfg->mqtt_pass));
+				free(p);
+			}
+		}
+	}
+	if ((ref = cJSON_GetObjectItem(config, "mqtt_status_topic"))) {
+		if ((val = cJSON_GetStringValue(ref)))
+			strncopy(cfg->mqtt_status_topic, val, sizeof(cfg->mqtt_status_topic));
+	}
+	if ((ref = cJSON_GetObjectItem(config, "mqtt_cmd_topic"))) {
+		if ((val = cJSON_GetStringValue(ref)))
+			strncopy(cfg->mqtt_cmd_topic, val, sizeof(cfg->mqtt_cmd_topic));
+	}
+	if ((ref = cJSON_GetObjectItem(config, "mqtt_status_interval"))) {
+		cfg->mqtt_status_interval = cJSON_GetNumberValue(ref);
 	}
 #endif
 

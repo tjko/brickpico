@@ -105,6 +105,14 @@ struct brickpico_config {
 	ip_addr_t ip;
 	ip_addr_t netmask;
 	ip_addr_t gateway;
+	char mqtt_server[32];
+	uint32_t mqtt_port;
+	bool mqtt_tls;
+	char mqtt_user[32];
+	char mqtt_pass[64];
+	char mqtt_status_topic[32];
+	uint32_t mqtt_status_interval;
+	char mqtt_cmd_topic[32];
 #endif
 };
 
@@ -164,6 +172,12 @@ const char *network_ip();
 /* httpd.c */
 #if WIFI_SUPPORT
 void brickpico_setup_http_handlers();
+#endif
+
+/* mqtt.c */
+#if WIFI_SUPPORT
+void brickpico_setup_mqtt_client();
+void brickpico_mqtt_publish();
 #endif
 
 /* tls.c */

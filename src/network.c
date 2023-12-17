@@ -198,11 +198,13 @@ void wifi_init()
 	/* Enable HTTP server */
 	httpd_init();
 #if TLS_SUPPORT
+#if TLS_HTTPD_ENABLED
 	struct altcp_tls_config *tls_config = tls_server_config();
 	if (tls_config) {
 		log_msg(LOG_NOTICE, "HTTPS/TLS enabled");
 		httpd_inits(tls_config);
 	}
+#endif
 #endif
 	brickpico_setup_http_handlers();
 
@@ -234,6 +236,7 @@ void wifi_status()
 void wifi_poll()
 {
 	static absolute_time_t ABSOLUTE_TIME_INITIALIZED_VAR(test_t, 0);
+	static absolute_time_t ABSOLUTE_TIME_INITIALIZED_VAR(publish_t, 0);
 	static bool init_msg_sent = false;
 
 	if (!wifi_initialized)
@@ -249,6 +252,9 @@ void wifi_poll()
 				log_msg(LOG_INFO, "Network initialization complete.%s",
 					(rebooted_by_watchdog ? " [Rebooted by watchdog]" : ""));
 				init_msg_sent = true;
+				if (strlen(cfg->mqtt_server) > 0) {
+					brickpico_setup_mqtt_client();
+				}
 			}
 		}
 		if (time_passed(&test_t, 3600 * 1000)) {
@@ -260,6 +266,9 @@ void wifi_poll()
 			syslog_msg(LOG_INFO, "Uptime: %lu days %02lu:%02lu:%02lu%s",
 				days, hours % 24, mins % 60, secs % 60,
 				(rebooted_by_watchdog ? " [Rebooted by watchdog]" : ""));
+		}
+		if (time_passed(&publish_t, 30000)) {
+			brickpico_mqtt_publish();
 		}
 	}
 
