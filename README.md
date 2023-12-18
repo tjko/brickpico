@@ -7,7 +7,7 @@ Brickpico is mainly meant to controlling various LED lights on LEGO models, but 
 
 Brickpico operates as standalone controller that can be configured and left running. It does not require any drivers and doesn't care what OS is being used. BrickPico is an Open-source hardware (OSHW) project.
 
-[![BrickPico](images/brickpico-small.png)](images/brickpico-large.jpg?raw=true)
+[![BrickPico](images/brickpico-08-small.png)](images/brickpico-08.jpg?raw=true)
 
 ## What is it for?
 * Fanpico is for customizing fan "curves" to fine tune how your motherboard controlled fans run.
