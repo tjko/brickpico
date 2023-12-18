@@ -50,6 +50,7 @@ static char wifi_hostname[32];
 static ip_addr_t syslog_server;
 static ip_addr_t current_ip;
 
+
 void wifi_mac()
 {
 	printf("%s\n", mac_address_str(cyw43_mac));
@@ -86,6 +87,7 @@ void wifi_init()
 	memset(cyw43_mac, 0, sizeof(cyw43_mac));
 	ip_addr_set_zero(&syslog_server);
 	ip_addr_set_zero(&current_ip);
+	wifi_hostname[0] = 0;
 
 	log_msg(LOG_NOTICE, "Initializing WiFi...");
 
@@ -110,7 +112,6 @@ void wifi_init()
 
 	cyw43_arch_enable_sta_mode();
 
-	cyw43_arch_lwip_begin();
 
 	/* Set WiFi interface hostname... */
 	if (strlen(cfg->hostname) > 0) {
@@ -119,6 +120,10 @@ void wifi_init()
 		snprintf(wifi_hostname, sizeof(wifi_hostname), "BrickPico-%s", pico_serial_str());
 	}
 	log_msg(LOG_NOTICE, "WiFi hostname: %s", wifi_hostname);
+
+
+	cyw43_arch_lwip_begin();
+
 	netif_set_hostname(n, wifi_hostname);
 
 	/* Set callback for link/interface status changes */
@@ -198,11 +203,13 @@ void wifi_init()
 	/* Enable HTTP server */
 	httpd_init();
 #if TLS_SUPPORT
+#if TLS_HTTPD_ENABLED
 	struct altcp_tls_config *tls_config = tls_server_config();
 	if (tls_config) {
 		log_msg(LOG_NOTICE, "HTTPS/TLS enabled");
 		httpd_inits(tls_config);
 	}
+#endif
 #endif
 	brickpico_setup_http_handlers();
 
@@ -234,6 +241,7 @@ void wifi_status()
 void wifi_poll()
 {
 	static absolute_time_t ABSOLUTE_TIME_INITIALIZED_VAR(test_t, 0);
+	static absolute_time_t ABSOLUTE_TIME_INITIALIZED_VAR(publish_t, 0);
 	static bool init_msg_sent = false;
 
 	if (!wifi_initialized)
@@ -243,23 +251,33 @@ void wifi_poll()
 	cyw43_arch_poll();
 #endif
 
-	if (network_initialized) {
-		if (!init_msg_sent) {
-			if (time_passed(&t_network_initialized, 2000)) {
-				log_msg(LOG_INFO, "Network initialization complete.%s",
-					(rebooted_by_watchdog ? " [Rebooted by watchdog]" : ""));
-				init_msg_sent = true;
+	if (!network_initialized)
+		return;
+
+	if (!init_msg_sent) {
+		if (time_passed(&t_network_initialized, 2000)) {
+			init_msg_sent = true;
+			log_msg(LOG_INFO, "Network initialization complete.%s",
+				(rebooted_by_watchdog ? " [Rebooted by watchdog]" : ""));
+			if (strlen(cfg->mqtt_server) > 0) {
+				brickpico_setup_mqtt_client();
 			}
 		}
-		if (time_passed(&test_t, 3600 * 1000)) {
-			uint32_t secs = to_us_since_boot(get_absolute_time()) / 1000000;
-			uint32_t mins =  secs / 60;
-			uint32_t hours = mins / 60;
-			uint32_t days = hours / 24;
+	}
 
-			syslog_msg(LOG_INFO, "Uptime: %lu days %02lu:%02lu:%02lu%s",
-				days, hours % 24, mins % 60, secs % 60,
-				(rebooted_by_watchdog ? " [Rebooted by watchdog]" : ""));
+	if (time_passed(&test_t, 3600 * 1000)) {
+		uint32_t secs = to_us_since_boot(get_absolute_time()) / 1000000;
+		uint32_t mins =  secs / 60;
+		uint32_t hours = mins / 60;
+		uint32_t days = hours / 24;
+
+		syslog_msg(LOG_INFO, "Uptime: %lu days %02lu:%02lu:%02lu%s",
+			days, hours % 24, mins % 60, secs % 60,
+			(rebooted_by_watchdog ? " [Rebooted by watchdog]" : ""));
+	}
+	if (cfg->mqtt_status_interval > 0) {
+		if (time_passed(&publish_t, cfg->mqtt_status_interval * 1000)) {
+			brickpico_mqtt_publish();
 		}
 	}
 
@@ -412,5 +430,14 @@ const char *network_ip()
 	return wifi_ip();
 #else
 	return NULL;
+#endif
+}
+
+const char *network_hostname()
+{
+#ifdef WIFI_SUPPORT
+	return wifi_hostname;
+#else
+	return "";
 #endif
 }

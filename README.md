@@ -5,9 +5,10 @@
 Bricpico is a smart PWM LED controller based around [Raspberry Pi Pico](https://www.raspberrypi.com/documentation/microcontrollers/raspberry-pi-pico.html) (RP2040 MCU).
 Brickpico is mainly meant to controlling various LED lights on LEGO models, but can be used to control any LED lights (or other small loads).
 
-Brickpico operates as standalone controller that can be configured and left running. It does not require any drivers and doesn't care what OS is being used. BrickPico is an Open-source hardware (OSHW) project.
+Brickpico operates as standalone controller that incorporates programmable timer to turn lights on/off on a schedule.
+BrickPico is an Open-source hardware (OSHW) project.
 
-[![BrickPico](images/brickpico-small.png)](images/brickpico-large.jpg?raw=true)
+[![BrickPico](images/brickpico-08-small.jpg)](images/brickpico-08.jpg?raw=true)
 
 ## What is it for?
 * Fanpico is for customizing fan "curves" to fine tune how your motherboard controlled fans run.
@@ -19,12 +20,14 @@ Brickpico operates as standalone controller that can be configured and left runn
 * Controls up to 8 to 16 separete channels (LED group)
 * Adjustable output brightness (via PWM)
 * Adjustable output voltage 5V or 3.3V
+* Programmable PWM frequency from 10 to 100000 Hz
 * Connectors for common Lego light kits (Light My Bricks, etc.)
 * OLED display module support (128x64 or 128x128)
 * OS Independent, no drivers or software needed.
 * Configuration stored on the device itself (in the flash memory).
 * SCPI "like" programming interface (see [Command Reference](commands.md))
 * WiFi support if opting to mount Pico W on the board. This turns fanpico to "IoT" device with basic web interface.
+* MQTT support for sending status and to receive commands.
 
 ### Interfaces
 

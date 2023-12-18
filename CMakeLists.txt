@@ -18,7 +18,7 @@ set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
 set(BRICKPICO_BOARD 8 CACHE STRING "Brickpico Board Model")
 set(PICO_BOARD pico_w CACHE STRING "Pico Board")
-set(TLS_SUPPORT 0 CACHE STRING "TLS Support")
+set(TLS_SUPPORT 1 CACHE STRING "TLS Support")
 
 #set(CMAKE_BUILD_TYPE Debug)
 
@@ -116,11 +116,13 @@ if (PICO_CYW43_SUPPORTED) # set by PICO_BOARD=pico_w
   target_sources(brickpico PRIVATE
     src/syslog.c
     src/httpd.c
+    src/mqtt.c
     )
   target_link_libraries(brickpico PRIVATE
     pico_cyw43_arch_lwip_threadsafe_background
     pico_lwip_sntp
     pico_lwip_http
+    pico_lwip_mqtt
     )
   if (TLS_SUPPORT)
     target_link_libraries(brickpico PRIVATE
