@@ -168,6 +168,7 @@ void network_poll();
 void network_status();
 void set_pico_system_time(long unsigned int sec);
 const char *network_ip();
+const char *network_hostname();
 
 /* httpd.c */
 #if WIFI_SUPPORT
@@ -238,6 +239,7 @@ time_t datetime_to_time(const datetime_t *datetime);
 void watchdog_disable();
 int getstring_timeout_ms(char *str, uint32_t maxlen, uint32_t timeout);
 int clamp_int(int val, int min, int max);
+void* memmem(const void *haystack, size_t haystacklen, const void *needle, size_t needlelen);
 
 
 #endif /* BRICKPICO_H */

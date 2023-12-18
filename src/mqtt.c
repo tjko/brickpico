@@ -40,6 +40,7 @@
 #ifdef WIFI_SUPPORT
 
 #define MQTTS_PORT 8883
+#define MQTT_BUF_SIZE 2048
 
 mqtt_client_t *mqtt_client = NULL;
 ip_addr_t mqtt_server_ip;
@@ -67,11 +68,63 @@ static void mqtt_incoming_data_cb(void *arg, const u8_t *data, u16_t len, u8_t f
 	if (incoming_topic != 1)
 		return;
 
-	char buf[64];
-	u16_t l = (len < sizeof(buf) ? len : len - 1);
-	memcpy(buf, data, l);
-	buf[l] = 0;
-	log_msg(LOG_NOTICE, "MQTT command topic data received: '%s'", buf);
+	struct brickpico_state *st = brickpico_state;
+	u8_t *p = (u8_t*)memmem(data, len, "CMD:", 4);
+	if (p) {
+		char buf[32];
+		p += 4;
+		u16_t l = len - (p - data);
+		if (l > 0) {
+			char *saveptr;
+			int output = 0;
+			int pwr = -1;
+			int pwm = -1;
+
+			memcpy(buf, p, (l < sizeof(buf) ? l : sizeof(buf) - 1));
+			buf[l] = 0;
+			log_msg(LOG_NOTICE, "MQTT command topic data received: '%s'", buf);
+
+			char *tok = strtok_r(buf, ":", &saveptr);
+			if (tok) {
+				if (!strncasecmp(tok, "ALL", 4)) {
+					output = -1;
+				} else {
+					int tmp;
+					if (str_to_int(tok, &tmp, 10)) {
+						if (tmp >= 1 && tmp <= OUTPUT_COUNT)
+							output = tmp;
+					}
+				}
+				if (output != 0) {
+					if ((tok = strtok_r(NULL, ":", &saveptr))) {
+						if (!strncasecmp(tok, "ON", 3)) {
+							pwr = 1;
+						}
+						else if (!strncasecmp(tok, "OFF", 4)) {
+							pwr = 0;
+						}
+						else if (!strncasecmp(tok, "PWM", 4)) {
+							if ((tok = strtok_r(NULL, ":", &saveptr))) {
+								int tmp;
+								if (str_to_int(tok, &tmp, 10)) {
+									if (tmp >= 0 && tmp <= 100)
+										pwm = tmp;
+								}
+							}
+						}
+					}
+					for (int i = 0; i < OUTPUT_COUNT; i++) {
+						if (output == i + 1 || output == -1) {
+							if (pwr >= 0)
+								st->pwr[i] = pwr;
+							if (pwm >= 0)
+								st->pwm[i] = pwm;
+						}
+					}
+				}
+			}
+		}
+	}
 }
 
 static void mqtt_sub_request_cb(void *arg, err_t result)
@@ -186,24 +239,68 @@ void brickpico_setup_mqtt_client()
 	}
 }
 
+char* json_status_message()
+{
+	const struct brickpico_state *st = brickpico_state;
+	char *buf;
+	cJSON *json, *outputs, *o;
+	int i;
+
+	if (!(json = cJSON_CreateObject()))
+		goto panic;
+
+	cJSON_AddItemToObject(json, "name", cJSON_CreateString(cfg->name));
+	cJSON_AddItemToObject(json, "hostname", cJSON_CreateString(network_hostname()));
+	if (network_ip())
+		cJSON_AddItemToObject(json, "ip", cJSON_CreateString(network_ip()));
+	if (!(outputs = cJSON_CreateArray()))
+		goto panic;
+	cJSON_AddItemToObject(json, "outputs", outputs);
+	for (i = 0; i < OUTPUT_COUNT; i++) {
+		if (!(o = cJSON_CreateObject()))
+			goto panic;
+		cJSON_AddItemToObject(o, "id", cJSON_CreateNumber(i + 1));
+		//cJSON_AddItemToObject(o, "name", cJSON_CreateString(cfg->outputs[i].name));
+		cJSON_AddItemToObject(o, "pwm", cJSON_CreateNumber(round_decimal(st->pwm[i], 1)));
+		cJSON_AddItemToObject(o, "state", cJSON_CreateString(st->pwr[i] ? "ON" : "OFF"));
+		cJSON_AddItemToArray(outputs, o);
+	}
+
+	if (!(buf = cJSON_Print(json)))
+		goto panic;
+	cJSON_Delete(json);
+	return buf;
+
+panic:
+	if (json)
+		cJSON_Delete(json);
+	return NULL;
+}
+
 void brickpico_mqtt_publish()
 {
+	char *buf = NULL;
+
 	if (!mqtt_client || strlen(cfg->mqtt_status_topic) < 1)
 		return;
 
+	/* Check that MQTT Client is connected */
 	cyw43_arch_lwip_begin();
 	u8_t connected = mqtt_client_is_connected(mqtt_client);
 	cyw43_arch_lwip_end();
 	if (!connected)
 		return;
 
-	char buf[32];
+	/* Generate status message */
+	if (!(buf = json_status_message())) {
+		log_msg(LOG_WARNING,"json_status_message(): failed");
+		return;
+	}
+	printf("DATA:\n%s\n", buf);
+	log_msg(LOG_INFO, "MQTT publish to %s: %u bytes.", cfg->mqtt_status_topic, strlen(buf));
+
 	u8_t qos = 2;
 	u8_t retain = 0;
-	uint64_t t = to_us_since_boot(get_absolute_time());
-
-	snprintf(buf, sizeof(buf), "%llu", t);
-	log_msg(LOG_INFO, "MQTT publish to %s: '%s'", cfg->mqtt_status_topic, buf);
 
 	/* Publish status message to a MQTT topic */
 	cyw43_arch_lwip_begin();
@@ -213,6 +310,7 @@ void brickpico_mqtt_publish()
 	if (err != ERR_OK) {
 		log_msg(LOG_WARNING,"mqtt_publish(): failed %d", err);
 	}
+	free(buf);
 }
 
 

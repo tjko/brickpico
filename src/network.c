@@ -87,6 +87,7 @@ void wifi_init()
 	memset(cyw43_mac, 0, sizeof(cyw43_mac));
 	ip_addr_set_zero(&syslog_server);
 	ip_addr_set_zero(&current_ip);
+	wifi_hostname[0] = 0;
 
 	log_msg(LOG_NOTICE, "Initializing WiFi...");
 
@@ -429,5 +430,14 @@ const char *network_ip()
 	return wifi_ip();
 #else
 	return NULL;
+#endif
+}
+
+const char *network_hostname()
+{
+#ifdef WIFI_SUPPORT
+	return wifi_hostname;
+#else
+	return "";
 #endif
 }
