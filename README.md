@@ -10,20 +10,13 @@ BrickPico is an Open-source hardware (OSHW) project.
 
 [![BrickPico](images/brickpico-08-small.jpg)](images/brickpico-08.jpg?raw=true)
 
-## What is it for?
-* Fanpico is for customizing fan "curves" to fine tune how your motherboard controlled fans run.
-* Fine tuning fan speeds to easily balance airflow.
-* Controlling fan based on temperature sensor input.
-* Monitoring fan speeds and behaviour as well as monitoring what exactly motherboard is doing.
-
 ## Features
 * Controls up to 8 to 16 separete channels (LED group)
 * Adjustable output brightness (via PWM)
 * Adjustable output voltage 5V or 3.3V
 * Programmable PWM frequency from 10 to 100000 Hz
-* Connectors for common Lego light kits (Light My Bricks, etc.)
+* Connectors for common Lego light kits (Light My Bricks, etc.) as well as 2.54mm pin header.
 * OLED display module support (128x64 or 128x128)
-* OS Independent, no drivers or software needed.
 * Configuration stored on the device itself (in the flash memory).
 * SCPI "like" programming interface (see [Command Reference](commands.md))
 * WiFi support if opting to mount Pico W on the board. This turns fanpico to "IoT" device with basic web interface.
