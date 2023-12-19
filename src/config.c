@@ -33,7 +33,7 @@
 #include "brickpico.h"
 
 
-#define DEFAULT_MQTT_STATUS_INTERVAL 60
+#define DEFAULT_MQTT_STATUS_INTERVAL 600
 
 struct brickpico_config brickpico_config;
 const struct brickpico_config *cfg = &brickpico_config;

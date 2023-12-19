@@ -52,6 +52,22 @@ BrickPico supports following commands:
 * [SYStem:OUTputs?](#systemoutputs)
 * [SYStem:LED](#systemled)
 * [SYStem:LED?](#systemled-1)
+* [SYStem:MQTT:SERVer](@systemmqttserver)
+* [SYStem:MQTT:SERVer?](@systemmqttserver-1)
+* [SYStem:MQTT:PORT](@systemmqttport)
+* [SYStem:MQTT:PORT?](@systemmqttport-1)
+* [SYStem:MQTT:USER](@systemmqttuser)
+* [SYStem:MQTT:USER?](@systemmqttuser-1)
+* [SYStem:MQTT:PASSword](@systemmqttpassword)
+* [SYStem:MQTT:PASSword?](@systemmqttpassword-1)
+* [SYStem:MQTT:INTerval](@systemmqttinterval)
+* [SYStem:MQTT:INTerval?](@systemmqttinterval-1)
+* [SYStem:MQTT:STATus](@systemmqttstatus)
+* [SYStem:MQTT:STATus?](@systemmqttstatus-1)
+* [SYStem:MQTT:COMMand](@systemmqttcommand)
+* [SYStem:MQTT:COMMand?](@systemmqttcommand-1)
+* [SYStem:MQTT:TLS](@systemmqtttls)
+* [SYStem:MQTT:TLS?](@systemmqtttls-1)
 * [SYStem:NAME](#systemname)
 * [SYStem:NAME?](#systemname-1)
 * [SYStem:PWMfreq](#systempwmfreq)
@@ -308,7 +324,7 @@ List currently configured timers (events).
 
 Output format:
 ```
-<#>: <minute> <hour> <weekdays> <action> <outpus> <comment>
+<#>: <minute> <hour> <weekdays> <action> <outputs> <comment>
 ```
 
 Example:
@@ -571,7 +587,7 @@ SYS:DISP?
 #### SYStem:DISPlay:LAYOUTR
 Configure (OLED) Display layout for the right side of the screen.
 
-Layout is specified as a comma delimited string descibing what to
+Layout is specified as a comma delimited string describing what to
 display on each row (8 rows available if using 128x64 OLEd module, 10 rows available with 128x128 pixel modules).
 
 Syntax: <R1>,<R2>,...<R8>
@@ -584,7 +600,7 @@ Mn|MBFan input n|n=1..4
 Sn|Sensor input n|n=1..3
 Vn|Virtual Sensor input n|n=1..8
 -|Horizontal Line|
-Ltext|Line with "text"|Max lenght 9 characters.
+Ltext|Line with "text"|Max length 9 characters.
 
 
 Default: <not set>
@@ -725,6 +741,199 @@ Example:
 SYS:LED?
 0
 ```
+
+### SYStem:MQTT Commands
+BrickPico has MQTT Client that can be confiugred to publish (send) periodic status
+updates to a topic.
+Additionally MQTT Client support subscribing to a "command" topic to listen for commands.
+This allows remotely controlling BrickPico.
+
+To enable MQTT at minimum server must be configured. To explicitly disbable MQTT set server
+to empty string.
+
+
+#### SYStem:MQTT:SERVer
+Set MQTT server to connect to. This parameter expects a DNS name as argument.
+
+Default: <empty>   (when this setting is empty string, MQTT is explicitly disabled)
+
+Example (configure MQTT server name):
+```
+SYS:MQTT:SERVER io.adafruit.com
+```
+
+Example (disable MQTT):
+```
+SYS:MQTT:SERVER
+```
+
+#### SYStem:MQTT:SERVer?
+Query currently set MQTT server name.
+
+Example:
+```
+SYS:MQTT:SERVER?
+io.adafruit.com
+```
+
+
+#### SYStem:MQTT:PORT
+Set MQTT server (TCP) port. This setting is needed when MQTT server is not using standard port.
+If this setting is not set (value is left to default "0"), then standard MQTT port is used.
+
+- Secure (TLS) Port = 8883
+- Insecure Port = 1883
+
+Default: 0   (when this setting is 0 use default MQTT ports)
+
+Example:
+```
+SYS:MQTT:PORT 9883
+```
+
+
+#### SYStem:MQTT:PORT?
+Query currently set MQTT (TCP) port.
+
+If return value is zero (0), then default MQTT port is being used.
+
+Example:
+```
+SYS:MQTT:PORT?
+0
+```
+
+
+#### SYStem:MQTT:USER
+Set MQTT username to use when connecting to MQTT server.
+
+Default: <empty>
+
+Example:
+```
+SYS:MQTT:USER myusername
+```
+
+
+#### SYStem:MQTT:USER?
+Query currently set MQTT username.
+
+Example:
+```
+SYS:MQTT:USER?
+myusername
+```
+
+
+#### SYStem:MQTT:PASS
+Set MQTT password to use when connecting to MQTT server.
+
+Default: <empty>
+
+Example:
+```
+SYS:MQTT:PASS mymqttpassword
+```
+
+
+#### SYStem:MQTT:PASS?
+Query currently set MQTT password.
+
+Example:
+```
+SYS:MQTT:PASS?
+mymqttpassword
+```
+
+
+#### SYStem:MQTT:STATus
+Configure topic to publish unit status information periodically.
+If this is left to empty (string), then no status information is published to MQTT server.
+
+Default: <empty>
+
+Example:
+```
+SYS:MQTT:STATUS musername/feeds/brickpico1
+```
+
+
+#### SYStem:MQTT:STATus?
+Query currently set topic for publishing unit status information to.
+
+Example:
+```
+SYS:MQTT:STATUS?
+myusername/feeds/brickpico1
+```
+
+
+#### SYStem:MQTT:INTerval
+Configure how often unit will publish (send) status message to status topic.
+Set this to 0 (seconds) to disable publishing status updates.
+Recommended values are 60 (seconds) or higher.
+
+Default: 600  (every 10 minutes)
+
+Example:
+```
+SYS:MQTT:INTERVAL 3600
+```
+
+
+#### SYStem:MQTT:INTerval?
+Query currently set topic for publishing unit status information to.
+
+Example:
+```
+SYS:MQTT:INTERVAL?
+3600
+```
+
+
+#### SYStem:MQTT:COMMand
+Configure topic to subscribe to to wait for commands to control outputs.
+If this is left to empty (string), then unit won't subcrible (and accept) any commands from MQTT.
+
+Default: <empty>
+
+Example:
+```
+SYS:MQTT:STATUS musername/feeds/cmd
+```
+
+
+#### SYStem:MQTT:COMMand?
+Query currently set topic for subscribing to wait for commands.
+
+Example:
+```
+SYS:MQTT:STATUS?
+myusername/feeds/cmd
+```
+
+
+#### SYStem:MQTT:TLS
+Enable/disable use of secure connection mode (TLS/SSL) when connecting to MQTT server.
+Default is TLS on to protect MQTT credentials (usename/password).
+
+Default: ON
+
+Example:
+```
+SYS:MQTT:TLS OFF
+```
+
+
+#### SYStem:MQTT:TLS?
+Query whether TLS is enabled or disabled for MQTT.
+
+Example:
+```
+SYS:MQTT:TLS?
+ON
+```
+
 
 
 #### SYStem:NAME
@@ -904,16 +1113,6 @@ SYS:VER?
 ```
 
 
-#### SYStem:VSENSORS?
-Display number of virtual (temperature) sensors available.
-
-Example:
-```
-SYS:VSENSORS?
-8
-```
-
-
 #### SYStem:WIFI?
 Check if the unit support WiFi networking.
 This should be used to determine if any other "WIFI"
@@ -1010,7 +1209,7 @@ SYS:WIFI:IP?
 Set WiFi connection mode. Normally this setting is not needed with modern APs.
 
 However, if FanPico is failing to connect to WiFi network, this couldbe
-due to old firmware on the AP (upgrading to latest firmare typically helps).
+due to old firmware on the AP (upgrading to latest firwmare typically helps).
 If firmware update did not help or there is no updated firmware available, setting
 connection mode to synchronous can help (however this could cause FanPico to "hang" for up to 60 seconds
 during boot up).
@@ -1218,7 +1417,7 @@ mynetworkpassword
 
 ### WRIte Commands
 
-These commands are for turning output ports ON/OFF and for adjusting ouptut PWM duty cycle.
+These commands are for turning output ports ON/OFF and for adjusting output PWM duty cycle.
 
 
 #### WRIte:OUTPUTx
