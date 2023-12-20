@@ -20,7 +20,12 @@ set(BRICKPICO_BOARD 8 CACHE STRING "Brickpico Board Model")
 set(PICO_BOARD pico_w CACHE STRING "Pico Board")
 set(TLS_SUPPORT 1 CACHE STRING "TLS Support")
 
+# Generate some "random" data for mbedtls (better than nothing...)
+set(EXTRA_ENTROPY_LEN 64)
+string(RANDOM LENGTH ${EXTRA_ENTROPY_LEN} EXTRA_ENTROPY)
+
 #set(CMAKE_BUILD_TYPE Debug)
+
 
 message("---------------------------------")
 message("     BRICKPICO_BOARD: ${BRICKPICO_BOARD}")
