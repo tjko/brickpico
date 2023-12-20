@@ -212,9 +212,7 @@ void mqtt_connect(mqtt_client_t *client)
 	if (cfg->mqtt_port > 0)
 		mqtt_port = cfg->mqtt_port;
 
-	log_msg(LOG_INFO, "MQTT Connecting to %s:%u%s",
-		cfg->mqtt_server,
-		mqtt_port,
+	log_msg(LOG_INFO, "MQTT Connecting to %s:%u%s",	cfg->mqtt_server, mqtt_port,
 		cfg->mqtt_tls ? " (TLS)" : "");
 
 	err = mqtt_client_connect(mqtt_client, &mqtt_server_ip, mqtt_port, mqtt_connection_cb, 0, &ci);

@@ -3,7 +3,7 @@
 
 #include "brickpico-compile.h"
 
-// Settings for FanPico when using Pico W...
+// Settings for BrickPico when using Pico W...
 // (see https://www.nongnu.org/lwip/2_1_x/group__lwip__opts.html for details)
 
 // allow override in some examples
