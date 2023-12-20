@@ -170,7 +170,7 @@ int cmd_usb_boot(const char *cmd, const char *args, int query, char *prev_cmd)
 	if (query)
 		return 1;
 
-	snprintf(buf, sizeof(buf), " fanpico-%s-%s", BRICKPICO_MODEL, PICO_BOARD);
+	snprintf(buf, sizeof(buf), " brickpico-%s-%s", BRICKPICO_MODEL, PICO_BOARD);
 	display_message(8, msg);
 
 	reset_usb_boot(0, 0);
