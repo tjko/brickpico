@@ -34,7 +34,7 @@ For more documentation check [BrickPico Wiki](https://github.com/tjko/brickpico/
 
 
 ## Where can I get one?
-Initially BrickPico will be available as a DIY kit. Initial patch of kits should be available in early January.
+Initially BrickPico is only available as a DIY kit. For places to buy kits, check discussions: [Where to Buy BrickPico](https://github.com/tjko/brickpico/discussions/5)
 
 
 
