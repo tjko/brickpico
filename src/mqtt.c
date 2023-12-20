@@ -82,6 +82,12 @@ static void mqtt_incoming_data_cb(void *arg, const u8_t *data, u16_t len, u8_t f
 
 			memcpy(buf, p, (l < sizeof(buf) ? l : sizeof(buf) - 1));
 			buf[l] = 0;
+			char *end = strchr(buf, ';');
+			if (!end) {
+				log_msg(LOG_INFO, "MQTT ignore non terminated command.");
+				return;
+			}
+			*end = 0;
 			log_msg(LOG_NOTICE, "MQTT command topic data received: '%s'", buf);
 
 			char *tok = strtok_r(buf, ":", &saveptr);
@@ -147,7 +153,7 @@ static void mqtt_connection_cb(mqtt_client_t *client, void *arg, mqtt_connection
 			}
 		}
 	} else {
-		log_msg(LOG_WARNING, "mqtt_connection_cb: disconnected %d", status);
+		log_msg(LOG_WARNING, "MQTT disconnected (status=%d)", status);
 		mqtt_connect(client);
 	}
 }
@@ -191,7 +197,7 @@ void mqtt_connect(mqtt_client_t *client)
 	ci.client_id = client_id;
 	ci.client_user = cfg->mqtt_user;
 	ci.client_pass = cfg->mqtt_pass;
-	ci.keep_alive = 0;
+	ci.keep_alive = 60;
 	ci.will_topic = NULL;
 	ci.will_msg = NULL;
 	ci.will_retain = 0;
@@ -260,7 +266,7 @@ char* json_status_message()
 		if (!(o = cJSON_CreateObject()))
 			goto panic;
 		cJSON_AddItemToObject(o, "id", cJSON_CreateNumber(i + 1));
-		//cJSON_AddItemToObject(o, "name", cJSON_CreateString(cfg->outputs[i].name));
+		// cJSON_AddItemToObject(o, "name", cJSON_CreateString(cfg->outputs[i].name));
 		cJSON_AddItemToObject(o, "pwm", cJSON_CreateNumber(round_decimal(st->pwm[i], 1)));
 		cJSON_AddItemToObject(o, "state", cJSON_CreateString(st->pwr[i] ? "ON" : "OFF"));
 		cJSON_AddItemToArray(outputs, o);
@@ -296,7 +302,7 @@ void brickpico_mqtt_publish()
 		log_msg(LOG_WARNING,"json_status_message(): failed");
 		return;
 	}
-	printf("DATA:\n%s\n", buf);
+	/* printf("DATA:\n%s\n", buf); */
 	log_msg(LOG_INFO, "MQTT publish to %s: %u bytes.", cfg->mqtt_status_topic, strlen(buf));
 
 	u8_t qos = 2;

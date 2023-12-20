@@ -268,7 +268,7 @@ static const char* brickpico_cgi_handler(int index, int numparams, char *param[]
 {
 	struct brickpico_state *st = brickpico_state;
 
-	log_msg(LOG_INFO,"cgi: index=%d, numparams=%d", index, numparams);
+	/* log_msg(LOG_INFO,"cgi: index=%d, numparams=%d", index, numparams); */
 
 	if (numparams > 0) {
 		for (int i = 0; i < numparams; i++) {
@@ -276,7 +276,7 @@ static const char* brickpico_cgi_handler(int index, int numparams, char *param[]
 			char *v = value[i];
 			int idx = extract_tag_index(p);
 
-			log_msg(LOG_INFO, "cgi param[%d]: param='%s' value='%s' idx=%d", i, p, v, idx);
+			log_msg(LOG_DEBUG, "cgi param[%d]: param='%s' value='%s' idx=%d", i, p, v, idx);
 
 			if (idx >= 0) {
 				if (!strncmp(p, "pwr", 3)) {
