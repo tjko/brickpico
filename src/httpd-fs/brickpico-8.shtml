@@ -116,7 +116,7 @@
 	<td>
 	  <table width="100%">
 	    <tr valign="bottom">
-	      <td width="45%"><font size=-1>BrickPico-<!--#model--> v<!--#version--></font></td>
+	      <td width="45%"><font size=-1>BrickPico-<!--#model--> v<!--#version--><br><a href="/status.shtml">System Status</a></font></td>
 	      <td width="10%"><!--#watchdog--></td>
 	      <td width="45%" align="right"><font size="-1"><!--#datetime--><br>Uptime: <!--#uptime--></font></td>
 	    </tr>

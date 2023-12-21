@@ -38,6 +38,88 @@
 #define BUF_LEN 1024
 
 
+u16_t timer_table(char *insert, int insertlen, u16_t current_tag_part, u16_t *next_tag_part)
+{
+	static char *buf = NULL;
+	static char *p;
+	static u16_t part;
+	static size_t buf_left;
+	char row[128];
+	int i;
+	size_t printed, count;
+
+	/* printf("timer_table(%p,%d,%u,%u)\n", (void*)insert, insertlen,
+	          current_tag_part, *next_tag_part); */
+
+	if (current_tag_part == 0) {
+		/* Generate 'output' into a buffer that then will be fed in chunks to LwIP... */
+		if (!(buf = malloc(BUF_LEN)))
+			return 0;
+		buf[0] = 0;
+
+		for (i = 0; i < cfg->event_count; i++) {
+			const struct timer_event *e = &cfg->events[i];
+			char tmp[64];
+
+			snprintf(row, sizeof(row), "<tr><td>%d<td>", i + 1);
+			strncatenate(row, (e->wday > 0 ? bitmask_to_str(e->wday, 7, 0, true) : "*"),
+				sizeof(row));
+			strncatenate(row, "<td>", sizeof(row));
+			if (e->hour >= 0) {
+				snprintf(tmp, sizeof(tmp), "%02d:", e->hour);
+			} else {
+				strncopy(tmp, "**:", sizeof(tmp));
+			}
+			strncatenate(row, tmp, sizeof(row));
+			if (e->minute >= 0) {
+				snprintf(tmp, sizeof(tmp), "%02d<td>", e->minute);
+			} else {
+				strncopy(tmp, "**<td>", sizeof(tmp));
+			}
+			strncatenate(row, tmp, sizeof(row));
+			strncatenate(row, timer_action_type_str(e->action), sizeof(row));
+			strncatenate(row, "<td>", sizeof(row));
+			if (e->mask > 0) {
+				strncatenate(row, bitmask_to_str(e->mask, OUTPUT_COUNT, 1, true),
+					sizeof(row));
+			} else {
+				strncatenate(row, "*", sizeof(row));
+			}
+			strncatenate(row, "<td>", sizeof(row));
+			strncatenate(row, e->name, sizeof(row));
+			strncatenate(row, "</tr>\n", sizeof(row));
+
+			strncatenate(buf, row, BUF_LEN);
+		}
+
+		if (cfg->event_count == 0) {
+			snprintf(buf, BUF_LEN, "<tr><td colspan=\"6\">No Timers Defined.</tr>\n");
+		}
+
+		p = buf;
+		buf_left = strlen(buf);
+		part = 1;
+	}
+
+	/* Copy a part of the multi-part response into LwIP buffer ...*/
+	count = (buf_left < insertlen - 1 ? buf_left : insertlen - 1);
+	memcpy(insert, p, count);
+
+	p += count;
+	printed = count;
+	buf_left -= count;
+
+	if (buf_left > 0) {
+		*next_tag_part = part++;
+	} else {
+		free(buf);
+		buf = p = NULL;
+	}
+
+	return printed;
+}
+
+
 u16_t csv_stats(char *insert, int insertlen, u16_t current_tag_part, u16_t *next_tag_part)
 {
 	const struct brickpico_state *st = brickpico_state;
@@ -184,6 +266,9 @@ u16_t brickpico_ssi_handler(const char *tag, char *insert, int insertlen,
 	int idx = -1;
 
 
+	/* printf("brickpico_ssi_handler('%s',%p,%d,%u,%p)\n",
+	   tag, (void*)insert, insertlen, current_tag_part, (void*)next_tag_part); */
+
 	if (tag_len > 2) {
 		/* Check for 2 digit index in the end of tag... */
 		char a = tag[tag_len - 2];
@@ -250,6 +335,9 @@ u16_t brickpico_ssi_handler(const char *tag, char *insert, int insertlen,
 	else if (!strncmp(tag, "jsonstat", 8)) {
 		printed = json_stats(insert, insertlen, current_tag_part, next_tag_part);
 	}
+	else if (!strncmp(tag, "timertbl", 9)) {
+		printed = timer_table(insert, insertlen, current_tag_part, next_tag_part);
+	}
 	else if (!strncmp(tag, "refresh", 8)) {
 		/* generate "random" refresh time for a page, to help spread out the load... */
 		printed = snprintf(insert, insertlen, "%u", (uint)(30 + ((double)rand() / RAND_MAX) * 30));
@@ -307,6 +395,7 @@ static const char* brickpico_cgi_handler(int index, int numparams, char *param[]
 		}
 	}
 
+	/* Redirect back to "/" ... */
 	return "/303.main";
 }
 

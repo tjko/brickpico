@@ -213,6 +213,9 @@ void debug(int debug_level, const char *fmt, ...);
 int parse_timer_event_str(const char *str, struct timer_event *event);
 const char* timer_event_str(const struct timer_event *event);
 int handle_timer_events(const struct brickpico_config *conf, struct brickpico_state *state);
+char *bitmask_to_str(uint32_t mask, uint16_t len, uint8_t base, bool range);
+int str_to_bitmask(const char *str, uint16_t len, uint32_t *mask, uint8_t base);
+const char* timer_action_type_str(enum timer_action_types type);
 
 /* util.c */
 void print_mallinfo();

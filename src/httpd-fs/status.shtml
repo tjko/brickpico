@@ -1,0 +1,78 @@
+<html>
+  <head>
+    <title>BrickPico: <!--#name--></title>
+    <link rel="stylesheet" href="brickpico.css">
+    <link rel="icon" type="image/png" href="img/brickpico-icon.png">
+    <meta name="viewport" content="width=device-width,user-scalable=yes">
+  </head>
+  <body bgcolor="white" text="black">
+    <table id="b1">
+      <tr>
+	<td>
+	  <table border="0" width="99%">
+	    <tr>
+	      <td rowspan="2">
+		<a href="https://github.com/tjko/brickpico/">
+		  <img src="img/brickpico.png" border="0" alt="BrickPico logo" title="BrickPico logo">
+		</a>
+	      </td>
+	      <td colspan="2" valign="bottom">
+		<h2><font color="#03a3aa">BrickPico: <!--#name--></h2>
+	      </td>
+	    </tr>
+	    <tr>
+	      <td>&nbsp;</td>
+	      <td align="right">
+		<table><tr>
+		    <td valign="bottom" align="right">
+		      &nbsp;
+		    </td>
+		    <td valign="bottom" align="right">
+		      <form action="/cgi" method="get"><input type="hidden" name="redirect" value="0"><button class="button" type="submit">Main Menu</button></form>
+		    </td>
+		  </tr>
+		</table>
+	      </td>
+	    </tr>
+	  </table>
+	</td>
+      </tr>
+      <tr>
+	<td>
+	  <table width="100%">
+	    <tr>
+	      <td valign="top">
+		Timers:<br>
+		<table width="100%">
+		  <tr>
+		    <td id="l1">
+		      <table class="pretty" width="100%">
+			<tr style="font-size: 14px;">
+			  <th>#</th><th>Weekday(s)</th><th>Time</th><th>Action</th><th>Output(s)</th><th>Description</th>
+			</tr>
+			<!--#timertbl-->
+		      </table>
+		  </td></tr>
+		</table>
+	    </tr>
+	  </table>
+	  <br>
+	</td>
+      </tr>
+      <tr>
+	<td>
+	  <table width="100%">
+	    <tr valign="bottom">
+	      <td width="45%"><font size=-1>BrickPico-<!--#model--> v<!--#version--></font></td>
+	      <td width="10%"><!--#watchdog--></td>
+	      <td width="45%" align="right"><font size="-1"><!--#datetime--><br>Uptime: <!--#uptime--></font></td>
+	    </tr>
+	  </table>
+	</td>
+      </tr>
+    </table>
+
+    <script>
+    </script>
+  </body>
+</html>

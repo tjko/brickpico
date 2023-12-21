@@ -29,12 +29,12 @@
 
 
 /* Event string syntax:
-    <minute> <hour> <day of week> <action> <fans> <name>
+    <minute> <hour> <day of week> <action> <fans> <comments> ...
 
-    30 18 * on 1,2,3,4 "Turn 1-4 on at 18:30"
-    45 18 * on 5,6,7,8 "Turn 5-8 on at 18:45"
-    0 23 1,2,3,4,5 off * "Turn all off at 23:00 during the week"
-    0 0 0,6 off * "Turn all off at 00:00 on weekends"
+    30 18 * on 1,2,3,4 Turn 1-4 on at 18:30
+    45 18 * on 5,6,7,8 Turn 5-8 on at 18:45
+    0 23 1-5 off * Turn all off at 23:00 during the week
+    0 0 0,6 off * Turn all off at 00:00 on weekends
 */
 
 
