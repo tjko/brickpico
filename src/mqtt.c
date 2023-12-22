@@ -41,13 +41,151 @@
 
 #define MQTTS_PORT 8883
 #define MQTT_BUF_SIZE 2048
+#define MQTT_CMD_MAX_LEN 64
 
 mqtt_client_t *mqtt_client = NULL;
-ip_addr_t mqtt_server_ip;
+ip_addr_t mqtt_server_ip = IPADDR4_INIT_BYTES(0, 0, 0, 0);
 int incoming_topic = 0;
+char mqtt_scpi_cmd[MQTT_CMD_MAX_LEN];
+bool mqtt_scpi_cmd_queued = false;
 
 void mqtt_connect(mqtt_client_t *client);
 
+
+int process_mqtt_command(const char *cmd)
+{
+	struct brickpico_state *st = brickpico_state;
+	char buf[MQTT_CMD_MAX_LEN], *saveptr, *tok;
+	int output = 0;
+	int pwr = -1;
+	int pwm = -1;
+
+	if (!cmd)
+		return -1;
+
+	strncopy(buf, cmd, sizeof(buf));
+
+	if (!(tok = strtok_r(buf, ":", &saveptr)))
+		return -2;
+
+	if (!strncasecmp(tok, "ALL", 4)) {
+		output = -1;
+	} else {
+		int tmp;
+		if (str_to_int(tok, &tmp, 10)) {
+			if (tmp >= 1 && tmp <= OUTPUT_COUNT)
+				output = tmp;
+		}
+	}
+	if (output == 0)
+		return -3;
+
+	if ((tok = strtok_r(NULL, ":", &saveptr))) {
+		if (!strncasecmp(tok, "ON", 3)) {
+			pwr = 1;
+		}
+		else if (!strncasecmp(tok, "OFF", 4)) {
+			pwr = 0;
+		}
+		else if (!strncasecmp(tok, "PWM", 4)) {
+			if ((tok = strtok_r(NULL, ":", &saveptr))) {
+				int tmp;
+				if (str_to_int(tok, &tmp, 10)) {
+					if (tmp >= 0 && tmp <= 100)
+						pwm = tmp;
+				}
+			}
+			if (pwm < 0)
+				return -4;
+		}
+	}
+
+	for (int i = 0; i < OUTPUT_COUNT; i++) {
+		if (output == i + 1 || output == -1) {
+			if (pwr >= 0)
+				st->pwr[i] = pwr;
+			if (pwm >= 0)
+				st->pwm[i] = pwm;
+		}
+	}
+
+	return 0;
+}
+
+static void mqtt_pub_request_cb(void *arg, err_t result)
+{
+	if (result != ERR_OK) {
+		log_msg(LOG_NOTICE, "MQTT failed to publish to topic: %d", result);
+	}
+}
+
+int mqtt_publish_message(const char *topic, const char *buf, u16_t buf_len,
+			u8_t qos, u8_t retain)
+{
+	if (!topic || !buf || buf_len == 0)
+		return -1;
+	if (!mqtt_client)
+		return -2;
+
+	/* Check that MQTT Client is connected */
+	cyw43_arch_lwip_begin();
+	u8_t connected = mqtt_client_is_connected(mqtt_client);
+	cyw43_arch_lwip_end();
+	if (!connected)
+		return -3;
+
+	log_msg(LOG_INFO, "MQTT publish to %s: %u bytes.", topic, buf_len);
+
+	/* Publish message to a MQTT topic */
+	cyw43_arch_lwip_begin();
+	err_t err = mqtt_publish(mqtt_client, topic, buf, buf_len,
+				qos, retain, mqtt_pub_request_cb, NULL);
+	cyw43_arch_lwip_end();
+	if (err != ERR_OK) {
+		log_msg(LOG_NOTICE, "mqtt_publish_message(): failed %d (topic=%s, buf_len=%u)",
+			err, topic, buf_len);
+	}
+	return err;
+}
+
+char* json_response_message(const char *cmd, int result, const char *msg)
+{
+	char *buf;
+	cJSON *json;
+
+	if (!(json = cJSON_CreateObject()))
+		goto panic;
+
+	cJSON_AddItemToObject(json, "command", cJSON_CreateString(cmd));
+	cJSON_AddItemToObject(json, "result", cJSON_CreateString(result == 0 ? "OK" : "ERROR"));
+	cJSON_AddItemToObject(json, "message", cJSON_CreateString(msg));
+
+	if (!(buf = cJSON_Print(json)))
+		goto panic;
+	cJSON_Delete(json);
+	return buf;
+
+panic:
+	if (json)
+		cJSON_Delete(json);
+	return NULL;
+}
+
+void send_mqtt_command_response(const char *cmd, int result, const char *msg)
+{
+	char *buf = NULL;
+
+	if (!cmd || !msg || !mqtt_client || strlen(cfg->mqtt_resp_topic) < 1)
+		return;
+
+	/* Generate status message */
+	if (!(buf = json_response_message(cmd, result, msg))) {
+		log_msg(LOG_WARNING,"json_response_message(): failed");
+		return;
+	}
+	mqtt_publish_message(cfg->mqtt_resp_topic, buf, strlen(buf), 2, 0);
+	free(buf);
+}
 
 static void mqtt_incoming_publish_cb(void *arg, const char *topic, u32_t tot_len)
 {
@@ -62,75 +200,66 @@ static void mqtt_incoming_publish_cb(void *arg, const char *topic, u32_t tot_len
 
 static void mqtt_incoming_data_cb(void *arg, const u8_t *data, u16_t len, u8_t flags)
 {
+	char cmd[MQTT_CMD_MAX_LEN];
+	u8_t *end, *p;
+	u32_t l;
+	int res, mode;
+
 	log_msg(LOG_DEBUG, "MQTT incoming publish payload with length %d, flags %u\n",
 		len, (unsigned int)flags);
 
 	if (incoming_topic != 1)
 		return;
 
-	struct brickpico_state *st = brickpico_state;
-	u8_t *p = (u8_t*)memmem(data, len, "CMD:", 4);
-	if (p) {
-		char buf[32];
+	/* Search for a command we recognize */
+	if ((p = memmem(data, len, "CMD:", 4))) {
+		mode = 0;
 		p += 4;
-		u16_t l = len - (p - data);
-		if (l > 0) {
-			char *saveptr;
-			int output = 0;
-			int pwr = -1;
-			int pwm = -1;
+	}
+	else if ((p = memmem(data, len, "SCPI:", 5))) {
+		mode = 1;
+		p += 5;
+	}
+	else {
+		return;
+	}
 
-			memcpy(buf, p, (l < sizeof(buf) ? l : sizeof(buf) - 1));
-			buf[l] = 0;
-			char *end = strchr(buf, ';');
-			if (!end) {
-				log_msg(LOG_INFO, "MQTT ignore non terminated command.");
-				return;
-			}
-			*end = 0;
-			log_msg(LOG_NOTICE, "MQTT command topic data received: '%s'", buf);
+	l = len - (p - data);
+	if (l < 1)
+		return;
 
-			char *tok = strtok_r(buf, ":", &saveptr);
-			if (tok) {
-				if (!strncasecmp(tok, "ALL", 4)) {
-					output = -1;
-				} else {
-					int tmp;
-					if (str_to_int(tok, &tmp, 10)) {
-						if (tmp >= 1 && tmp <= OUTPUT_COUNT)
-							output = tmp;
-					}
-				}
-				if (output != 0) {
-					if ((tok = strtok_r(NULL, ":", &saveptr))) {
-						if (!strncasecmp(tok, "ON", 3)) {
-							pwr = 1;
-						}
-						else if (!strncasecmp(tok, "OFF", 4)) {
-							pwr = 0;
-						}
-						else if (!strncasecmp(tok, "PWM", 4)) {
-							if ((tok = strtok_r(NULL, ":", &saveptr))) {
-								int tmp;
-								if (str_to_int(tok, &tmp, 10)) {
-									if (tmp >= 0 && tmp <= 100)
-										pwm = tmp;
-								}
-							}
-						}
-					}
-					for (int i = 0; i < OUTPUT_COUNT; i++) {
-						if (output == i + 1 || output == -1) {
-							if (pwr >= 0)
-								st->pwr[i] = pwr;
-							if (pwm >= 0)
-								st->pwm[i] = pwm;
-						}
-					}
-				}
-			}
+	if (!(end = memchr(p, ';', l))) {
+		log_msg(LOG_INFO, "MQTT ignore non-terminated command.");
+		return;
+	}
+	l = end - p;
+	if (l >= sizeof(cmd))
+		l = sizeof(cmd) - 1;
+	memcpy(cmd, p, l);
+	cmd[l] = 0;
+
+	/* Process command */
+	if (mode ==  1) {
+		if (mqtt_scpi_cmd_queued) {
+			log_msg(LOG_NOTICE, "MQTT SCPI command queue full: '%s'", cmd);
+			send_mqtt_command_response(cmd, 1, "SCPI command queue full");
+		} else {
+			log_msg(LOG_NOTICE, "MQTT SCPI command queued: '%s'", cmd);
+			strncopy(mqtt_scpi_cmd, cmd, sizeof(mqtt_scpi_cmd));
+			mqtt_scpi_cmd_queued = true;
+		}
+	} else {
+		res = process_mqtt_command(cmd);
+		if (res == 0) {
+			log_msg(LOG_NOTICE, "MQTT command processed: '%s'", cmd);
+			send_mqtt_command_response(cmd, res, "command successfull");
+		}
+		else {
+			log_msg(LOG_NOTICE, "MQTT invalid command: '%s' (%d)", cmd, res);
+			send_mqtt_command_response(cmd, res, "invalid command");
 		}
 	}
+
 }
 
 static void mqtt_sub_request_cb(void *arg, err_t result)
@@ -193,7 +322,6 @@ void mqtt_connect(mqtt_client_t *client)
 
 	char client_id[32];
 	snprintf(client_id, sizeof(client_id), "brickpico-%s_%s", BRICKPICO_BOARD, pico_serial_str());
-	/* printf("client_id='%s', len=%u\n", client_id, strlen(client_id)); */
 	ci.client_id = client_id;
 	ci.client_user = cfg->mqtt_user;
 	ci.client_pass = cfg->mqtt_pass;
@@ -218,13 +346,6 @@ void mqtt_connect(mqtt_client_t *client)
 	err = mqtt_client_connect(mqtt_client, &mqtt_server_ip, mqtt_port, mqtt_connection_cb, 0, &ci);
 	if (err != ERR_OK) {
 		log_msg(LOG_WARNING,"mqtt_client_connect(): failed %d", err);
-	}
-}
-
-static void mqtt_pub_request_cb(void *arg, err_t result)
-{
-	if (result != ERR_OK) {
-		log_msg(LOG_NOTICE, "MQTT failed to publish to topic: %d", result);
 	}
 }
 
@@ -288,34 +409,13 @@ void brickpico_mqtt_publish()
 	if (!mqtt_client || strlen(cfg->mqtt_status_topic) < 1)
 		return;
 
-	/* Check that MQTT Client is connected */
-	cyw43_arch_lwip_begin();
-	u8_t connected = mqtt_client_is_connected(mqtt_client);
-	cyw43_arch_lwip_end();
-	if (!connected)
-		return;
-
 	/* Generate status message */
 	if (!(buf = json_status_message())) {
 		log_msg(LOG_WARNING,"json_status_message(): failed");
 		return;
 	}
-	/* printf("DATA:\n%s\n", buf); */
-	log_msg(LOG_INFO, "MQTT publish to %s: %u bytes.", cfg->mqtt_status_topic, strlen(buf));
-
-	u8_t qos = 2;
-	u8_t retain = 0;
-
-	/* Publish status message to a MQTT topic */
-	cyw43_arch_lwip_begin();
-	err_t err = mqtt_publish(mqtt_client, cfg->mqtt_status_topic, buf, strlen(buf),
-				qos, retain, mqtt_pub_request_cb, NULL);
-	cyw43_arch_lwip_end();
-	if (err != ERR_OK) {
-		log_msg(LOG_WARNING,"mqtt_publish(): failed %d", err);
-	}
+	mqtt_publish_message(cfg->mqtt_status_topic, buf, strlen(buf), 2 , 0);
 	free(buf);
 }
-
 
 #endif /* WIFI_SUPPORT */

@@ -858,6 +858,12 @@ int cmd_mqtt_cmd_topic(const char *cmd, const char *args, int query, char *prev_
 			conf->mqtt_cmd_topic, sizeof(conf->mqtt_cmd_topic), "MQTT Command Topic");
 }
 
+int cmd_mqtt_resp_topic(const char *cmd, const char *args, int query, char *prev_cmd)
+{
+	return string_setting(cmd, args, query, prev_cmd,
+			conf->mqtt_resp_topic, sizeof(conf->mqtt_resp_topic), "MQTT Response Topic");
+}
+
 
 #if TLS_SUPPORT
 int cmd_mqtt_tls(const char *cmd, const char *args, int query, char *prev_cmd)
@@ -1263,6 +1269,7 @@ struct cmd_t mqtt_commands[] = {
 	{ "INTerval",  3, NULL,              cmd_mqtt_status_interval },
 	{ "STATus",    4, NULL,              cmd_mqtt_status_topic },
 	{ "COMMand",   4, NULL,              cmd_mqtt_cmd_topic },
+	{ "RESPonse",  4, NULL,              cmd_mqtt_resp_topic },
 #if TLS_SUPPORT
 	{ "TLS",       3, NULL,              cmd_mqtt_tls },
 #endif

@@ -45,6 +45,8 @@
 #define WIFI_PASSWD_MAX_LEN  64
 #define WIFI_COUNTRY_MAX_LEN 3
 
+#define MQTT_MAX_TOPIC_LEN   32
+
 #ifdef NDEBUG
 #define WATCHDOG_ENABLED      1
 #define WATCHDOG_REBOOT_DELAY 15000
@@ -110,9 +112,10 @@ struct brickpico_config {
 	bool mqtt_tls;
 	char mqtt_user[32];
 	char mqtt_pass[64];
-	char mqtt_status_topic[32];
+	char mqtt_status_topic[MQTT_MAX_TOPIC_LEN];
 	uint32_t mqtt_status_interval;
-	char mqtt_cmd_topic[32];
+	char mqtt_cmd_topic[MQTT_MAX_TOPIC_LEN];
+	char mqtt_resp_topic[MQTT_MAX_TOPIC_LEN];
 #endif
 };
 
