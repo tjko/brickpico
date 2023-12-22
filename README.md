@@ -14,6 +14,7 @@ BrickPico is an Open-source hardware (OSHW) project.
 * Controls up to 8 to 16 separete channels (LED group)
 * Adjustable output brightness (via PWM)
 * Adjustable output voltage 5V or 3.3V
+* Up to 200mA current output per port (each port has resettable fuse).
 * Programmable PWM frequency from 10 to 100000 Hz
 * Connectors for common Lego light kits (Light My Bricks, etc.) as well as 2.54mm pin header.
 * OLED display module support (128x64 or 128x128)
@@ -36,6 +37,7 @@ For more documentation check [BrickPico Wiki](https://github.com/tjko/brickpico/
 ## Where can I get one?
 Initially BrickPico is only available as a DIY kit. For places to buy kits, check discussions: [Where to Buy BrickPico](https://github.com/tjko/brickpico/discussions/5)
 
+(Instructions for building the kit can be found at: [BrickPico Wiki](https://github.com/tjko/brickpico/wiki)
 
 
 ### DIY Option
