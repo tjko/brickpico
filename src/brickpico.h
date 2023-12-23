@@ -45,6 +45,8 @@
 #define WIFI_PASSWD_MAX_LEN  64
 #define WIFI_COUNTRY_MAX_LEN 3
 
+#define MQTT_MAX_TOPIC_LEN   32
+
 #ifdef NDEBUG
 #define WATCHDOG_ENABLED      1
 #define WATCHDOG_REBOOT_DELAY 15000
@@ -108,11 +110,13 @@ struct brickpico_config {
 	char mqtt_server[32];
 	uint32_t mqtt_port;
 	bool mqtt_tls;
+	bool mqtt_allow_scpi;
 	char mqtt_user[32];
 	char mqtt_pass[64];
-	char mqtt_status_topic[32];
+	char mqtt_status_topic[MQTT_MAX_TOPIC_LEN];
 	uint32_t mqtt_status_interval;
-	char mqtt_cmd_topic[32];
+	char mqtt_cmd_topic[MQTT_MAX_TOPIC_LEN];
+	char mqtt_resp_topic[MQTT_MAX_TOPIC_LEN];
 #endif
 };
 
@@ -128,6 +132,7 @@ extern struct brickpico_state *brickpico_state;
 extern bool rebooted_by_watchdog;
 extern mutex_t *state_mutex;
 void update_display_state();
+void update_core1_state();
 
 /* bi_decl.c */
 void set_binary_info();
@@ -135,6 +140,7 @@ void set_binary_info();
 /* command.c */
 void process_command(struct brickpico_state *state, struct brickpico_config *config, char *command);
 int cmd_version(const char *cmd, const char *args, int query, char *prev_cmd);
+int last_command_status();
 
 /* config.c */
 extern mutex_t *config_mutex;
@@ -178,7 +184,10 @@ void brickpico_setup_http_handlers();
 /* mqtt.c */
 #if WIFI_SUPPORT
 void brickpico_setup_mqtt_client();
+int brickpico_mqtt_client_active();
+void brickpico_mqtt_reconnect();
 void brickpico_mqtt_publish();
+void brickpico_mqtt_scpi_command();
 #endif
 
 /* tls.c */

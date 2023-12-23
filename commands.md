@@ -62,10 +62,14 @@ BrickPico supports following commands:
 * [SYStem:MQTT:PASSword?](#systemmqttpassword-1)
 * [SYStem:MQTT:INTerval](#systemmqttinterval)
 * [SYStem:MQTT:INTerval?](#systemmqttinterval-1)
+* [SYStem:MQTT:SCPI](#systemmqttscpi)
+* [SYStem:MQTT:SCPI?](#systemmqttscpi-1)
 * [SYStem:MQTT:STATus](#systemmqttstatus)
 * [SYStem:MQTT:STATus?](#systemmqttstatus-1)
 * [SYStem:MQTT:COMMand](#systemmqttcommand)
 * [SYStem:MQTT:COMMand?](#systemmqttcommand-1)
+* [SYStem:MQTT:RESPonse](#systemmqttresponse)
+* [SYStem:MQTT:RESPonse?](#systemmqtresponse-1)
 * [SYStem:MQTT:TLS](#systemmqtttls)
 * [SYStem:MQTT:TLS?](#systemmqtttls-1)
 * [SYStem:NAME](#systemname)
@@ -891,6 +895,30 @@ SYS:MQTT:INTERVAL?
 ```
 
 
+#### SYStem:MQTT:SCPI
+Configure if SCPI commands will be accepted via MQTT.
+This is potentially "dangerous" feature so only enable if you understand
+the potential risks allowing device to be remotely configured.
+
+Default: OFF
+
+Example:
+```
+SYS:MQTT:SCPI ON
+```
+
+
+#### SYStem:MQTT:SCPI?
+Query whether SCPI commands are allowed via MQTT.
+
+
+Example:
+```
+SYS:MQTT:SCPI?
+OFF
+```
+
+
 #### SYStem:MQTT:COMMand
 Configure topic to subscribe to to wait for commands to control outputs.
 If this is left to empty (string), then unit won't subcrible (and accept) any commands from MQTT.
@@ -910,6 +938,28 @@ Example:
 ```
 SYS:MQTT:STATUS?
 myusername/feeds/cmd
+```
+
+
+#### SYStem:MQTT:RESPonse
+Configure topic to publish responses to commands received from the command topic.
+If this is left to empty, then unit won't send response to any commands.
+
+Default: <empty>
+
+Example:
+```
+SYS:MQTT:STATUS musername/feeds/response
+```
+
+
+#### SYStem:MQTT:RESPonse?
+Query currently set topic for publishing reponses to commands.
+
+Example:
+```
+SYS:MQTT:STATUS?
+myusername/feeds/response
 ```
 
 

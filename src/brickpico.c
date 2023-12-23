@@ -308,7 +308,6 @@ int main()
 			handle_timer_events(cfg, brickpico_state);
 		}
 
-
 		/* Process any (user) input */
 		while ((c = getchar_timeout_us(0)) != PICO_ERROR_TIMEOUT) {
 			if (c == 0xff || c == 0x00)
