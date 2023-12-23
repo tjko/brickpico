@@ -135,6 +135,35 @@ int uint32_setting(const char *cmd, const char *args, int query, char *prev_cmd,
 	return 1;
 }
 
+int bool_setting(const char *cmd, const char *args, int query, char *prev_cmd,
+		bool *var, const char *name)
+{
+	bool val;
+
+	if (query) {
+		printf("%s\n", (*var ? "ON" : "OFF"));
+		return 0;
+	}
+
+	if ((args[0] == '1' && args[1] == 0) || !strncasecmp(args, "true", 5)
+		|| !strncasecmp(args, "on", 3)) {
+		val = true;
+	}
+	else if ((args[0] == '0' && args[1] == 0) || !strncasecmp(args, "false", 6)
+		|| !strncasecmp(args, "off", 4)) {
+		val =  false;
+	} else {
+		log_msg(LOG_WARNING, "Invalid %s value: %s", name, args);
+		return 2;
+	}
+
+	if (*var != val) {
+		log_msg(LOG_NOTICE, "%s change %u --> %u", name, *var, val);
+		*var = val;
+	}
+	return 0;
+}
+
 
 int cmd_idn(const char *cmd, const char *args, int query, char *prev_cmd)
 {
@@ -843,7 +872,13 @@ int cmd_mqtt_pass(const char *cmd, const char *args, int query, char *prev_cmd)
 int cmd_mqtt_status_interval(const char *cmd, const char *args, int query, char *prev_cmd)
 {
 	return uint32_setting(cmd, args, query, prev_cmd,
-			&conf->mqtt_status_interval, 0, (86400 * 30), "MQTT Port");
+			&conf->mqtt_status_interval, 0, (86400 * 30), "MQTT Publish Status Interval");
+}
+
+int cmd_mqtt_allow_scpi(const char *cmd, const char *args, int query, char *prev_cmd)
+{
+	return bool_setting(cmd, args, query, prev_cmd,
+			&conf->mqtt_allow_scpi, "MQTT Allow SCPI Commands");
 }
 
 int cmd_mqtt_status_topic(const char *cmd, const char *args, int query, char *prev_cmd)
@@ -1267,6 +1302,7 @@ struct cmd_t mqtt_commands[] = {
 	{ "USER",      4, NULL,              cmd_mqtt_user },
 	{ "PASSword",  4, NULL,              cmd_mqtt_pass },
 	{ "INTerval",  3, NULL,              cmd_mqtt_status_interval },
+	{ "SCPI",      4, NULL,              cmd_mqtt_allow_scpi },
 	{ "STATus",    4, NULL,              cmd_mqtt_status_topic },
 	{ "COMMand",   4, NULL,              cmd_mqtt_cmd_topic },
 	{ "RESPonse",  4, NULL,              cmd_mqtt_resp_topic },
@@ -1334,7 +1370,7 @@ struct cmd_t timer_c_commands[] = {
 };
 
 struct cmd_t config_commands[] = {
-	{ "DEFaults",  8, defaults_c_commands, NULL },
+	{ "DEFAULTS",  8, defaults_c_commands, NULL },
 	{ "DELete",    3, NULL,              cmd_delete_config },
 	{ "OUTPUT",    6, output_c_commands, NULL },
 	{ "Read",      1, NULL,              cmd_print_config },
@@ -1476,4 +1512,9 @@ void process_command(struct brickpico_state *state, struct brickpico_config *con
 		}
 		cmd = strtok_r(NULL, ";", &saveptr);
 	}
+}
+
+int last_command_status()
+{
+	return last_error_num;
 }

@@ -62,6 +62,8 @@ BrickPico supports following commands:
 * [SYStem:MQTT:PASSword?](#systemmqttpassword-1)
 * [SYStem:MQTT:INTerval](#systemmqttinterval)
 * [SYStem:MQTT:INTerval?](#systemmqttinterval-1)
+* [SYStem:MQTT:SCPI](#systemmqttscpi)
+* [SYStem:MQTT:SCPI?](#systemmqttscpi-1)
 * [SYStem:MQTT:STATus](#systemmqttstatus)
 * [SYStem:MQTT:STATus?](#systemmqttstatus-1)
 * [SYStem:MQTT:COMMand](#systemmqttcommand)
@@ -888,6 +890,30 @@ Example:
 ```
 SYS:MQTT:INTERVAL?
 3600
+```
+
+
+#### SYStem:MQTT:SCPI
+Configure if SCPI commands will be accepted via MQTT.
+This is potentially "dangerous" feature so only enable if you understand
+the potential risks allowing device to be remotely configured.
+
+Default: OFF
+
+Example:
+```
+SYS:MQTT:SCPI ON
+```
+
+
+#### SYStem:MQTT:SCPI?
+Query whether SCPI commands are allowed via MQTT.
+
+
+Example:
+```
+SYS:MQTT:SCPI?
+OFF
 ```
 
 

@@ -40,14 +40,17 @@
 #ifdef WIFI_SUPPORT
 
 #define MQTTS_PORT 8883
-#define MQTT_BUF_SIZE 2048
-#define MQTT_CMD_MAX_LEN 64
+#define MQTT_CMD_MAX_LEN 100
 
 mqtt_client_t *mqtt_client = NULL;
 ip_addr_t mqtt_server_ip = IPADDR4_INIT_BYTES(0, 0, 0, 0);
+u16_t mqtt_server_port = 0;
 int incoming_topic = 0;
 char mqtt_scpi_cmd[MQTT_CMD_MAX_LEN];
 bool mqtt_scpi_cmd_queued = false;
+absolute_time_t ABSOLUTE_TIME_INITIALIZED_VAR(t_mqtt_disconnect, 0);
+u16_t mqtt_reconnect = 0;
+
 
 void mqtt_connect(mqtt_client_t *client);
 
@@ -240,6 +243,10 @@ static void mqtt_incoming_data_cb(void *arg, const u8_t *data, u16_t len, u8_t f
 
 	/* Process command */
 	if (mode ==  1) {
+		if (!cfg->mqtt_allow_scpi) {
+			log_msg(LOG_NOTICE, "MQTT SCPI commands not allowed: '%s'", cmd);
+			return;
+		}
 		if (mqtt_scpi_cmd_queued) {
 			log_msg(LOG_NOTICE, "MQTT SCPI command queue full: '%s'", cmd);
 			send_mqtt_command_response(cmd, 1, "SCPI command queue full");
@@ -271,36 +278,57 @@ static void mqtt_sub_request_cb(void *arg, err_t result)
 
 static void mqtt_connection_cb(mqtt_client_t *client, void *arg, mqtt_connection_status_t status)
 {
+	t_mqtt_disconnect = get_absolute_time();
+
 	if (status == MQTT_CONNECT_ACCEPTED) {
-		log_msg(LOG_INFO, "MQTT connected to %s", ipaddr_ntoa(&mqtt_server_ip));
-		mqtt_set_inpub_callback(client, mqtt_incoming_publish_cb, mqtt_incoming_data_cb ,arg);
-		if (cfg->mqtt_cmd_topic) {
-			log_msg(LOG_INFO, "MQTT subscribe command topic: %s", cfg->mqtt_cmd_topic);
-			err_t err = mqtt_subscribe(client, cfg->mqtt_cmd_topic, 1, mqtt_sub_request_cb, arg);
+		log_msg(LOG_INFO, "MQTT connected to %s:%u", ipaddr_ntoa(&mqtt_server_ip),
+			mqtt_server_port);
+		mqtt_set_inpub_callback(client, mqtt_incoming_publish_cb, mqtt_incoming_data_cb, arg);
+		if (strlen(cfg->mqtt_cmd_topic) > 0) {
+			log_msg(LOG_INFO, "MQTT subscribe to command topic: %s", cfg->mqtt_cmd_topic);
+			err_t err = mqtt_subscribe(client, cfg->mqtt_cmd_topic, 1,
+						mqtt_sub_request_cb, arg);
 			if (err != ERR_OK) {
-				log_msg(LOG_WARNING, "mqtt_subscribe(): failed %d", err);
+				log_msg(LOG_WARNING, "MQTT subscribe failed: %d", err);
 			}
 		}
-	} else {
-		log_msg(LOG_WARNING, "MQTT disconnected (status=%d)", status);
-		mqtt_connect(client);
+	}
+	else if (status == MQTT_CONNECT_DISCONNECTED) {
+		log_msg(LOG_WARNING, "MQTT disconnected from %s", ipaddr_ntoa(&mqtt_server_ip));
+		mqtt_reconnect = 5;
+	}
+	else if (status == MQTT_CONNECT_TIMEOUT) {
+		log_msg(LOG_WARNING, "MQTT connect: timeout %s", ipaddr_ntoa(&mqtt_server_ip));
+		mqtt_reconnect = 30;
+	}
+	else if (status == MQTT_CONNECT_REFUSED_USERNAME_PASS) {
+		log_msg(LOG_WARNING, "MQTT connect: login failure");
+	}
+	else if (status == MQTT_CONNECT_REFUSED_NOT_AUTHORIZED_) {
+		log_msg(LOG_WARNING, "MQTT connect: not authorized");
+	}
+	else {
+		log_msg(LOG_WARNING, "MQTT connect: refused (%d)", status);
 	}
 }
 
 static void mqtt_dns_resolve_cb(const char *name, const ip_addr_t *ipaddr, void *arg)
 {
+	t_mqtt_disconnect = get_absolute_time();
+
 	if (ipaddr && ipaddr->addr) {
 		log_msg(LOG_INFO, "DNS resolved: %s -> %s\n", name, ipaddr_ntoa(ipaddr));
 		ip_addr_set(&mqtt_server_ip, ipaddr);
 		mqtt_connect(mqtt_client);
 	} else {
 		log_msg(LOG_WARNING, "Failed to resolve MQTT server name: %s", name);
+		mqtt_reconnect = 30;
 	}
 }
 
 void mqtt_connect(mqtt_client_t *client)
 {
-	uint16_t mqtt_port = MQTT_PORT;
+	uint16_t port = MQTT_PORT;
 	err_t err;
 
 	if (!client)
@@ -309,7 +337,7 @@ void mqtt_connect(mqtt_client_t *client)
 	err = dns_gethostbyname(cfg->mqtt_server, &mqtt_server_ip, mqtt_dns_resolve_cb, NULL);
 	if (err != ERR_OK) {
 		if (err == ERR_INPROGRESS)
-			log_msg(LOG_INFO, "Resolving hostname: %s...\n", cfg->mqtt_server);
+			log_msg(LOG_INFO, "Resolving DNS name: %s\n", cfg->mqtt_server);
 		else
 			log_msg(LOG_WARNING, "Failed to resolve MQTT server name: %s (%d)" ,
 				cfg->mqtt_server, err);
@@ -334,16 +362,18 @@ void mqtt_connect(mqtt_client_t *client)
 #if TLS_SUPPORT
 	if (cfg->mqtt_tls) {
 		ci.tls_config = altcp_tls_create_config_client(NULL, 0);
-		mqtt_port = MQTTS_PORT;;
+		port = MQTTS_PORT;;
 	}
 #endif
 	if (cfg->mqtt_port > 0)
-		mqtt_port = cfg->mqtt_port;
+		port = cfg->mqtt_port;
+	mqtt_server_port = port;
 
-	log_msg(LOG_INFO, "MQTT Connecting to %s:%u%s",	cfg->mqtt_server, mqtt_port,
+	log_msg(LOG_INFO, "MQTT Connecting to %s:%u%s",	cfg->mqtt_server, mqtt_server_port,
 		cfg->mqtt_tls ? " (TLS)" : "");
 
-	err = mqtt_client_connect(mqtt_client, &mqtt_server_ip, mqtt_port, mqtt_connection_cb, 0, &ci);
+	err = mqtt_client_connect(mqtt_client, &mqtt_server_ip, mqtt_server_port,
+				mqtt_connection_cb, 0, &ci);
 	if (err != ERR_OK) {
 		log_msg(LOG_WARNING,"mqtt_client_connect(): failed %d", err);
 	}
@@ -361,6 +391,23 @@ void brickpico_setup_mqtt_client()
 
 	if (!mqtt_client) {
 		log_msg(LOG_WARNING,"mqtt_client_new(): failed");
+	}
+}
+
+int brickpico_mqtt_client_active()
+{
+	return (mqtt_client == NULL ? 0 : 1);
+}
+
+void brickpico_mqtt_reconnect()
+{
+	if (mqtt_reconnect == 0)
+		return;
+
+	if (time_passed(&t_mqtt_disconnect, mqtt_reconnect * 1000)) {
+		log_msg(LOG_INFO, "MQTT attempt reconnecting to server");
+		mqtt_reconnect = 0;
+		mqtt_connect(mqtt_client);
 	}
 }
 
@@ -416,6 +463,33 @@ void brickpico_mqtt_publish()
 	}
 	mqtt_publish_message(cfg->mqtt_status_topic, buf, strlen(buf), 2 , 0);
 	free(buf);
+}
+
+void brickpico_mqtt_scpi_command()
+{
+	struct brickpico_state *st = brickpico_state;
+	char cmd[MQTT_CMD_MAX_LEN];
+	int res;
+
+	if (!mqtt_client || !mqtt_scpi_cmd_queued)
+		return;
+
+	strncopy(cmd, mqtt_scpi_cmd, sizeof(cmd));
+	process_command(st, (struct brickpico_config *)cfg, cmd);
+	if ((res = last_command_status()) == 0) {
+		log_msg(LOG_INFO, "MQTT SCPI command successfull: '%s'", mqtt_scpi_cmd);
+		send_mqtt_command_response(mqtt_scpi_cmd, res, "SCPI command successfull");
+	} else {
+		log_msg(LOG_NOTICE, "MQTT SCPI command failed: '%s' (%d)", mqtt_scpi_cmd, res);
+		if (res == -113)
+			send_mqtt_command_response(mqtt_scpi_cmd, res, "SCPI unknown command");
+		else
+			send_mqtt_command_response(mqtt_scpi_cmd, res, "SCPI command failed");
+	}
+
+	mqtt_scpi_cmd[0] = 0;
+	mqtt_scpi_cmd_queued = false;
+	update_core1_state();
 }
 
 #endif /* WIFI_SUPPORT */

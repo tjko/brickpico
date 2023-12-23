@@ -242,6 +242,8 @@ void wifi_poll()
 {
 	static absolute_time_t ABSOLUTE_TIME_INITIALIZED_VAR(test_t, 0);
 	static absolute_time_t ABSOLUTE_TIME_INITIALIZED_VAR(publish_t, 0);
+	static absolute_time_t ABSOLUTE_TIME_INITIALIZED_VAR(command_t, 0);
+	static absolute_time_t ABSOLUTE_TIME_INITIALIZED_VAR(reconnect_t, 0);
 	static bool init_msg_sent = false;
 
 	if (!wifi_initialized)
@@ -275,9 +277,22 @@ void wifi_poll()
 			days, hours % 24, mins % 60, secs % 60,
 			(rebooted_by_watchdog ? " [Rebooted by watchdog]" : ""));
 	}
-	if (cfg->mqtt_status_interval > 0) {
-		if (time_passed(&publish_t, cfg->mqtt_status_interval * 1000)) {
-			brickpico_mqtt_publish();
+
+	if (brickpico_mqtt_client_active()) {
+		/* Check for pending SCPI command received via MQTT */
+		if (time_passed(&command_t, 250)) {
+			brickpico_mqtt_scpi_command();
+		}
+
+		/* Publish status update to MQTT status topic */
+		if (cfg->mqtt_status_interval > 0) {
+			if (time_passed(&publish_t, cfg->mqtt_status_interval * 1000)) {
+				brickpico_mqtt_publish();
+			}
+		}
+
+		if (time_passed(&reconnect_t, 1000)) {
+			brickpico_mqtt_reconnect();
 		}
 	}
 
