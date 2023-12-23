@@ -68,6 +68,8 @@ BrickPico supports following commands:
 * [SYStem:MQTT:STATus?](#systemmqttstatus-1)
 * [SYStem:MQTT:COMMand](#systemmqttcommand)
 * [SYStem:MQTT:COMMand?](#systemmqttcommand-1)
+* [SYStem:MQTT:RESPonse](#systemmqttresponse)
+* [SYStem:MQTT:RESPonse?](#systemmqtresponse-1)
 * [SYStem:MQTT:TLS](#systemmqtttls)
 * [SYStem:MQTT:TLS?](#systemmqtttls-1)
 * [SYStem:NAME](#systemname)
@@ -936,6 +938,28 @@ Example:
 ```
 SYS:MQTT:STATUS?
 myusername/feeds/cmd
+```
+
+
+#### SYStem:MQTT:RESPonse
+Configure topic to publish responses to commands received from the command topic.
+If this is left to empty, then unit won't send response to any commands.
+
+Default: <empty>
+
+Example:
+```
+SYS:MQTT:STATUS musername/feeds/response
+```
+
+
+#### SYStem:MQTT:RESPonse?
+Query currently set topic for publishing reponses to commands.
+
+Example:
+```
+SYS:MQTT:STATUS?
+myusername/feeds/response
 ```
 
 
