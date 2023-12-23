@@ -312,15 +312,12 @@ int check_timer_event(const struct timer_event *e, const datetime_t *t)
 	if (!e || !t)
 		return 0;
 
-
 	if (e->minute >= 0 && e->minute != t->min)
 		return 0;
 	if (e->hour >= 0 && e->hour != t->hour)
 		return 0;
-	if (e->wday) {
-		if (e->wday & ((1 << t->dotw) == 0))
+	if (e->wday > 0 && !(e->wday & ((1 << t->dotw))))
 			return 0;
-	}
 
 	return 1;
 }
