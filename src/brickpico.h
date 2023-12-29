@@ -222,23 +222,17 @@ void debug(int debug_level, const char *fmt, ...);
 int parse_timer_event_str(const char *str, struct timer_event *event);
 const char* timer_event_str(const struct timer_event *event);
 int handle_timer_events(const struct brickpico_config *conf, struct brickpico_state *state);
-char *bitmask_to_str(uint32_t mask, uint16_t len, uint8_t base, bool range);
-int str_to_bitmask(const char *str, uint16_t len, uint32_t *mask, uint8_t base);
 const char* timer_action_type_str(enum timer_action_types type);
 
 /* util.c */
 void print_mallinfo();
-void print_irqinfo();
 char *trim_str(char *s);
 int str_to_int(const char *str, int *val, int base);
 int str_to_float(const char *str, float *val);
 int str_to_datetime(const char *str, datetime_t *t);
 char* datetime_str(char *buf, size_t size, const datetime_t *t);
-const char *rp2040_model_str();
-const char *pico_serial_str();
 const char *mac_address_str(const uint8_t *mac);
 int check_for_change(double oldval, double newval, double threshold);
-int time_passed(absolute_time_t *t, uint32_t us);
 int64_t pow_i64(int64_t x, uint8_t y);
 double round_decimal(double val, unsigned int decimal);
 char* base64encode(const char *input);
@@ -248,10 +242,21 @@ char *strncatenate(char *dst, const char *src, size_t size);
 datetime_t *tm_to_datetime(const struct tm *tm, datetime_t *t);
 struct tm *datetime_to_tm(const datetime_t *t, struct tm *tm);
 time_t datetime_to_time(const datetime_t *datetime);
-void watchdog_disable();
-int getstring_timeout_ms(char *str, uint32_t maxlen, uint32_t timeout);
 int clamp_int(int val, int min, int max);
 void* memmem(const void *haystack, size_t haystacklen, const void *needle, size_t needlelen);
+char *bitmask_to_str(uint32_t mask, uint16_t len, uint8_t base, bool range);
+int str_to_bitmask(const char *str, uint16_t len, uint32_t *mask, uint8_t base);
+
+/*  util_rp2040.c */
+uint32_t get_stack_pointer();
+uint32_t get_stack_free();
+void print_rp2040_meminfo();
+void print_irqinfo();
+void watchdog_disable();
+const char *rp2040_model_str();
+const char *pico_serial_str();
+int time_passed(absolute_time_t *t, uint32_t us);
+int getstring_timeout_ms(char *str, uint32_t maxlen, uint32_t timeout);
 
 
 #endif /* BRICKPICO_H */

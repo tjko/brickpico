@@ -55,7 +55,7 @@ struct error_t {
 	int            error_num;
 };
 
-struct error_t error_codes[] = {
+const struct error_t error_codes[] = {
 	{ "No Error", 0 },
 	{ "Command Error", -100 },
 	{ "Syntax Error", -102 },
@@ -1121,30 +1121,64 @@ int cmd_name(const char *cmd, const char *args, int query, char *prev_cmd)
 	return 0;
 }
 
+
+#define TEST_MEM_SIZE (264*1024)
+
 int cmd_memory(const char *cmd, const char *args, int query, char *prev_cmd)
 {
 	int blocksize;
 
 	if (query) {
+		print_rp2040_meminfo();
+		printf("mallinfo:\n");
 		print_mallinfo();
 		return 0;
 	}
+
 	if (str_to_int(args, &blocksize, 10)) {
-		if (blocksize >= 512) {
-			void *buf = NULL;
-			size_t bufsize = blocksize;
-			do {
-				if (buf) {
-					free(buf);
-					bufsize += blocksize;
-				}
-				buf = malloc(bufsize);
-			} while (buf);
-			printf("Maximum available memory: %u bytes\n", bufsize - blocksize);
-		}
-		return 0;
+		if (blocksize < 512)
+			blocksize = 512;
+		if (blocksize > 8192)
+			blocksize= 8192;
+	} else {
+		blocksize = 1024;
 	}
-	return 1;
+
+	/* Test for largest available memory block... */
+	void *buf = NULL;
+	size_t bufsize = blocksize;
+	do {
+		if (buf) {
+			free(buf);
+			bufsize += blocksize;
+		}
+		buf = malloc(bufsize);
+	} while (buf && bufsize < TEST_MEM_SIZE);
+	printf("Largest available memory block:        %u bytes\n",
+		bufsize - blocksize);
+
+	/* Test how much memory available in 'blocksize' blocks... */
+	int i = 0;
+	int max = TEST_MEM_SIZE / blocksize + 1;
+	void **refbuf = malloc(max * sizeof(void*));
+	if (refbuf) {
+		memset(refbuf, 0, max * sizeof(void*));
+		while (i < max) {
+			if (!(refbuf[i] = malloc(blocksize)))
+				break;
+			i++;
+		}
+	}
+	printf("Total available memory:                %u bytes (%d x %dbytes)\n",
+		i * blocksize, i, blocksize);
+	if (refbuf) {
+		i = 0;
+		while (i < max && refbuf[i]) {
+			free(refbuf[i++]);
+		}
+		free(refbuf);
+	}
+	return 0;
 }
 
 int cmd_serial(const char *cmd, const char *args, int query, char *prev_cmd)

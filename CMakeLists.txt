@@ -85,6 +85,7 @@ add_executable(brickpico
   src/tls.c
   src/pwm.c
   src/util.c
+  src/util_rp2040.c
   src/log.c
   src/credits.s
   )
@@ -151,8 +152,11 @@ target_compile_definitions(brickpico PRIVATE PARAM_ASSERTIONS_ENABLE_ALL=1)
 target_compile_definitions(brickpico PRIVATE PICO_MALLOC_PANIC=0)
 target_compile_definitions(brickpico PRIVATE PICO_DEBUG_MALLOC=0)
 target_compile_definitions(brickpico PRIVATE PICO_DEOPTIMIZED_DEBUG=0)
-target_compile_definitions(brickpico PRIVATE PICO_STACK_SIZE=0x1000)
+target_compile_definitions(brickpico PRIVATE PICO_STACK_SIZE=0x2000)
+target_compile_definitions(brickpico PRIVATE PICO_CORE1_STACK_SIZE=0x1000)
 target_compile_definitions(brickpico PRIVATE PICO_USE_STACK_GUARDS=1)
 target_compile_definitions(brickpico PRIVATE PICO_RP2040_USB_DEVICE_ENUMERATION_FIX=1)
+
+pico_set_linker_script(brickpico ${CMAKE_SOURCE_DIR}/src/memmap_custom.ld)
 
 # eof :-)

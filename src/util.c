@@ -55,18 +55,6 @@ void print_mallinfo()
 	printf("Topmost releasable block (keepcost):   %d\n", mi.keepcost);
 }
 
-void print_irqinfo()
-{
-	uint core = get_core_num();
-	uint enabled, shared;
-
-	for(uint i = 0; i < 32; i++) {
-		enabled = irq_is_enabled(i);
-		shared = (enabled ? irq_has_shared_handler(i) : 0);
-		printf("core%u: IRQ%-2u: enabled=%u, shared=%u\n", core, i, enabled, shared);
-	}
-}
-
 char *trim_str(char *s)
 {
 	char *e;
@@ -175,42 +163,6 @@ char* datetime_str(char *buf, size_t size, const datetime_t *t)
 	return buf;
 }
 
-const char *rp2040_model_str()
-{
-	static char buf[32];
-	uint8_t version = 0;
-	uint8_t known_chip = 0;
-	uint8_t chip_version = rp2040_chip_version();
-	uint8_t rom_version = rp2040_rom_version();
-
-
-	if (chip_version <= 2 && rom_version <= 3)
-		known_chip = 1;
-
-	version = rom_version - 1;
-
-	snprintf(buf, sizeof(buf), "RP2040-B%d%s",
-		version,
-		(known_chip ? "" : " (?)"));
-
-	return buf;
-}
-
-
-const char *pico_serial_str()
-{
-	static char buf[PICO_UNIQUE_BOARD_ID_SIZE_BYTES * 2 + 1];
-	pico_unique_board_id_t board_id;
-
-	memset(&board_id, 0, sizeof(board_id));
-	pico_get_unique_board_id(&board_id);
-	for (int i = 0; i < PICO_UNIQUE_BOARD_ID_SIZE_BYTES; i++)
-		snprintf(&buf[i*2], 3,"%02x", board_id.id[i]);
-
-	return buf;
-}
-
-
 const char *mac_address_str(const uint8_t *mac)
 {
 	static char buf[32];
@@ -227,23 +179,6 @@ int check_for_change(double oldval, double newval, double threshold)
 
 	if (delta >= threshold)
 		return 1;
-
-	return 0;
-}
-
-
-int time_passed(absolute_time_t *t, uint32_t ms)
-{
-	absolute_time_t t_now = get_absolute_time();
-
-	if (t == NULL)
-		return -1;
-
-	if (to_us_since_boot(*t) == 0 ||
-	    to_us_since_boot(delayed_by_ms(*t, ms)) < to_us_since_boot(t_now)) {
-		*t = t_now;
-		return 1;
-	}
 
 	return 0;
 }
@@ -408,46 +343,6 @@ time_t datetime_to_time(const datetime_t *datetime)
 }
 
 
-void watchdog_disable()
-{
-	hw_clear_bits(&watchdog_hw->ctrl, WATCHDOG_CTRL_ENABLE_BITS);
-}
-
-
-int getstring_timeout_ms(char *str, uint32_t maxlen, uint32_t timeout)
-{
-	absolute_time_t t_timeout = get_absolute_time();
-	char *p;
-	int res = 0;
-	int len;
-
-	if (!str || maxlen < 2)
-		return -1;
-
-	len = strnlen(str, maxlen);
-	if (len >= maxlen)
-		return -2;
-	p = str + len;
-
-	while ((p - str) < (maxlen - 1) ) {
-		if (time_passed(&t_timeout, timeout)) {
-			break;
-		}
-		int c = getchar_timeout_us(1);
-		if (c == PICO_ERROR_TIMEOUT)
-			continue;
-		if (c == 10 || c == 13) {
-			res = 1;
-			break;
-		}
-		*p++ = c;
-	}
-	*p = 0;
-
-	return res;
-}
-
-
 int clamp_int(int val, int min, int max)
 {
 	int res = val;
@@ -484,6 +379,111 @@ void* memmem(const void *haystack, size_t haystacklen,
 	}
 
 	return NULL;
+}
+
+
+char *bitmask_to_str(uint32_t mask, uint16_t len, uint8_t base, bool range)
+{
+	static char buf[96 + 16];
+	int state = 0;
+	int prev = -2;
+	char *s = buf;
+	int i, w, last;
+
+	buf[0] = 0;
+
+	if (len < 1 || len > 32)
+		return buf;
+
+	if (!range && mask == (1 << len) - 1) {
+		buf[0] = '*';
+		buf[1] = 0;
+		return buf;
+	}
+
+	for (i = 0; i < len; i++) {
+		if (mask & (1 << i)) {
+			int consecutive = (i - prev == 1 ? 1 : 0);
+			if (state == 0) {
+				w = snprintf(s, 3, "%d", i + base);
+				if (w > 2) w = 2;
+				s += w;
+				state = 1;
+			}
+			else if (state == 1) {
+				if (range && consecutive) {
+					last = i;
+					state = 2;
+				} else {
+					w = snprintf(s, 4, ",%d", i + base);
+					if (w > 3) w = 3;
+					s += w;
+				}
+			}
+			else if (state == 2) {
+				if (consecutive) {
+					last = i;
+				} else {
+					w = snprintf(s, 7, "-%d,%d", last + base, i + base);
+					if (w > 6) w = 6;
+					s += w;
+					state = 1;
+				}
+			}
+			prev = i;
+		}
+	}
+	if (range && state == 2) {
+		snprintf(s , 12, "-%d", last + base);
+	}
+
+	return buf;
+}
+
+
+int str_to_bitmask(const char *str, uint16_t len, uint32_t *mask, uint8_t base)
+{
+	char *s, *tok, *saveptr, *saveptr2;
+
+	if (!str || !mask)
+		return -1;
+	*mask = 0;
+
+	if (len < 1 || len > 32)
+		return -2;
+
+	if (!strcmp(str, "*")) {
+		*mask = (1 << len) - 1;
+		return 0;
+	}
+
+	if ((s = strdup(str)) == NULL)
+		return -3;
+
+	tok = strtok_r(s, ",", &saveptr);
+	while (tok) {
+		int a, b;
+		tok = strtok_r(tok, "-", &saveptr2);
+		if (str_to_int(tok, &a, 10)) {
+			a -= base;
+			if (a >= 0 && a < len) {
+				*mask |= (1 << a);
+			}
+			tok = strtok_r(NULL, "-", &saveptr2);
+			if (str_to_int(tok, &b, 10)) {
+				b -= base;
+				if (b > a && b < len) {
+					while (++a <= b) {
+						*mask |= (1 << a);
+					}
+				}
+			}
+		}
+		tok = strtok_r(NULL, ",", &saveptr);
+	}
+
+	free(s);
+	return 0;
 }
 
 /* eof */
