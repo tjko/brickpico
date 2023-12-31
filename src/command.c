@@ -46,7 +46,7 @@
 struct cmd_t {
 	const char   *cmd;
 	uint8_t       min_match;
-	struct cmd_t *subcmds;
+	const struct cmd_t *subcmds;
 	int (*func)(const char *cmd, const char *args, int query, char *prev_cmd);
 };
 
@@ -71,28 +71,6 @@ struct brickpico_config *conf = NULL;
 /* credits.s */
 extern const char brickpico_credits_text[];
 
-
-int valid_wifi_country(const char *country)
-{
-	if (!country)
-		return 0;
-
-	if (strlen(country) < 2)
-		return 0;
-
-	if (!(country[0] >= 'A' && country[0] <= 'Z'))
-		return 0;
-	if (!(country[1] >= 'A' && country[1] <= 'Z'))
-		return 0;
-
-	if (strlen(country) == 2)
-		return 1;
-
-	if (country[2] >= '1' && country[2] <= '9')
-		return 1;
-
-	return 0;
-}
 
 int string_setting(const char *cmd, const char *args, int query, char *prev_cmd,
 	char *var, size_t var_len, const char *name)
@@ -1304,13 +1282,13 @@ int cmd_timer_del(const char *cmd, const char *args, int query, char *prev_cmd)
 
 
 
-struct cmd_t display_commands[] = {
+const struct cmd_t display_commands[] = {
 	{ "LAYOUTR",   7, NULL,              cmd_display_layout_r },
 	{ "LOGO",      4, NULL,              cmd_display_logo },
 	{ "THEMe",     4, NULL,              cmd_display_theme },
 	{ 0, 0, 0, 0 }
 };
-struct cmd_t wifi_commands[] = {
+const struct cmd_t wifi_commands[] = {
 #ifdef WIFI_SUPPORT
 	{ "COUntry",   3, NULL,              cmd_wifi_country },
 	{ "GATEway",   4, NULL,              cmd_wifi_gateway },
@@ -1329,7 +1307,7 @@ struct cmd_t wifi_commands[] = {
 	{ 0, 0, 0, 0 }
 };
 
-struct cmd_t mqtt_commands[] = {
+const struct cmd_t mqtt_commands[] = {
 #ifdef WIFI_SUPPORT
 	{ "SERVer",    4, NULL,              cmd_mqtt_server },
 	{ "PORT",      4, NULL,              cmd_mqtt_port },
@@ -1347,7 +1325,7 @@ struct cmd_t mqtt_commands[] = {
 	{ 0, 0, 0, 0 }
 };
 
-struct cmd_t tls_commands[] = {
+const struct cmd_t tls_commands[] = {
 #ifdef WIFI_SUPPORT
 #if TLS_SUPPORT
 	{ "CERT",      4, NULL,              cmd_tls_cert },
@@ -1357,7 +1335,7 @@ struct cmd_t tls_commands[] = {
 	{ 0, 0, 0, 0 }
 };
 
-struct cmd_t system_commands[] = {
+const struct cmd_t system_commands[] = {
 	{ "DEBUG",     5, NULL,              cmd_debug }, /* Obsolete ? */
 	{ "DISPlay",   4, display_commands,  cmd_display_type },
 	{ "ECHO",      4, NULL,              cmd_echo },
@@ -1382,13 +1360,13 @@ struct cmd_t system_commands[] = {
 	{ 0, 0, 0, 0 }
 };
 
-struct cmd_t defaults_c_commands[] = {
+const struct cmd_t defaults_c_commands[] = {
 	{ "PWM",       3, NULL,              cmd_defaults_pwm },
 	{ "STAte",     3, NULL,              cmd_defaults_state },
 	{ 0, 0, 0, 0 }
 };
 
-struct cmd_t output_c_commands[] = {
+const struct cmd_t output_c_commands[] = {
 	{ "MAXpwm",    3, NULL,              cmd_out_max_pwm },
 	{ "MINpwm",    3, NULL,              cmd_out_min_pwm },
 	{ "NAME",      4, NULL,              cmd_out_name },
@@ -1397,13 +1375,13 @@ struct cmd_t output_c_commands[] = {
 	{ 0, 0, 0, 0 }
 };
 
-struct cmd_t timer_c_commands[] = {
+const struct cmd_t timer_c_commands[] = {
 	{ "ADD",       3, NULL,              cmd_timer_add },
 	{ "DEL",       3, NULL,              cmd_timer_del },
 	{ 0, 0, 0, 0 }
 };
 
-struct cmd_t config_commands[] = {
+const struct cmd_t config_commands[] = {
 	{ "DEFAULTS",  8, defaults_c_commands, NULL },
 	{ "DELete",    3, NULL,              cmd_delete_config },
 	{ "OUTPUT",    6, output_c_commands, NULL },
@@ -1413,30 +1391,30 @@ struct cmd_t config_commands[] = {
 	{ 0, 0, 0, 0 }
 };
 
-struct cmd_t output_commands[] = {
+const struct cmd_t output_commands[] = {
 	{ "PWM",       3, NULL,              cmd_out_read },
 	{ "Read",      1, NULL,              cmd_out_read },
 	{ 0, 0, 0, 0 }
 };
 
-struct cmd_t measure_commands[] = {
+const struct cmd_t measure_commands[] = {
 	{ "OUTPUT",    6, output_commands,   cmd_out_read },
 	{ "Read",      1, NULL,              cmd_read },
 	{ 0, 0, 0, 0 }
 };
 
-struct cmd_t write_o_commands[] = {
+const struct cmd_t write_o_commands[] = {
 	{ "PWM",       3, NULL,              cmd_write_pwm },
 	{ "STAte",     3, NULL,              cmd_write_state },
 	{ 0, 0, 0, 0 }
 };
 
-struct cmd_t write_commands[] = {
+const struct cmd_t write_commands[] = {
 	{ "OUTPUT",    6, write_o_commands,  cmd_write_state },
 	{ 0, 0, 0, 0 }
 };
 
-struct cmd_t commands[] = {
+const struct cmd_t commands[] = {
 	{ "*CLS",      4, NULL,              cmd_null },
 	{ "*ESE",      4, NULL,              cmd_null },
 	{ "*ESR",      4, NULL,              cmd_zero },
@@ -1457,7 +1435,7 @@ struct cmd_t commands[] = {
 
 
 
-struct cmd_t* run_cmd(char *cmd, struct cmd_t *cmd_level, char **prev_subcmd)
+const struct cmd_t* run_cmd(char *cmd, const struct cmd_t *cmd_level, char **prev_subcmd)
 {
 	int i, query, cmd_len, total_len;
 	char *saveptr1, *saveptr2, *t, *sub, *s, *arg;
@@ -1529,7 +1507,7 @@ void process_command(struct brickpico_state *state, struct brickpico_config *con
 {
 	char *saveptr, *cmd;
 	char *prev_subcmd = NULL;
-	struct cmd_t *cmd_level = commands;
+	const struct cmd_t *cmd_level = commands;
 
 	if (!state || !config || !command)
 		return;

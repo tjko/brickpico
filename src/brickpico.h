@@ -232,6 +232,7 @@ int str_to_float(const char *str, float *val);
 int str_to_datetime(const char *str, datetime_t *t);
 char* datetime_str(char *buf, size_t size, const datetime_t *t);
 const char *mac_address_str(const uint8_t *mac);
+int valid_wifi_country(const char *country);
 int check_for_change(double oldval, double newval, double threshold);
 int64_t pow_i64(int64_t x, uint8_t y);
 double round_decimal(double val, unsigned int decimal);
