@@ -75,12 +75,20 @@ extern const char brickpico_credits_text[];
 
 /* Helper functions for commands */
 
+typedef int (*validate_str_func_t)(const char *args);
+
 int string_setting(const char *cmd, const char *args, int query, char *prev_cmd,
-	char *var, size_t var_len, const char *name)
+		char *var, size_t var_len, const char *name, validate_str_func_t validate_func)
 {
 	if (query) {
 		printf("%s\n", var);
 	} else {
+		if (validate_func) {
+			if (!validate_func(args)) {
+				log_msg(LOG_WARNING, "%s invalid argument: '%s'", name, args);
+				return 2;
+			}
+		}
 		if (strcmp(var, args)) {
 			log_msg(LOG_NOTICE, "%s change '%s' --> '%s'", name, var, args);
 			strncopy(var, args, var_len);
@@ -97,6 +105,33 @@ int uint32_setting(const char *cmd, const char *args, int query, char *prev_cmd,
 
 	if (query) {
 		printf("%lu\n", *var);
+		return 0;
+	}
+
+	if (str_to_int(args, &v, 10)) {
+		val = v;
+		if (val >= min_val && val <= max_val) {
+			if (*var != val) {
+				log_msg(LOG_NOTICE, "%s change %lu --> %lu", name, *var, val);
+				*var = val;
+			}
+		} else {
+			log_msg(LOG_WARNING, "Invalid %s value: %s", name, args);
+			return 2;
+		}
+		return 0;
+	}
+	return 1;
+}
+
+int uint8_setting(const char *cmd, const char *args, int query, char *prev_cmd,
+		uint8_t *var, uint8_t min_val, uint8_t max_val, const char *name)
+{
+	uint8_t val;
+	int v;
+
+	if (query) {
+		printf("%u\n", *var);
 		return 0;
 	}
 
@@ -239,17 +274,8 @@ int cmd_outputs(const char *cmd, const char *args, int query, char *prev_cmd)
 
 int cmd_led(const char *cmd, const char *args, int query, char *prev_cmd)
 {
-	int mode;
-
-	if (query) {
-		printf("%d\n", conf->led_mode);
-	} else if (str_to_int(args, &mode, 10)) {
-		if (mode >= 0 && mode <= 2) {
-			log_msg(LOG_NOTICE, "Set system LED mode: %d -> %d", conf->led_mode, mode);
-			conf->led_mode = mode;
-		}
-	}
-	return 0;
+	return uint8_setting(cmd, args, query, prev_cmd,
+			&conf->led_mode, 0, 2, "System LED Mode");
 }
 
 int cmd_null(const char *cmd, const char *args, int query, char *prev_cmd)
@@ -332,26 +358,26 @@ int cmd_echo(const char *cmd, const char *args, int query, char *prev_cmd)
 int cmd_display_type(const char *cmd, const char *args, int query, char *prev_cmd)
 {
 	return string_setting(cmd, args, query, prev_cmd,
-			conf->display_type, sizeof(conf->display_type), "Display Type");
+			conf->display_type, sizeof(conf->display_type), "Display Type", NULL);
 }
 
 int cmd_display_theme(const char *cmd, const char *args, int query, char *prev_cmd)
 {
 	return string_setting(cmd, args, query, prev_cmd,
-			conf->display_theme, sizeof(conf->display_theme), "Display Theme");
+			conf->display_theme, sizeof(conf->display_theme), "Display Theme", NULL);
 }
 
 int cmd_display_logo(const char *cmd, const char *args, int query, char *prev_cmd)
 {
 	return string_setting(cmd, args, query, prev_cmd,
-			conf->display_logo, sizeof(conf->display_logo), "Display Logo");
+			conf->display_logo, sizeof(conf->display_logo), "Display Logo", NULL);
 }
 
 int cmd_display_layout_r(const char *cmd, const char *args, int query, char *prev_cmd)
 {
 	return string_setting(cmd, args, query, prev_cmd,
 			conf->display_layout_r, sizeof(conf->display_layout_r),
-			"Display Layout (Right)");
+			"Display Layout (Right)", NULL);
 }
 
 int cmd_reset(const char *cmd, const char *args, int query, char *prev_cmd)
@@ -719,7 +745,7 @@ int cmd_wifi_mac(const char *cmd, const char *args, int query, char *prev_cmd)
 int cmd_wifi_ssid(const char *cmd, const char *args, int query, char *prev_cmd)
 {
 	return string_setting(cmd, args, query, prev_cmd,
-			conf->wifi_ssid, sizeof(conf->wifi_ssid), "WiFi SSID");
+			conf->wifi_ssid, sizeof(conf->wifi_ssid), "WiFi SSID", NULL);
 }
 
 int cmd_wifi_status(const char *cmd, const char *args, int query, char *prev_cmd)
@@ -742,69 +768,35 @@ int cmd_wifi_stats(const char *cmd, const char *args, int query, char *prev_cmd)
 
 int cmd_wifi_country(const char *cmd, const char *args, int query, char *prev_cmd)
 {
-	if (query) {
-		printf("%s\n", conf->wifi_country);
-	} else {
-		if (valid_wifi_country(args)) {
-			log_msg(LOG_NOTICE, "Wi-Fi Country change '%s' --> '%s'",
-				conf->wifi_country, args);
-			strncopy(conf->wifi_country, args, sizeof(conf->wifi_country));
-		} else {
-			log_msg(LOG_WARNING, "Invalid Wi-Fi country: %s", args);
-			return 2;
-		}
-	}
-	return 0;
+	return string_setting(cmd, args, query, prev_cmd,
+			conf->wifi_country, sizeof(conf->wifi_country),
+			"WiFi Country", valid_wifi_country);
 }
 
 int cmd_wifi_password(const char *cmd, const char *args, int query, char *prev_cmd)
 {
 	return string_setting(cmd, args, query, prev_cmd,
-			conf->wifi_passwd, sizeof(conf->wifi_passwd), "WiFi Password");
+			conf->wifi_passwd, sizeof(conf->wifi_passwd),
+			"WiFi Password", NULL);
 }
 
 int cmd_wifi_hostname(const char *cmd, const char *args, int query, char *prev_cmd)
 {
-	if (query) {
-		printf("%s\n", conf->hostname);
-	} else {
-		for (int i = 0; i < strlen(args); i++) {
-			if (!(isalpha((int)args[i]) || args[i] == '-')) {
-				return 1;
-			}
-		}
-		log_msg(LOG_NOTICE, "System hostname change '%s' --> '%s'", conf->hostname, args);
-		strncopy(conf->hostname, args, sizeof(conf->hostname));
-	}
-	return 0;
+	return string_setting(cmd, args, query, prev_cmd,
+			conf->hostname, sizeof(conf->hostname),
+			"WiFi Hostname", valid_hostname);
 }
 
 int cmd_wifi_mode(const char *cmd, const char *args, int query, char *prev_cmd)
 {
-	int val;
-
-	if (query) {
-		printf("%u\n", conf->wifi_mode);
-		return 0;
-	}
-
-	if (str_to_int(args, &val, 10)) {
-		if (val >= 0 && val <= 1) {
-			log_msg(LOG_NOTICE, "WiFi mode change %d --> %d", cfg->wifi_mode, val);
-			conf->wifi_mode = val;
-		} else {
-			log_msg(LOG_WARNING, "Invalid WiFi mode: %s", args);
-			return 2;
-		}
-		return 0;
-	}
-	return 1;
+	return uint8_setting(cmd, args, query, prev_cmd,
+			&conf->wifi_mode, 0, 1, "WiFi Mode");
 }
 
 int cmd_mqtt_server(const char *cmd, const char *args, int query, char *prev_cmd)
 {
 	return string_setting(cmd, args, query, prev_cmd,
-			conf->mqtt_server, sizeof(conf->mqtt_server), "MQTT Server");
+			conf->mqtt_server, sizeof(conf->mqtt_server), "MQTT Server", NULL);
 }
 
 int cmd_mqtt_port(const char *cmd, const char *args, int query, char *prev_cmd)
@@ -816,13 +808,13 @@ int cmd_mqtt_port(const char *cmd, const char *args, int query, char *prev_cmd)
 int cmd_mqtt_user(const char *cmd, const char *args, int query, char *prev_cmd)
 {
 	return string_setting(cmd, args, query, prev_cmd,
-			conf->mqtt_user, sizeof(conf->mqtt_user), "MQTT User");
+			conf->mqtt_user, sizeof(conf->mqtt_user), "MQTT User", NULL);
 }
 
 int cmd_mqtt_pass(const char *cmd, const char *args, int query, char *prev_cmd)
 {
 	return string_setting(cmd, args, query, prev_cmd,
-			conf->mqtt_pass, sizeof(conf->mqtt_pass), "MQTT Password");
+			conf->mqtt_pass, sizeof(conf->mqtt_pass), "MQTT Password", NULL);
 }
 
 int cmd_mqtt_status_interval(const char *cmd, const char *args, int query, char *prev_cmd)
@@ -840,19 +832,22 @@ int cmd_mqtt_allow_scpi(const char *cmd, const char *args, int query, char *prev
 int cmd_mqtt_status_topic(const char *cmd, const char *args, int query, char *prev_cmd)
 {
 	return string_setting(cmd, args, query, prev_cmd,
-			conf->mqtt_status_topic, sizeof(conf->mqtt_status_topic), "MQTT Status Topic");
+			conf->mqtt_status_topic, sizeof(conf->mqtt_status_topic),
+			"MQTT Status Topic", NULL);
 }
 
 int cmd_mqtt_cmd_topic(const char *cmd, const char *args, int query, char *prev_cmd)
 {
 	return string_setting(cmd, args, query, prev_cmd,
-			conf->mqtt_cmd_topic, sizeof(conf->mqtt_cmd_topic), "MQTT Command Topic");
+			conf->mqtt_cmd_topic, sizeof(conf->mqtt_cmd_topic),
+			"MQTT Command Topic", NULL);
 }
 
 int cmd_mqtt_resp_topic(const char *cmd, const char *args, int query, char *prev_cmd)
 {
 	return string_setting(cmd, args, query, prev_cmd,
-			conf->mqtt_resp_topic, sizeof(conf->mqtt_resp_topic), "MQTT Response Topic");
+			conf->mqtt_resp_topic, sizeof(conf->mqtt_resp_topic),
+			"MQTT Response Topic", NULL);
 }
 
 
@@ -998,7 +993,7 @@ int cmd_time(const char *cmd, const char *args, int query, char *prev_cmd)
 int cmd_timezone(const char *cmd, const char *args, int query, char *prev_cmd)
 {
 	return string_setting(cmd, args, query, prev_cmd,
-			conf->timezone, sizeof(conf->timezone), "Timezone");
+			conf->timezone, sizeof(conf->timezone), "Timezone", NULL);
 }
 
 int cmd_uptime(const char *cmd, const char *args, int query, char *prev_cmd)
@@ -1036,7 +1031,7 @@ int cmd_err(const char *cmd, const char *args, int query, char *prev_cmd)
 int cmd_name(const char *cmd, const char *args, int query, char *prev_cmd)
 {
 	return string_setting(cmd, args, query, prev_cmd,
-			conf->name, sizeof(conf->name), "System Name");
+			conf->name, sizeof(conf->name), "System Name", NULL);
 }
 
 
@@ -1204,6 +1199,7 @@ const struct cmd_t display_commands[] = {
 	{ "THEMe",     4, NULL,              cmd_display_theme },
 	{ 0, 0, 0, 0 }
 };
+
 const struct cmd_t wifi_commands[] = {
 #ifdef WIFI_SUPPORT
 	{ "COUntry",   3, NULL,              cmd_wifi_country },

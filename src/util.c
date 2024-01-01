@@ -195,6 +195,20 @@ int valid_wifi_country(const char *country)
 	return 0;
 }
 
+int valid_hostname(const char *name)
+{
+	if (!name)
+		return 0;
+
+	for (int i = 0; i < strlen(name); i++) {
+		if (!(isalpha((int)name[i]) || name[i] == '-')) {
+			return 0;
+		}
+	}
+
+	return 1;
+}
+
 int check_for_change(double oldval, double newval, double threshold)
 {
 	double delta = fabs(oldval - newval);
