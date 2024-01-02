@@ -39,13 +39,13 @@
 
 #ifdef WIFI_SUPPORT
 
-#define MQTTS_PORT 8883
 #define MQTT_CMD_MAX_LEN 100
 
 mqtt_client_t *mqtt_client = NULL;
 ip_addr_t mqtt_server_ip = IPADDR4_INIT_BYTES(0, 0, 0, 0);
 u16_t mqtt_server_port = 0;
 int incoming_topic = 0;
+int mqtt_qos = 1;
 char mqtt_scpi_cmd[MQTT_CMD_MAX_LEN];
 bool mqtt_scpi_cmd_queued = false;
 absolute_time_t ABSOLUTE_TIME_INITIALIZED_VAR(t_mqtt_disconnect, 0);
@@ -55,65 +55,6 @@ u16_t mqtt_reconnect = 0;
 void mqtt_connect(mqtt_client_t *client);
 
 
-int process_mqtt_command(const char *cmd)
-{
-	struct brickpico_state *st = brickpico_state;
-	char buf[MQTT_CMD_MAX_LEN], *saveptr, *tok;
-	int output = 0;
-	int pwr = -1;
-	int pwm = -1;
-
-	if (!cmd)
-		return -1;
-
-	strncopy(buf, cmd, sizeof(buf));
-
-	if (!(tok = strtok_r(buf, ":", &saveptr)))
-		return -2;
-
-	if (!strncasecmp(tok, "ALL", 4)) {
-		output = -1;
-	} else {
-		int tmp;
-		if (str_to_int(tok, &tmp, 10)) {
-			if (tmp >= 1 && tmp <= OUTPUT_COUNT)
-				output = tmp;
-		}
-	}
-	if (output == 0)
-		return -3;
-
-	if ((tok = strtok_r(NULL, ":", &saveptr))) {
-		if (!strncasecmp(tok, "ON", 3)) {
-			pwr = 1;
-		}
-		else if (!strncasecmp(tok, "OFF", 4)) {
-			pwr = 0;
-		}
-		else if (!strncasecmp(tok, "PWM", 4)) {
-			if ((tok = strtok_r(NULL, ":", &saveptr))) {
-				int tmp;
-				if (str_to_int(tok, &tmp, 10)) {
-					if (tmp >= 0 && tmp <= 100)
-						pwm = tmp;
-				}
-			}
-			if (pwm < 0)
-				return -4;
-		}
-	}
-
-	for (int i = 0; i < OUTPUT_COUNT; i++) {
-		if (output == i + 1 || output == -1) {
-			if (pwr >= 0)
-				st->pwr[i] = pwr;
-			if (pwm >= 0)
-				st->pwm[i] = pwm;
-		}
-	}
-
-	return 0;
-}
 
 static void mqtt_pub_request_cb(void *arg, err_t result)
 {
@@ -186,7 +127,7 @@ void send_mqtt_command_response(const char *cmd, int result, const char *msg)
 		log_msg(LOG_WARNING,"json_response_message(): failed");
 		return;
 	}
-	mqtt_publish_message(cfg->mqtt_resp_topic, buf, strlen(buf), 2, 0);
+	mqtt_publish_message(cfg->mqtt_resp_topic, buf, strlen(buf), mqtt_qos, 0);
 	free(buf);
 }
 
@@ -204,67 +145,52 @@ static void mqtt_incoming_publish_cb(void *arg, const char *topic, u32_t tot_len
 static void mqtt_incoming_data_cb(void *arg, const u8_t *data, u16_t len, u8_t flags)
 {
 	char cmd[MQTT_CMD_MAX_LEN];
-	u8_t *end, *p;
-	u32_t l;
-	int res, mode;
+	const u8_t *end, *start;
+	int l;
+
 
 	log_msg(LOG_DEBUG, "MQTT incoming publish payload with length %d, flags %u\n",
 		len, (unsigned int)flags);
 
-	if (incoming_topic != 1)
+	if (incoming_topic != 1 || len < 1)
 		return;
 
-	/* Search for a command we recognize */
-	if ((p = memmem(data, len, "CMD:", 4))) {
-		mode = 0;
-		p += 4;
+	/* Check for command prefix, if found skip past prefix */
+	if ((start = memmem(data, len, "CMD:", 4))) {
+		start += 4;
+		l = len - (start - data);
+		if (l < 1)
+			return;
+	} else {
+		start = data;
+		l = len;
 	}
-	else if ((p = memmem(data, len, "SCPI:", 5))) {
-		mode = 1;
-		p += 5;
-	}
-	else {
+	/* Check for command suffix, if found ignore anything past it */
+	if (!(end = memchr(start, ';', l)))
+		end = start + l;
+	if ((l = end - start) < 1)
 		return;
-	}
-
-	l = len - (p - data);
-	if (l < 1)
-		return;
-
-	if (!(end = memchr(p, ';', l))) {
-		log_msg(LOG_INFO, "MQTT ignore non-terminated command.");
-		return;
-	}
-	l = end - p;
 	if (l >= sizeof(cmd))
 		l = sizeof(cmd) - 1;
-	memcpy(cmd, p, l);
+	memcpy(cmd, start, l);
 	cmd[l] = 0;
 
-	/* Process command */
-	if (mode ==  1) {
-		if (!cfg->mqtt_allow_scpi) {
+
+	/* Check if should be command allowed */
+	if (!cfg->mqtt_allow_scpi) {
+		if (strncasecmp(cmd, "WRITE:", 6)) {
 			log_msg(LOG_NOTICE, "MQTT SCPI commands not allowed: '%s'", cmd);
 			return;
 		}
-		if (mqtt_scpi_cmd_queued) {
-			log_msg(LOG_NOTICE, "MQTT SCPI command queue full: '%s'", cmd);
-			send_mqtt_command_response(cmd, 1, "SCPI command queue full");
-		} else {
-			log_msg(LOG_NOTICE, "MQTT SCPI command queued: '%s'", cmd);
-			strncopy(mqtt_scpi_cmd, cmd, sizeof(mqtt_scpi_cmd));
-			mqtt_scpi_cmd_queued = true;
-		}
+	}
+
+	if (mqtt_scpi_cmd_queued) {
+		log_msg(LOG_NOTICE, "MQTT SCPI command queue full: '%s'", cmd);
+		send_mqtt_command_response(cmd, 1, "SCPI command queue full");
 	} else {
-		res = process_mqtt_command(cmd);
-		if (res == 0) {
-			log_msg(LOG_NOTICE, "MQTT command processed: '%s'", cmd);
-			send_mqtt_command_response(cmd, res, "command successfull");
-		}
-		else {
-			log_msg(LOG_NOTICE, "MQTT invalid command: '%s' (%d)", cmd, res);
-			send_mqtt_command_response(cmd, res, "invalid command");
-		}
+		log_msg(LOG_NOTICE, "MQTT SCPI command queued: '%s'", cmd);
+		strncopy(mqtt_scpi_cmd, cmd, sizeof(mqtt_scpi_cmd));
+		mqtt_scpi_cmd_queued = true;
 	}
 
 }
@@ -328,13 +254,17 @@ static void mqtt_dns_resolve_cb(const char *name, const ip_addr_t *ipaddr, void 
 
 void mqtt_connect(mqtt_client_t *client)
 {
+	struct mqtt_connect_client_info_t ci;
+	char client_id[32];
 	uint16_t port = MQTT_PORT;
 	err_t err;
 
 	if (!client)
 		return;
 
+	cyw43_arch_lwip_begin();
 	err = dns_gethostbyname(cfg->mqtt_server, &mqtt_server_ip, mqtt_dns_resolve_cb, NULL);
+	cyw43_arch_lwip_end();
 	if (err != ERR_OK) {
 		if (err == ERR_INPROGRESS)
 			log_msg(LOG_INFO, "Resolving DNS name: %s\n", cfg->mqtt_server);
@@ -345,11 +275,10 @@ void mqtt_connect(mqtt_client_t *client)
 		return;
 	}
 
-	struct mqtt_connect_client_info_t ci;
+	/* Setup client connect info */
 	memset(&ci, 0, sizeof(ci));
-
-	char client_id[32];
-	snprintf(client_id, sizeof(client_id), "brickpico-%s_%s", BRICKPICO_BOARD, pico_serial_str());
+	snprintf(client_id, sizeof(client_id), "brickpico-%s_%s",
+		BRICKPICO_BOARD, pico_serial_str());
 	ci.client_id = client_id;
 	ci.client_user = cfg->mqtt_user;
 	ci.client_pass = cfg->mqtt_pass;
@@ -361,8 +290,10 @@ void mqtt_connect(mqtt_client_t *client)
 
 #if TLS_SUPPORT
 	if (cfg->mqtt_tls) {
+		cyw43_arch_lwip_begin();
 		ci.tls_config = altcp_tls_create_config_client(NULL, 0);
-		port = MQTTS_PORT;;
+		cyw43_arch_lwip_end();
+		port = MQTT_TLS_PORT;;
 	}
 #endif
 	if (cfg->mqtt_port > 0)
@@ -371,9 +302,10 @@ void mqtt_connect(mqtt_client_t *client)
 
 	log_msg(LOG_INFO, "MQTT Connecting to %s:%u%s",	cfg->mqtt_server, mqtt_server_port,
 		cfg->mqtt_tls ? " (TLS)" : "");
-
+	cyw43_arch_lwip_begin();
 	err = mqtt_client_connect(mqtt_client, &mqtt_server_ip, mqtt_server_port,
 				mqtt_connection_cb, 0, &ci);
+	cyw43_arch_lwip_end();
 	if (err != ERR_OK) {
 		log_msg(LOG_WARNING,"mqtt_client_connect(): failed %d", err);
 	}
@@ -384,14 +316,14 @@ void brickpico_setup_mqtt_client()
 	ip_addr_set_zero(&mqtt_server_ip);
 
 	cyw43_arch_lwip_begin();
-	if ((mqtt_client = mqtt_client_new())) {
-		mqtt_connect(mqtt_client);
-	}
+	mqtt_client = mqtt_client_new();
 	cyw43_arch_lwip_end();
-
 	if (!mqtt_client) {
 		log_msg(LOG_WARNING,"mqtt_client_new(): failed");
+		return;
 	}
+
+	mqtt_connect(mqtt_client);
 }
 
 int brickpico_mqtt_client_active()
@@ -461,8 +393,40 @@ void brickpico_mqtt_publish()
 		log_msg(LOG_WARNING,"json_status_message(): failed");
 		return;
 	}
-	mqtt_publish_message(cfg->mqtt_status_topic, buf, strlen(buf), 2 , 0);
+	mqtt_publish_message(cfg->mqtt_status_topic, buf, strlen(buf), mqtt_qos, 0);
 	free(buf);
+}
+
+void brickpico_mqtt_publish_duty()
+{
+	const struct brickpico_state *st = brickpico_state;
+	char topic[MQTT_MAX_TOPIC_LEN + 8];
+	char buf[64];
+
+	if (!mqtt_client)
+		return;
+
+	if (strlen(cfg->mqtt_pwm_topic) > 0) {
+		for (int i = 0; i < OUTPUT_COUNT; i++) {
+			if (cfg->mqtt_pwm_mask & (1 << i)) {
+				snprintf(topic, sizeof(topic), cfg->mqtt_pwm_topic, i + 1);
+				snprintf(buf, sizeof(buf), "%u", (st->pwr[i] ? st->pwm[i] : 0));
+				mqtt_publish_message(topic, buf, strlen(buf), mqtt_qos, 0);
+			}
+		}
+	}
+}
+
+void brickpico_mqtt_publish_temp()
+{
+	const struct brickpico_state *st = brickpico_state;
+	char buf[32];
+
+	if (!mqtt_client || strlen(cfg->mqtt_temp_topic) < 1)
+		return;
+
+	snprintf(buf, sizeof(buf), "%.1lf", st->temp);
+	mqtt_publish_message(cfg->mqtt_temp_topic, buf, strlen(buf), mqtt_qos, 0);
 }
 
 void brickpico_mqtt_scpi_command()

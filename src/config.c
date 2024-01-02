@@ -33,8 +33,6 @@
 #include "brickpico.h"
 
 
-#define DEFAULT_MQTT_STATUS_INTERVAL 600
-
 struct brickpico_config brickpico_config;
 const struct brickpico_config *cfg = &brickpico_config;
 auto_init_mutex(config_mutex_inst);
@@ -76,6 +74,9 @@ void clear_config(struct brickpico_config *cfg)
 	cfg->serial_active = true;
 	cfg->led_mode = 0;
 	cfg->pwm_freq = 1000;
+	cfg->adc_ref_voltage = 3.3;
+	cfg->temp_offset = 0.0;
+	cfg->temp_coefficient = 1.0;
 	strncopy(cfg->name, "brickpico1", sizeof(cfg->name));
 	strncopy(cfg->display_type, "default", sizeof(cfg->display_type));
 	strncopy(cfg->display_theme, "default", sizeof(cfg->display_theme));
@@ -99,10 +100,15 @@ void clear_config(struct brickpico_config *cfg)
 	cfg->mqtt_allow_scpi = false;
 	cfg->mqtt_user[0] = 0;
 	cfg->mqtt_pass[0] = 0;
-	cfg->mqtt_status_interval = DEFAULT_MQTT_STATUS_INTERVAL;
 	cfg->mqtt_status_topic[0] = 0;
 	cfg->mqtt_cmd_topic[0] = 0;
 	cfg->mqtt_resp_topic[0] = 0;
+	cfg->mqtt_pwm_topic[0] = 0;
+	cfg->mqtt_temp_topic[0] = 0;
+	cfg->mqtt_status_interval = DEFAULT_MQTT_STATUS_INTERVAL;
+	cfg->mqtt_temp_interval = DEFAULT_MQTT_TEMP_INTERVAL;
+	cfg->mqtt_pwm_interval = DEFAULT_MQTT_PWM_INTERVAL;
+	cfg->mqtt_pwm_mask = 0;
 #endif
 
 	mutex_exit(config_mutex);
@@ -189,6 +195,12 @@ cJSON *config_to_json(const struct brickpico_config *cfg)
 	if (strlen(cfg->mqtt_resp_topic) > 0)
 		cJSON_AddItemToObject(config, "mqtt_resp_topic",
 				cJSON_CreateString(cfg->mqtt_resp_topic));
+	if (strlen(cfg->mqtt_pwm_topic) > 0)
+		cJSON_AddItemToObject(config, "mqtt_pwm_topic",
+				cJSON_CreateString(cfg->mqtt_pwm_topic));
+	if (strlen(cfg->mqtt_temp_topic) > 0)
+		cJSON_AddItemToObject(config, "mqtt_temp_topic",
+				cJSON_CreateString(cfg->mqtt_temp_topic));
 	if (cfg->mqtt_tls != true)
 		cJSON_AddItemToObject(config, "mqtt_tls", cJSON_CreateNumber(cfg->mqtt_tls));
 	if (cfg->mqtt_allow_scpi == true)
@@ -197,6 +209,17 @@ cJSON *config_to_json(const struct brickpico_config *cfg)
 	if (cfg->mqtt_status_interval != DEFAULT_MQTT_STATUS_INTERVAL)
 		cJSON_AddItemToObject(config, "mqtt_status_interval",
 				cJSON_CreateNumber(cfg->mqtt_status_interval));
+	if (cfg->mqtt_temp_interval != DEFAULT_MQTT_TEMP_INTERVAL)
+		cJSON_AddItemToObject(config, "mqtt_temp_interval",
+				cJSON_CreateNumber(cfg->mqtt_temp_interval));
+	if (cfg->mqtt_pwm_interval != DEFAULT_MQTT_PWM_INTERVAL)
+		cJSON_AddItemToObject(config, "mqtt_pwm_interval",
+				cJSON_CreateNumber(cfg->mqtt_pwm_interval));
+	if (cfg->mqtt_pwm_mask)
+		cJSON_AddItemToObject(config, "mqtt_pwm_mask",
+				cJSON_CreateString(
+					bitmask_to_str(cfg->mqtt_pwm_mask, OUTPUT_COUNT,
+						1, true)));
 #endif
 
 	/* PWM Outputs */
@@ -251,6 +274,7 @@ int json_to_config(cJSON *config, struct brickpico_config *cfg)
 	cJSON *ref, *item;
 	int id;
 	const char *name, *val;
+	uint32_t m;
 
 	if (!config || !cfg)
 		return -1;
@@ -385,8 +409,26 @@ int json_to_config(cJSON *config, struct brickpico_config *cfg)
 		if ((val = cJSON_GetStringValue(ref)))
 			strncopy(cfg->mqtt_resp_topic, val, sizeof(cfg->mqtt_resp_topic));
 	}
+	if ((ref = cJSON_GetObjectItem(config, "mqtt_pwm_topic"))) {
+		if ((val = cJSON_GetStringValue(ref)))
+			strncopy(cfg->mqtt_pwm_topic, val, sizeof(cfg->mqtt_pwm_topic));
+	}
+	if ((ref = cJSON_GetObjectItem(config, "mqtt_temp_topic"))) {
+		if ((val = cJSON_GetStringValue(ref)))
+			strncopy(cfg->mqtt_temp_topic, val, sizeof(cfg->mqtt_temp_topic));
+	}
 	if ((ref = cJSON_GetObjectItem(config, "mqtt_status_interval"))) {
 		cfg->mqtt_status_interval = cJSON_GetNumberValue(ref);
+	}
+	if ((ref = cJSON_GetObjectItem(config, "mqtt_temp_interval"))) {
+		cfg->mqtt_temp_interval = cJSON_GetNumberValue(ref);
+	}
+	if ((ref = cJSON_GetObjectItem(config, "mqtt_pwm_interval"))) {
+		cfg->mqtt_pwm_interval = cJSON_GetNumberValue(ref);
+	}
+	if ((ref = cJSON_GetObjectItem(config, "mqtt_pwm_mask"))) {
+		if (!str_to_bitmask(cJSON_GetStringValue(ref), OUTPUT_COUNT, &m, 1))
+			cfg->mqtt_pwm_mask = m;
 	}
 #endif
 

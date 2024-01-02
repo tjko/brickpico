@@ -97,6 +97,27 @@ int string_setting(const char *cmd, const char *args, int query, char *prev_cmd,
 	return 0;
 }
 
+int bitmask16_setting(const char *cmd, const char *args, int query, char *prev_cmd,
+		uint16_t *mask, uint16_t len, uint8_t base, const char *name)
+{
+	uint32_t old = *mask;
+	uint32_t new;
+
+	if (query) {
+		printf("%s\n", bitmask_to_str(old, len, base, true));
+		return 0;
+	}
+
+	if (!str_to_bitmask(args, len, &new, base)) {
+		if (old != new) {
+			log_msg(LOG_NOTICE, "%s change 0x%lx --> 0x%lx", name, old, new);
+			*mask = new;
+		}
+		return 0;
+	}
+	return 1;
+}
+
 int uint32_setting(const char *cmd, const char *args, int query, char *prev_cmd,
 		uint32_t *var, uint32_t min_val, uint32_t max_val, const char *name)
 {
@@ -823,6 +844,18 @@ int cmd_mqtt_status_interval(const char *cmd, const char *args, int query, char 
 			&conf->mqtt_status_interval, 0, (86400 * 30), "MQTT Publish Status Interval");
 }
 
+int cmd_mqtt_temp_interval(const char *cmd, const char *args, int query, char *prev_cmd)
+{
+	return uint32_setting(cmd, args, query, prev_cmd,
+			&conf->mqtt_temp_interval, 0, (86400 * 30), "MQTT Publish Temp Interval");
+}
+
+int cmd_mqtt_pwm_interval(const char *cmd, const char *args, int query, char *prev_cmd)
+{
+	return uint32_setting(cmd, args, query, prev_cmd,
+			&conf->mqtt_pwm_interval, 0, (86400 * 30), "MQTT Publish PWM Interval");
+}
+
 int cmd_mqtt_allow_scpi(const char *cmd, const char *args, int query, char *prev_cmd)
 {
 	return bool_setting(cmd, args, query, prev_cmd,
@@ -834,6 +867,13 @@ int cmd_mqtt_status_topic(const char *cmd, const char *args, int query, char *pr
 	return string_setting(cmd, args, query, prev_cmd,
 			conf->mqtt_status_topic, sizeof(conf->mqtt_status_topic),
 			"MQTT Status Topic", NULL);
+}
+
+int cmd_mqtt_temp_topic(const char *cmd, const char *args, int query, char *prev_cmd)
+{
+	return string_setting(cmd, args, query, prev_cmd,
+			conf->mqtt_temp_topic, sizeof(conf->mqtt_temp_topic),
+			"MQTT Temp Topic", NULL);
 }
 
 int cmd_mqtt_cmd_topic(const char *cmd, const char *args, int query, char *prev_cmd)
@@ -848,6 +888,20 @@ int cmd_mqtt_resp_topic(const char *cmd, const char *args, int query, char *prev
 	return string_setting(cmd, args, query, prev_cmd,
 			conf->mqtt_resp_topic, sizeof(conf->mqtt_resp_topic),
 			"MQTT Response Topic", NULL);
+}
+
+int cmd_mqtt_pwm_topic(const char *cmd, const char *args, int query, char *prev_cmd)
+{
+	return string_setting(cmd, args, query, prev_cmd,
+			conf->mqtt_pwm_topic, sizeof(conf->mqtt_pwm_topic),
+			"MQTT PWM Topic", NULL);
+}
+
+int cmd_mqtt_mask_pwm(const char *cmd, const char *args, int query, char *prev_cmd)
+{
+	return bitmask16_setting(cmd, args, query, prev_cmd,
+				&conf->mqtt_pwm_mask, OUTPUT_COUNT,
+				1, "MQTT PWM Mask");
 }
 
 
@@ -1219,20 +1273,40 @@ const struct cmd_t wifi_commands[] = {
 	{ 0, 0, 0, 0 }
 };
 
+const struct cmd_t mqtt_mask_commands[] = {
+	{ "PWM",       3, NULL,              cmd_mqtt_mask_pwm },
+	{ 0, 0, 0, 0 }
+};
+
+const struct cmd_t mqtt_interval_commands[] = {
+	{ "STATUS",    6, NULL,              cmd_mqtt_status_interval },
+	{ "TEMP",      4, NULL,              cmd_mqtt_temp_interval },
+	{ "PWM",       3, NULL,              cmd_mqtt_pwm_interval },
+	{ 0, 0, 0, 0 }
+};
+
+const struct cmd_t mqtt_topic_commands[] = {
+	{ "STATus",    4, NULL,              cmd_mqtt_status_topic },
+	{ "TEMP",      4, NULL,              cmd_mqtt_temp_topic },
+	{ "COMMand",   4, NULL,              cmd_mqtt_cmd_topic },
+	{ "RESPonse",  4, NULL,              cmd_mqtt_resp_topic },
+	{ "PWM",       3, NULL,              cmd_mqtt_pwm_topic },
+	{ 0, 0, 0, 0 }
+};
+
 const struct cmd_t mqtt_commands[] = {
 #ifdef WIFI_SUPPORT
 	{ "SERVer",    4, NULL,              cmd_mqtt_server },
 	{ "PORT",      4, NULL,              cmd_mqtt_port },
 	{ "USER",      4, NULL,              cmd_mqtt_user },
 	{ "PASSword",  4, NULL,              cmd_mqtt_pass },
-	{ "INTerval",  3, NULL,              cmd_mqtt_status_interval },
 	{ "SCPI",      4, NULL,              cmd_mqtt_allow_scpi },
-	{ "STATus",    4, NULL,              cmd_mqtt_status_topic },
-	{ "COMMand",   4, NULL,              cmd_mqtt_cmd_topic },
-	{ "RESPonse",  4, NULL,              cmd_mqtt_resp_topic },
 #if TLS_SUPPORT
 	{ "TLS",       3, NULL,              cmd_mqtt_tls },
 #endif
+	{ "INTerval",  3, mqtt_interval_commands, NULL },
+	{ "MASK",      4, mqtt_mask_commands, NULL },
+	{ "TOPIC",     5, mqtt_topic_commands, NULL },
 #endif
 	{ 0, 0, 0, 0 }
 };
