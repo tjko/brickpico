@@ -221,33 +221,34 @@ static void mqtt_connection_cb(mqtt_client_t *client, void *arg, mqtt_connection
 	}
 	else if (status == MQTT_CONNECT_DISCONNECTED) {
 		log_msg(LOG_WARNING, "MQTT disconnected from %s", ipaddr_ntoa(&mqtt_server_ip));
-		mqtt_reconnect = 5;
+		mqtt_reconnect = 15;
 	}
 	else if (status == MQTT_CONNECT_TIMEOUT) {
-		log_msg(LOG_WARNING, "MQTT connect: timeout %s", ipaddr_ntoa(&mqtt_server_ip));
+		log_msg(LOG_WARNING, "MQTT connect: timeout (%s)", ipaddr_ntoa(&mqtt_server_ip));
 		mqtt_reconnect = 30;
 	}
 	else if (status == MQTT_CONNECT_REFUSED_USERNAME_PASS) {
-		log_msg(LOG_WARNING, "MQTT connect: login failure");
+		log_msg(LOG_WARNING, "MQTT connect: login failure (%s)", ipaddr_ntoa(&mqtt_server_ip));
 	}
 	else if (status == MQTT_CONNECT_REFUSED_NOT_AUTHORIZED_) {
-		log_msg(LOG_WARNING, "MQTT connect: not authorized");
+		log_msg(LOG_WARNING, "MQTT connect: not authorized (%s)", ipaddr_ntoa(&mqtt_server_ip));
+		mqtt_reconnect = 90;
 	}
 	else {
-		log_msg(LOG_WARNING, "MQTT connect: refused (%d)", status);
+		log_msg(LOG_WARNING, "MQTT connect: refused (status=%d) (%s)", status, ipaddr_ntoa(&mqtt_server_ip));
+		mqtt_reconnect = 90;
 	}
 }
 
 static void mqtt_dns_resolve_cb(const char *name, const ip_addr_t *ipaddr, void *arg)
 {
-	t_mqtt_disconnect = get_absolute_time();
-
 	if (ipaddr && ipaddr->addr) {
 		log_msg(LOG_INFO, "DNS resolved: %s -> %s\n", name, ipaddr_ntoa(ipaddr));
 		ip_addr_set(&mqtt_server_ip, ipaddr);
 		mqtt_connect(mqtt_client);
 	} else {
 		log_msg(LOG_WARNING, "Failed to resolve MQTT server name: %s", name);
+		t_mqtt_disconnect = get_absolute_time();
 		mqtt_reconnect = 30;
 	}
 }
@@ -262,6 +263,7 @@ void mqtt_connect(mqtt_client_t *client)
 	if (!client)
 		return;
 
+	mqtt_reconnect = 0;
 	cyw43_arch_lwip_begin();
 	err = dns_gethostbyname(cfg->mqtt_server, &mqtt_server_ip, mqtt_dns_resolve_cb, NULL);
 	cyw43_arch_lwip_end();
@@ -338,7 +340,6 @@ void brickpico_mqtt_reconnect()
 
 	if (time_passed(&t_mqtt_disconnect, mqtt_reconnect * 1000)) {
 		log_msg(LOG_INFO, "MQTT attempt reconnecting to server");
-		mqtt_reconnect = 0;
 		mqtt_connect(mqtt_client);
 	}
 }
