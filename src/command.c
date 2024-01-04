@@ -1287,6 +1287,7 @@ const struct cmd_t wifi_commands[] = {
 	{ 0, 0, 0, 0 }
 };
 
+#ifdef WIFI_SUPPORT
 const struct cmd_t mqtt_mask_commands[] = {
 	{ "PWM",       3, NULL,              cmd_mqtt_mask_pwm },
 	{ 0, 0, 0, 0 }
@@ -1309,6 +1310,7 @@ const struct cmd_t mqtt_topic_commands[] = {
 	{ "WARNing",   4, NULL,              cmd_mqtt_warn_topic },
 	{ 0, 0, 0, 0 }
 };
+#endif
 
 const struct cmd_t mqtt_commands[] = {
 #ifdef WIFI_SUPPORT
