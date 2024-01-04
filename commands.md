@@ -60,18 +60,30 @@ BrickPico supports following commands:
 * [SYStem:MQTT:USER?](#systemmqttuser-1)
 * [SYStem:MQTT:PASSword](#systemmqttpassword)
 * [SYStem:MQTT:PASSword?](#systemmqttpassword-1)
-* [SYStem:MQTT:INTerval](#systemmqttinterval)
-* [SYStem:MQTT:INTerval?](#systemmqttinterval-1)
 * [SYStem:MQTT:SCPI](#systemmqttscpi)
 * [SYStem:MQTT:SCPI?](#systemmqttscpi-1)
-* [SYStem:MQTT:STATus](#systemmqttstatus)
-* [SYStem:MQTT:STATus?](#systemmqttstatus-1)
-* [SYStem:MQTT:COMMand](#systemmqttcommand)
-* [SYStem:MQTT:COMMand?](#systemmqttcommand-1)
-* [SYStem:MQTT:RESPonse](#systemmqttresponse)
-* [SYStem:MQTT:RESPonse?](#systemmqtresponse-1)
 * [SYStem:MQTT:TLS](#systemmqtttls)
 * [SYStem:MQTT:TLS?](#systemmqtttls-1)
+* [SYStem:MQTT:INTerval:STATus](#systemmqttintervalstatus)
+* [SYStem:MQTT:INTerval:STATus?](#systemmqttintervalstatus-1)
+* [SYStem:MQTT:INTerval:TEMP](#systemmqttintervaltemp)
+* [SYStem:MQTT:INTerval:TEMP?](#systemmqttintervaltemp-1)
+* [SYStem:MQTT:INTerval:PWM](#systemmqttintervalpwm)
+* [SYStem:MQTT:INTerval:PWM?](#systemmqttintervalpwm-1)
+* [SYStem:MQTT:TOPIC:STATus](#systemmqtttopicstatus)
+* [SYStem:MQTT:TOPIC:STATus?](#systemmqtttopicstatus-1)
+* [SYStem:MQTT:TOPIC:COMMand](#systemmqtttopiccommand)
+* [SYStem:MQTT:TOPIC:COMMand?](#systemmqtttopiccommand-1)
+* [SYStem:MQTT:TOPIC:RESPonse](#systemmqtttopicresponse)
+* [SYStem:MQTT:TOPIC:RESPonse?](#systemmqtttopicresponse-1)
+* [SYStem:MQTT:TOPIC:ERRor](#systemmqtttopicerror)
+* [SYStem:MQTT:TOPIC:ERRor?](#systemmqtttopicerror-1)
+* [SYStem:MQTT:TOPIC:WARNing](#systemmqtttopicwarning)
+* [SYStem:MQTT:TOPIC:WARNing?](#systemmqtttopicwarning-1)
+* [SYStem:MQTT:TOPIC:TEMP](#systemmqtttopictemp)
+* [SYStem:MQTT:TOPIC:TEMP?](#systemmqtttopictemp-1)
+* [SYStem:MQTT:TOPIC:PWM](#systemmqtttopicpwm)
+* [SYStem:MQTT:TOPIC:PWM?](#systemmqtttopicpwm-1)
 * [SYStem:NAME](#systemname)
 * [SYStem:NAME?](#systemname-1)
 * [SYStem:PWMfreq](#systempwmfreq)
@@ -850,51 +862,6 @@ mymqttpassword
 ```
 
 
-#### SYStem:MQTT:STATus
-Configure topic to publish unit status information periodically.
-If this is left to empty (string), then no status information is published to MQTT server.
-
-Default: <empty>
-
-Example:
-```
-SYS:MQTT:STATUS musername/feeds/brickpico1
-```
-
-
-#### SYStem:MQTT:STATus?
-Query currently set topic for publishing unit status information to.
-
-Example:
-```
-SYS:MQTT:STATUS?
-myusername/feeds/brickpico1
-```
-
-
-#### SYStem:MQTT:INTerval
-Configure how often unit will publish (send) status message to status topic.
-Set this to 0 (seconds) to disable publishing status updates.
-Recommended values are 60 (seconds) or higher.
-
-Default: 600  (every 10 minutes)
-
-Example:
-```
-SYS:MQTT:INTERVAL 3600
-```
-
-
-#### SYStem:MQTT:INTerval?
-Query currently set topic for publishing unit status information to.
-
-Example:
-```
-SYS:MQTT:INTERVAL?
-3600
-```
-
-
 #### SYStem:MQTT:SCPI
 Configure if SCPI commands will be accepted via MQTT.
 This is potentially "dangerous" feature so only enable if you understand
@@ -919,50 +886,6 @@ OFF
 ```
 
 
-#### SYStem:MQTT:COMMand
-Configure topic to subscribe to to wait for commands to control outputs.
-If this is left to empty (string), then unit won't subcrible (and accept) any commands from MQTT.
-
-Default: <empty>
-
-Example:
-```
-SYS:MQTT:STATUS musername/feeds/cmd
-```
-
-
-#### SYStem:MQTT:COMMand?
-Query currently set topic for subscribing to wait for commands.
-
-Example:
-```
-SYS:MQTT:STATUS?
-myusername/feeds/cmd
-```
-
-
-#### SYStem:MQTT:RESPonse
-Configure topic to publish responses to commands received from the command topic.
-If this is left to empty, then unit won't send response to any commands.
-
-Default: <empty>
-
-Example:
-```
-SYS:MQTT:STATUS musername/feeds/response
-```
-
-
-#### SYStem:MQTT:RESPonse?
-Query currently set topic for publishing reponses to commands.
-
-Example:
-```
-SYS:MQTT:STATUS?
-myusername/feeds/response
-```
-
-
 #### SYStem:MQTT:TLS
 Enable/disable use of secure connection mode (TLS/SSL) when connecting to MQTT server.
 Default is TLS on to protect MQTT credentials (usename/password).
@@ -982,6 +905,226 @@ Example:
 ```
 SYS:MQTT:TLS?
 ON
+```
+
+
+#### SYStem:MQTT:INTerval:STATus
+Configure how often unit will publish (send) status message to status topic.
+Set this to 0 (seconds) to disable publishing status updates.
+Recommended values are 60 (seconds) or higher.
+
+Default: 600  (every 10 minutes)
+
+Example:
+```
+SYS:MQTT:INT:STAT 3600
+```
+
+
+#### SYStem:MQTT:INTerval:STATus?
+Query currently set frequency for publishing unit status information.
+
+Example:
+```
+SYS:MQTT:INT:STAT?
+3600
+```
+
+
+#### SYStem:MQTT:INTerval:TEMP
+Configure how often unit will publish (send) status message to temp topic.
+Set this to 0 (seconds) to disable publishing temperature updates.
+Recommended values are 60 (seconds) or higher.
+
+Default: 60  (every 60 seconds)
+
+Example:
+```
+SYS:MQTT:INT:TEMP 180
+```
+
+
+#### SYStem:MQTT:INTerval:TEMP?
+Query currently set frequency for publishing unit temperature information.
+
+Example:
+```
+SYS:MQTT:INT:TEMP?
+180
+```
+
+
+#### SYStem:MQTT:INTerval:PWM
+Configure how often unit will publish (send) status message to PWM topic.
+Set this to 0 (seconds) to disable publishing PWM updates.
+Recommended values are 60 (seconds) or higher.
+
+Default: 600  (every 10 minutes)
+
+Example:
+```
+SYS:MQTT:INT:PWM 300
+```
+
+
+#### SYStem:MQTT:INTerval:PWM?
+Query currently set frequency for publishing unit PWM information.
+
+Example:
+```
+SYS:MQTT:INT:PWM?
+300
+```
+
+
+#### SYStem:MQTT:TOPIC:STATus
+Configure topic to publish unit status information periodically.
+If this is left to empty (string), then no status information is published to MQTT server.
+
+Default: <empty>
+
+Example:
+```
+SYS:MQTT:TOPIC:STAT musername/feeds/brickpico1
+```
+
+
+#### SYStem:MQTT:TOPIC:STATus?
+Query currently set topic for publishing unit status information to.
+
+Example:
+```
+SYS:MQTT:TOPIC:STAT?
+myusername/feeds/brickpico1
+```
+
+
+#### SYStem:MQTT:TOPIC:COMMand
+Configure topic to subscribe to to wait for commands to control outputs.
+If this is left to empty (string), then unit won't subcrible (and accept) any commands from MQTT.
+
+Default: <empty>
+
+Example:
+```
+SYS:MQTT:TOPIC:COMM musername/feeds/cmd
+```
+
+
+#### SYStem:MQTT:TOPIC:COMMand?
+Query currently set topic for subscribing to wait for commands.
+
+Example:
+```
+SYS:MQTT:TOPIC:COMM?
+myusername/feeds/cmd
+```
+
+
+#### SYStem:MQTT:TOPIC:RESPonse
+Configure topic to publish responses to commands received from the command topic.
+If this is left to empty, then unit won't send response to any commands.
+
+Default: <empty>
+
+Example:
+```
+SYS:MQTT:TOPIC:RESP musername/feeds/response
+```
+
+
+#### SYStem:MQTT:TOPIC:RESPonse?
+Query currently set topic for publishing reponses to commands.
+
+Example:
+```
+SYS:MQTT:TOPIC:RESP?
+myusername/feeds/response
+```
+
+
+#### SYStem:MQTT:TOPIC:ERRor
+Configure topic to subscribe to for receiving error messages from MQTT broker.
+
+Default: <empty>
+
+Example:
+```
+SYS:MQTT:TOPIC:ERR mysername/errors
+```
+
+
+#### SYStem:MQTT:TOPIC:ERRor?
+Query currently set topic for subscribing to receive error messages from MQTT broker.
+
+Example:
+```
+SYS:MQTT:TOPIC:ERR?
+myusername/errors
+```
+
+
+#### SYStem:MQTT:TOPIC:WARNing
+Configure topic to subscribe to for receiving warning messages from MQTT broker.
+
+Default: <empty>
+
+Example:
+```
+SYS:MQTT:TOPIC:WARN mysername/throttle
+```
+
+
+#### SYStem:MQTT:TOPIC:WARNing?
+Query currently set topic for subscribing to receive warning messages from MQTT broker.
+
+Example:
+```
+SYS:MQTT:TOPIC:WARN?
+myusername/throttle
+```
+
+
+#### SYStem:MQTT:TOPIC:TEMP
+Configure topic to publish unit temperature data to.
+
+Default: <empty>
+
+Example:
+```
+SYS:MQTT:TOPIC:TEMP mysername/feeds/brickpico_temp
+```
+
+
+#### SYStem:MQTT:TOPIC:TEMP?
+Query currently set topic for publishing temperature data.
+
+Example:
+```
+SYS:MQTT:TOPIC:TEMP?
+myusername/feeds/brickpico_temp
+```
+
+
+#### SYStem:MQTT:TOPIC:PWM
+Configure topic to publish output port PWM status to.
+This is a template string where ```%d``` shoule be used to mark the output port number.
+
+Default: <empty>
+
+Example:
+```
+SYS:MQTT:TOPIC:PWM mysername/feeds/brickpico_output%d
+```
+
+
+#### SYStem:MQTT:TOPIC:PWM?
+Query currently set topic for publishing PWM data.
+
+Example:
+```
+SYS:MQTT:TOPIC:PWM?
+myusername/feeds/brickpico_output%d
 ```
 
 

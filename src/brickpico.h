@@ -35,25 +35,32 @@
 #error unknown board model
 #endif
 
-#define OUTPUT_MAX_COUNT     16   /* Max number of PWM outputs on the board */
+#define OUTPUT_MAX_COUNT       16   /* Max number of PWM outputs on the board */
 
-#define MAX_NAME_LEN   64
-#define MAX_MAP_POINTS 32
-#define MAX_GPIO_PINS  32
+#define MAX_NAME_LEN           64
+#define MAX_MAP_POINTS         32
+#define MAX_GPIO_PINS          32
 
-#define WIFI_SSID_MAX_LEN    32
-#define WIFI_PASSWD_MAX_LEN  64
-#define WIFI_COUNTRY_MAX_LEN 3
+#define WIFI_SSID_MAX_LEN      32
+#define WIFI_PASSWD_MAX_LEN    64
+#define WIFI_COUNTRY_MAX_LEN   3
 
-#define MQTT_MAX_TOPIC_LEN   32
+#define MQTT_MAX_TOPIC_LEN            32
+#define MQTT_MAX_USERNAME_LEN         80
+#define MQTT_MAX_PASSWORD_LEN         64
+#define DEFAULT_MQTT_STATUS_INTERVAL  600
+#define DEFAULT_MQTT_TEMP_INTERVAL    60
+#define DEFAULT_MQTT_PWR_INTERVAL     600
+#define DEFAULT_MQTT_PWM_INTERVAL     600
+
 
 #ifdef NDEBUG
-#define WATCHDOG_ENABLED      1
-#define WATCHDOG_REBOOT_DELAY 15000
+#define WATCHDOG_ENABLED       1
+#define WATCHDOG_REBOOT_DELAY  15000
 #endif
 
-#define MAX_EVENT_NAME_LEN  30
-#define MAX_EVENT_COUNT     20
+#define MAX_EVENT_NAME_LEN     30
+#define MAX_EVENT_COUNT        20
 
 enum timer_action_types {
 	ACTION_NONE = 0,
@@ -96,6 +103,9 @@ struct brickpico_config {
 	uint pwm_freq;
 	struct timer_event events[MAX_EVENT_COUNT];
 	uint8_t event_count;
+	double adc_ref_voltage;
+	double temp_offset;
+	double temp_coefficient;
 #ifdef WIFI_SUPPORT
 	char wifi_ssid[WIFI_SSID_MAX_LEN + 1];
 	char wifi_passwd[WIFI_PASSWD_MAX_LEN + 1];
@@ -111,12 +121,19 @@ struct brickpico_config {
 	uint32_t mqtt_port;
 	bool mqtt_tls;
 	bool mqtt_allow_scpi;
-	char mqtt_user[32];
-	char mqtt_pass[64];
-	char mqtt_status_topic[MQTT_MAX_TOPIC_LEN];
+	char mqtt_user[MQTT_MAX_USERNAME_LEN + 1];
+	char mqtt_pass[MQTT_MAX_PASSWORD_LEN + 1];
+	char mqtt_cmd_topic[MQTT_MAX_TOPIC_LEN + 1];
+	char mqtt_resp_topic[MQTT_MAX_TOPIC_LEN + 1];
+	char mqtt_err_topic[MQTT_MAX_TOPIC_LEN + 1];
+	char mqtt_warn_topic[MQTT_MAX_TOPIC_LEN + 1];
+	char mqtt_status_topic[MQTT_MAX_TOPIC_LEN + 1];
+	char mqtt_pwm_topic[MQTT_MAX_TOPIC_LEN + 1];
+	char mqtt_temp_topic[MQTT_MAX_TOPIC_LEN + 1];
 	uint32_t mqtt_status_interval;
-	char mqtt_cmd_topic[MQTT_MAX_TOPIC_LEN];
-	char mqtt_resp_topic[MQTT_MAX_TOPIC_LEN];
+	uint32_t mqtt_pwm_interval;
+	uint32_t mqtt_temp_interval;
+	uint16_t mqtt_pwm_mask;
 #endif
 };
 
@@ -124,6 +141,7 @@ struct brickpico_state {
 	/* outputs */
 	uint8_t pwm[OUTPUT_MAX_COUNT];
 	uint8_t pwr[OUTPUT_MAX_COUNT];
+	double temp;
 };
 
 
@@ -187,6 +205,8 @@ void brickpico_setup_mqtt_client();
 int brickpico_mqtt_client_active();
 void brickpico_mqtt_reconnect();
 void brickpico_mqtt_publish();
+void brickpico_mqtt_publish_duty();
+void brickpico_mqtt_publish_temp();
 void brickpico_mqtt_scpi_command();
 #endif
 
@@ -259,6 +279,10 @@ const char *rp2040_model_str();
 const char *pico_serial_str();
 int time_passed(absolute_time_t *t, uint32_t us);
 int getstring_timeout_ms(char *str, uint32_t maxlen, uint32_t timeout);
+
+/* temp.c */
+double get_temperature(double adc_ref_voltage, double temp_offset, double temp_coefficient);
+void update_temp(const struct brickpico_config *conf, struct brickpico_state *state);
 
 
 #endif /* BRICKPICO_H */

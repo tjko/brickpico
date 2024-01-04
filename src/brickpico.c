@@ -20,6 +20,7 @@
 */
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <math.h>
 #include <malloc.h>
@@ -30,6 +31,7 @@
 #ifdef LIB_PICO_CYW43_ARCH
 #include "pico/cyw43_arch.h"
 #endif
+#include "hardware/adc.h"
 #include "hardware/gpio.h"
 #include "hardware/pwm.h"
 #include "hardware/rtc.h"
@@ -100,6 +102,11 @@ void setup()
 	display_init();
 	network_init(&system_state);
 
+	/* Enable ADC */
+	log_msg(LOG_NOTICE, "Initialize ADC...");
+	adc_init();
+	adc_set_temp_sensor_enabled(true);
+
 	/* Setup GPIO pins... */
 	log_msg(LOG_NOTICE, "Initialize GPIO...");
 
@@ -144,6 +151,7 @@ void clear_state(struct brickpico_state *s)
 		s->pwm[i] = 0;
 		s->pwr[i] = 0;
 	}
+	s->temp = 0.0;
 }
 
 
@@ -228,7 +236,7 @@ int main()
 {
 	absolute_time_t ABSOLUTE_TIME_INITIALIZED_VAR(t_led, 0);
 	absolute_time_t ABSOLUTE_TIME_INITIALIZED_VAR(t_network, 0);
-	absolute_time_t t_now, t_last, t_display, t_timer;
+	absolute_time_t t_now, t_last, t_display, t_timer, t_temp;
 	uint8_t led_state = 0;
 	int64_t max_delta = 0;
 	int64_t delta;
@@ -260,7 +268,7 @@ int main()
 #endif
 
 	t_last = get_absolute_time();
-	t_timer = t_display = t_last;
+	t_temp = t_timer = t_display = t_last;
 
 	while (1) {
 		t_now = get_absolute_time();
@@ -306,6 +314,11 @@ int main()
 		/* Check for timer events */
 		if (time_passed(&t_timer, 10000)) {
 			handle_timer_events(cfg, brickpico_state);
+		}
+
+		/* Check temperature */
+		if (time_passed(&t_temp, 20000)) {
+			update_temp(cfg, brickpico_state);
 		}
 
 		/* Process any (user) input */

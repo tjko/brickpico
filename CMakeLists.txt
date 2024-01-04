@@ -84,6 +84,7 @@ add_executable(brickpico
   src/timer.c
   src/tls.c
   src/pwm.c
+  src/temp.c
   src/util.c
   src/util_rp2040.c
   src/log.c
@@ -111,6 +112,7 @@ target_link_libraries(brickpico PRIVATE
   hardware_pwm
   hardware_i2c
   hardware_rtc
+  hardware_adc
   littlefs-lib
   cJSON
   ss_oled-lib
