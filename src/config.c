@@ -103,6 +103,8 @@ void clear_config(struct brickpico_config *cfg)
 	cfg->mqtt_status_topic[0] = 0;
 	cfg->mqtt_cmd_topic[0] = 0;
 	cfg->mqtt_resp_topic[0] = 0;
+	cfg->mqtt_err_topic[0] = 0;
+	cfg->mqtt_warn_topic[0] = 0;
 	cfg->mqtt_pwm_topic[0] = 0;
 	cfg->mqtt_temp_topic[0] = 0;
 	cfg->mqtt_status_interval = DEFAULT_MQTT_STATUS_INTERVAL;
@@ -195,6 +197,12 @@ cJSON *config_to_json(const struct brickpico_config *cfg)
 	if (strlen(cfg->mqtt_resp_topic) > 0)
 		cJSON_AddItemToObject(config, "mqtt_resp_topic",
 				cJSON_CreateString(cfg->mqtt_resp_topic));
+	if (strlen(cfg->mqtt_err_topic) > 0)
+		cJSON_AddItemToObject(config, "mqtt_err_topic",
+				cJSON_CreateString(cfg->mqtt_err_topic));
+	if (strlen(cfg->mqtt_warn_topic) > 0)
+		cJSON_AddItemToObject(config, "mqtt_warn_topic",
+				cJSON_CreateString(cfg->mqtt_warn_topic));
 	if (strlen(cfg->mqtt_pwm_topic) > 0)
 		cJSON_AddItemToObject(config, "mqtt_pwm_topic",
 				cJSON_CreateString(cfg->mqtt_pwm_topic));
@@ -408,6 +416,14 @@ int json_to_config(cJSON *config, struct brickpico_config *cfg)
 	if ((ref = cJSON_GetObjectItem(config, "mqtt_resp_topic"))) {
 		if ((val = cJSON_GetStringValue(ref)))
 			strncopy(cfg->mqtt_resp_topic, val, sizeof(cfg->mqtt_resp_topic));
+	}
+	if ((ref = cJSON_GetObjectItem(config, "mqtt_err_topic"))) {
+		if ((val = cJSON_GetStringValue(ref)))
+			strncopy(cfg->mqtt_err_topic, val, sizeof(cfg->mqtt_err_topic));
+	}
+	if ((ref = cJSON_GetObjectItem(config, "mqtt_warn_topic"))) {
+		if ((val = cJSON_GetStringValue(ref)))
+			strncopy(cfg->mqtt_warn_topic, val, sizeof(cfg->mqtt_warn_topic));
 	}
 	if ((ref = cJSON_GetObjectItem(config, "mqtt_pwm_topic"))) {
 		if ((val = cJSON_GetStringValue(ref)))

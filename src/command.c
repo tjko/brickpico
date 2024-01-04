@@ -890,6 +890,20 @@ int cmd_mqtt_resp_topic(const char *cmd, const char *args, int query, char *prev
 			"MQTT Response Topic", NULL);
 }
 
+int cmd_mqtt_err_topic(const char *cmd, const char *args, int query, char *prev_cmd)
+{
+	return string_setting(cmd, args, query, prev_cmd,
+			conf->mqtt_err_topic, sizeof(conf->mqtt_err_topic),
+			"MQTT Error Topic", NULL);
+}
+
+int cmd_mqtt_warn_topic(const char *cmd, const char *args, int query, char *prev_cmd)
+{
+	return string_setting(cmd, args, query, prev_cmd,
+			conf->mqtt_warn_topic, sizeof(conf->mqtt_warn_topic),
+			"MQTT Warning Topic", NULL);
+}
+
 int cmd_mqtt_pwm_topic(const char *cmd, const char *args, int query, char *prev_cmd)
 {
 	return string_setting(cmd, args, query, prev_cmd,
@@ -1279,7 +1293,7 @@ const struct cmd_t mqtt_mask_commands[] = {
 };
 
 const struct cmd_t mqtt_interval_commands[] = {
-	{ "STATUS",    6, NULL,              cmd_mqtt_status_interval },
+	{ "STATus",    4, NULL,              cmd_mqtt_status_interval },
 	{ "TEMP",      4, NULL,              cmd_mqtt_temp_interval },
 	{ "PWM",       3, NULL,              cmd_mqtt_pwm_interval },
 	{ 0, 0, 0, 0 }
@@ -1291,6 +1305,8 @@ const struct cmd_t mqtt_topic_commands[] = {
 	{ "COMMand",   4, NULL,              cmd_mqtt_cmd_topic },
 	{ "RESPonse",  4, NULL,              cmd_mqtt_resp_topic },
 	{ "PWM",       3, NULL,              cmd_mqtt_pwm_topic },
+	{ "ERRor",     3, NULL,              cmd_mqtt_err_topic },
+	{ "WARNing",   4, NULL,              cmd_mqtt_warn_topic },
 	{ 0, 0, 0, 0 }
 };
 

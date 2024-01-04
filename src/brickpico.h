@@ -123,9 +123,11 @@ struct brickpico_config {
 	bool mqtt_allow_scpi;
 	char mqtt_user[MQTT_MAX_USERNAME_LEN + 1];
 	char mqtt_pass[MQTT_MAX_PASSWORD_LEN + 1];
-	char mqtt_status_topic[MQTT_MAX_TOPIC_LEN + 1];
 	char mqtt_cmd_topic[MQTT_MAX_TOPIC_LEN + 1];
 	char mqtt_resp_topic[MQTT_MAX_TOPIC_LEN + 1];
+	char mqtt_err_topic[MQTT_MAX_TOPIC_LEN + 1];
+	char mqtt_warn_topic[MQTT_MAX_TOPIC_LEN + 1];
+	char mqtt_status_topic[MQTT_MAX_TOPIC_LEN + 1];
 	char mqtt_pwm_topic[MQTT_MAX_TOPIC_LEN + 1];
 	char mqtt_temp_topic[MQTT_MAX_TOPIC_LEN + 1];
 	uint32_t mqtt_status_interval;

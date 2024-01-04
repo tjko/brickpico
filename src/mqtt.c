@@ -41,12 +41,32 @@
 
 #define MQTT_CMD_MAX_LEN 100
 
+
+enum mqtt_topic_types {
+	UNKNOWN_TOPIC = 0,
+	CMD_TOPIC = 1,
+	ERR_TOPIC = 2,
+	WARN_TOPIC = 3,
+};
+
+struct mqtt_topic_name {
+	enum mqtt_topic_types type;
+	size_t offset;
+};
+
+struct mqtt_topic_name topics[] = {
+	{ ERR_TOPIC, offsetof(struct brickpico_config, mqtt_err_topic) },
+	{ WARN_TOPIC, offsetof(struct brickpico_config, mqtt_warn_topic) },
+	{ CMD_TOPIC, offsetof(struct brickpico_config, mqtt_cmd_topic) },
+	{ 0, 0 }
+};
+
 mqtt_client_t *mqtt_client = NULL;
 ip_addr_t mqtt_server_ip = IPADDR4_INIT_BYTES(0, 0, 0, 0);
 u16_t mqtt_server_port = 0;
-int incoming_topic = 0;
+enum mqtt_topic_types incoming_topic = UNKNOWN_TOPIC;
 int mqtt_qos = 1;
-char mqtt_scpi_cmd[MQTT_CMD_MAX_LEN];
+char mqtt_scpi_cmd[MQTT_CMD_MAX_LEN + 1];
 bool mqtt_scpi_cmd_queued = false;
 absolute_time_t ABSOLUTE_TIME_INITIALIZED_VAR(t_mqtt_disconnect, 0);
 u16_t mqtt_reconnect = 0;
@@ -135,16 +155,29 @@ static void mqtt_incoming_publish_cb(void *arg, const char *topic, u32_t tot_len
 {
 	log_msg(LOG_DEBUG, "MQTT incoming publish at topic %s with total length %u",
 		topic, (unsigned int)tot_len);
-	if (!strncmp(topic, cfg->mqtt_cmd_topic, strlen(cfg->mqtt_cmd_topic) + 1)) {
-		incoming_topic = 1;
-	} else {
-		incoming_topic = 0;
+
+
+	/* Check topic name for match of expected topics...*/
+	incoming_topic = UNKNOWN_TOPIC;
+	for (int i = 0; topics[i].type; i++) {
+		char *t = (char *)cfg + topics[i].offset;
+		if (*t == 0)
+			continue;
+		if (!strncmp(topic, t, strlen(t) + 1)) {
+			incoming_topic = topics[i].type;
+			break;
+		}
+	}
+
+	if (incoming_topic == UNKNOWN_TOPIC) {
+		log_msg(LOG_NOTICE, "Incoming publish for unkown topic '%s': %lu bytes",
+			topic, tot_len);
 	}
 }
 
 static void mqtt_incoming_data_cb(void *arg, const u8_t *data, u16_t len, u8_t flags)
 {
-	char cmd[MQTT_CMD_MAX_LEN];
+	char cmd[MQTT_CMD_MAX_LEN + 1];
 	const u8_t *end, *start;
 	int l;
 
@@ -152,7 +185,22 @@ static void mqtt_incoming_data_cb(void *arg, const u8_t *data, u16_t len, u8_t f
 	log_msg(LOG_DEBUG, "MQTT incoming publish payload with length %d, flags %u\n",
 		len, (unsigned int)flags);
 
-	if (incoming_topic != 1 || len < 1)
+	if (len < 1 || incoming_topic == UNKNOWN_TOPIC)
+		return;
+
+	if (incoming_topic == ERR_TOPIC) {
+		strncopy(cmd, (const char*)data, sizeof(cmd));
+		log_msg(LOG_ERR, "MQTT Error received: %s", cmd);
+		return;
+	}
+
+	if (incoming_topic == WARN_TOPIC) {
+		strncopy(cmd, (const char*)data, sizeof(cmd));
+		log_msg(LOG_WARNING, "MQTT Warning received: %s", cmd);
+		return;
+	}
+
+	if (incoming_topic != CMD_TOPIC)
 		return;
 
 	/* Check for command prefix, if found skip past prefix */
@@ -204,6 +252,8 @@ static void mqtt_sub_request_cb(void *arg, err_t result)
 
 static void mqtt_connection_cb(mqtt_client_t *client, void *arg, mqtt_connection_status_t status)
 {
+	err_t err;
+
 	t_mqtt_disconnect = get_absolute_time();
 
 	if (status == MQTT_CONNECT_ACCEPTED) {
@@ -212,11 +262,21 @@ static void mqtt_connection_cb(mqtt_client_t *client, void *arg, mqtt_connection
 		mqtt_set_inpub_callback(client, mqtt_incoming_publish_cb, mqtt_incoming_data_cb, arg);
 		if (strlen(cfg->mqtt_cmd_topic) > 0) {
 			log_msg(LOG_INFO, "MQTT subscribe to command topic: %s", cfg->mqtt_cmd_topic);
-			err_t err = mqtt_subscribe(client, cfg->mqtt_cmd_topic, 1,
-						mqtt_sub_request_cb, arg);
-			if (err != ERR_OK) {
-				log_msg(LOG_WARNING, "MQTT subscribe failed: %d", err);
-			}
+			err = mqtt_subscribe(client, cfg->mqtt_cmd_topic, 1, mqtt_sub_request_cb, arg);
+			if (err != ERR_OK)
+				log_msg(LOG_WARNING, "MQTT subscribe to command topic failed: %d", err);
+		}
+		if (strlen(cfg->mqtt_err_topic) > 0) {
+			log_msg(LOG_INFO, "MQTT subscribe to error topic: %s", cfg->mqtt_err_topic);
+			err = mqtt_subscribe(client, cfg->mqtt_err_topic, 1, mqtt_sub_request_cb, arg);
+			if (err != ERR_OK)
+				log_msg(LOG_WARNING, "MQTT subscribe to error topic failed: %d", err);
+		}
+		if (strlen(cfg->mqtt_warn_topic) > 0) {
+			log_msg(LOG_INFO, "MQTT subscribe to warning topic: %s", cfg->mqtt_warn_topic);
+			err = mqtt_subscribe(client, cfg->mqtt_warn_topic, 1, mqtt_sub_request_cb, arg);
+			if (err != ERR_OK)
+				log_msg(LOG_WARNING, "MQTT subscribe to warning topic failed: %d", err);
 		}
 	}
 	else if (status == MQTT_CONNECT_DISCONNECTED) {
@@ -433,7 +493,7 @@ void brickpico_mqtt_publish_temp()
 void brickpico_mqtt_scpi_command()
 {
 	struct brickpico_state *st = brickpico_state;
-	char cmd[MQTT_CMD_MAX_LEN];
+	char cmd[MQTT_CMD_MAX_LEN + 1];
 	int res;
 
 	if (!mqtt_client || !mqtt_scpi_cmd_queued)
