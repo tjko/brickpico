@@ -81,7 +81,7 @@ Currently following models are available:
 |Model|Outputs|Notes|
 |-----|-------|-----|
 |[BRICKPICO-08](boards/brickpico-8/)|8||
-|[BRICKPICO-16](boards/brickpico-16/)|16||
+|[BRICKPICO-16](boards/brickpico-16/)|16|PCB under development|
 
 
 
