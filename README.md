@@ -8,6 +8,8 @@ Brickpico is mainly meant to controlling various LED lights on LEGO models, but 
 Brickpico operates as standalone controller that incorporates programmable timer to turn lights on/off on a schedule.
 BrickPico is an Open-source hardware (OSHW) project.
 
+![MillenniumFalcon](images/falcon.png)
+
 [![BrickPico](images/brickpico-08-small.jpg)](images/brickpico-08.jpg?raw=true)
 
 ## Features
