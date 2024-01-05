@@ -8,9 +8,8 @@ Brickpico is mainly meant to controlling various LED lights on LEGO models, but 
 Brickpico operates as standalone controller that incorporates programmable timer to turn lights on/off on a schedule.
 BrickPico is an Open-source hardware (OSHW) project.
 
-![MillenniumFalcon](images/falcon.png)
+![LEGO Millennium Falcon](images/falcon.png)
 
-[![BrickPico](images/brickpico-08-small.jpg)](images/brickpico-08.jpg?raw=true)
 
 ## Features
 * Controls up to 8 to 16 separete channels (LED group)
@@ -25,6 +24,8 @@ BrickPico is an Open-source hardware (OSHW) project.
 * WiFi support if opting to mount Pico W on the board. This turns fanpico to "IoT" device with basic web interface.
 * MQTT support for sending status and to receive commands.
 
+[![BrickPico](images/brickpico-08-small.jpg)](images/brickpico-08.jpg?raw=true)
+
 ### Interfaces
 
 * Serial "Console". Primary method for configuring/monitoring FanPico units is via (USB) Serial console (some units also have 3.3V TTL Serial connection).
@@ -34,6 +35,8 @@ BrickPico is an Open-source hardware (OSHW) project.
 
 For more documentation check [BrickPico Wiki](https://github.com/tjko/brickpico/wiki)
 
+
+   ![Falcon Lights](images/falcon-lights-small.jpg)
 
 
 ## Where can I get one?
