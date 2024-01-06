@@ -48,10 +48,59 @@ static struct brickpico_state transfer_state;
 static struct brickpico_state system_state;
 struct brickpico_state *brickpico_state = &system_state;
 
+#define PERSISTENT_MEMORY_ID 0xbaddecaf
+#define PERSISTENT_MEMORY_CRC_LEN offsetof(struct persistent_memory_block, crc32)
+struct persistent_memory_block __uninitialized_ram(persistent_mem);
+
 auto_init_mutex(state_mutex_inst);
 mutex_t *state_mutex = &state_mutex_inst;
 bool rebooted_by_watchdog = false;
 
+
+void init_persistent_memory()
+{
+	struct persistent_memory_block *m = &persistent_mem;
+	uint32_t crc;
+	char s[32];
+
+	if (m->id == PERSISTENT_MEMORY_ID) {
+		crc = xcrc32((unsigned char*)m, PERSISTENT_MEMORY_CRC_LEN, 0);
+		if (crc == m->crc32) {
+			log_msg(LOG_NOTICE, "Found persistent memory block");
+			datetime_str(s, sizeof(s), &m->saved_time);
+			if (rtc_set_datetime(&m->saved_time)) {
+				log_msg(LOG_NOTICE, "RTC clock restored: %s", s);
+			} else {
+				log_msg(LOG_INFO, "Failed to restore RTC clock: %s", s);
+			}
+			if (m->uptime) {
+				m->prev_uptime = m->uptime;
+				log_msg(LOG_NOTICE, "Previous uptime: %llus",
+					m->prev_uptime / 1000000);
+			}
+			return;
+		}
+		log_msg(LOG_NOTICE, "Found corrupt persistent memory block"
+			" (CRC-32 mismatch  %08lx != %08lx)", crc, m->crc32);
+	}
+
+	log_msg(LOG_NOTICE, "Initializing persistent memory block...");
+	memset(m, 0, sizeof(*m));
+	m->id = PERSISTENT_MEMORY_ID;
+//	m->crc32 = xcrc32((unsigned char*)m, PERSISTENT_MEMORY_CRC_LEN, 0);
+}
+
+void update_persistent_memory()
+{
+	struct persistent_memory_block *m = &persistent_mem;
+	datetime_t t;
+
+	if (rtc_get_datetime(&t)) {
+		m->saved_time = t;
+	}
+	m->uptime = to_us_since_boot(get_absolute_time());
+	m->crc32 = xcrc32((unsigned char*)m, PERSISTENT_MEMORY_CRC_LEN, 0);
+}
 
 void boot_reason()
 {
@@ -138,6 +187,8 @@ void setup()
 		setenv("TZ", cfg->timezone, 1);
 		tzset();
 	}
+
+	init_persistent_memory();
 
 	log_msg(LOG_NOTICE, "System initialization complete.");
 }
@@ -286,6 +337,7 @@ int main()
 
 		/* Toggle LED every 1000ms */
 		if (time_passed(&t_led, 1000)) {
+			update_persistent_memory();
 			if (cfg->led_mode == 0) {
 				/* Slow blinking */
 				led_state = (led_state > 0 ? 0 : 1);

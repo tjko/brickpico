@@ -88,6 +88,8 @@ add_executable(brickpico
   src/util.c
   src/util_rp2040.c
   src/log.c
+  src/crc32.c
+  src/ringbuffer.c
   src/credits.s
   )
 

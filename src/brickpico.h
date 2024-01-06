@@ -145,6 +145,15 @@ struct brickpico_state {
 };
 
 
+struct persistent_memory_block {
+	uint32_t id;
+	datetime_t saved_time;
+	uint64_t uptime;
+	uint64_t prev_uptime;
+	char log[8192];
+	uint32_t crc32;
+};
+
 /* brickpico.c */
 extern struct brickpico_state *brickpico_state;
 extern bool rebooted_by_watchdog;
@@ -283,6 +292,9 @@ int getstring_timeout_ms(char *str, uint32_t maxlen, uint32_t timeout);
 /* temp.c */
 double get_temperature(double adc_ref_voltage, double temp_offset, double temp_coefficient);
 void update_temp(const struct brickpico_config *conf, struct brickpico_state *state);
+
+/* crc32.c */
+unsigned int xcrc32 (const unsigned char *buf, int len, unsigned int init);
 
 
 #endif /* BRICKPICO_H */
