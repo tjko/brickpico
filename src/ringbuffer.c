@@ -77,27 +77,30 @@ int ringbuffer_free(ringbuffer_t *rb)
 
 size_t next_item_offset(ringbuffer_t *rb, size_t offset)
 {
-	size_t o = offset + PREFIX_LEN + rb->buf[offset] + SUFFIX_LEN;
+	size_t o = (offset % rb->size) + PREFIX_LEN + rb->buf[offset] + SUFFIX_LEN;
 
 	if (o >= rb->size)
-		o -= rb->size;
+		o = o % rb->size;
+
 	return o;
 }
 
 
 size_t previous_item_offset(ringbuffer_t *rb, size_t offset)
 {
-	size_t o;
+	size_t o = offset % rb->size;
 
-	if (offset < SUFFIX_LEN)
-		o = rb->size - (SUFFIX_LEN - offset);
+	if (o < SUFFIX_LEN)
+		o = rb->size - (SUFFIX_LEN - o);
 	else
-		o = offset - SUFFIX_LEN;
+		o -= SUFFIX_LEN;
+
 	uint8_t prev = rb->buf[o] + PREFIX_LEN;
 	if (o < prev)
 		o = rb->size - (prev - o);
 	else
 		o -= prev;
+
 	return o;
 }
 
@@ -106,9 +109,10 @@ int ringbuffer_remove_first_item(ringbuffer_t *rb)
 {
 	if (!rb)
 		return -1;
-
 	if (rb->items < 1)
 		return -2;
+	if (rb->head >= rb->size)
+		return -3;
 
 	size_t item_len = PREFIX_LEN + rb->buf[rb->head] + SUFFIX_LEN;
 	rb->head = next_item_offset(rb, rb->head);
@@ -123,9 +127,10 @@ int ringbuffer_remove_last_item(ringbuffer_t *rb)
 {
 	if (!rb)
 		return -1;
-
 	if (rb->items < 1)
 		return -2;
+	if (rb->tail >= rb->size)
+		return -3;
 
 	size_t item_len = PREFIX_LEN + rb->buf[rb->tail] + SUFFIX_LEN;
 	rb->tail = previous_item_offset(rb, rb->tail);
@@ -142,6 +147,8 @@ int ringbuffer_add(ringbuffer_t *rb, uint8_t *data, uint8_t len)
 
 	if (!rb || !data || len < 1)
 		return -1;
+	if (rb->tail >= rb->size || rb->free > rb->size)
+		return -2;
 
 	if (rb->free < item_len) {
 		while (!ringbuffer_remove_first_item(rb)) {
@@ -191,8 +198,6 @@ int ringbuffer_peek(ringbuffer_t *rb, size_t offset, uint8_t *ptr, size_t size, 
 	uint8_t len = rb->buf[offset];
 	if (len > size)
 		return -4;
-
-	printf("peek len=%u, offset=%u\n", len, offset);
 
 	uint8_t *src = rb->buf + offset + PREFIX_LEN;
 	uint8_t *dst = ptr;

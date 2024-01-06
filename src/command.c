@@ -36,11 +36,13 @@
 #include "hardware/rtc.h"
 #include "cJSON.h"
 #include "lfs.h"
+
 #include "brickpico.h"
 #ifdef WIFI_SUPPORT
 #include "lwip/ip_addr.h"
 #include "lwip/stats.h"
 #endif
+
 
 
 struct cmd_t {
@@ -343,6 +345,37 @@ int cmd_log_level(const char *cmd, const char *args, int query, char *prev_cmd)
 	return 0;
 }
 
+#define MEM_LOG_BUF_SIZE 256
+
+int cmd_mem_log(const char *cmd, const char *args, int query, char *prev_cmd)
+{
+	int c, o, len, next, prev;
+	uint8_t *buf;
+
+	if (!query)
+		return 1;
+	if (!(buf = malloc(MEM_LOG_BUF_SIZE)))
+		return 2;
+
+	printf("logbuffer: items=%u, size=%u, free=%u\n",
+		log_rb->items, log_rb->size, log_rb->free);
+
+	c = 0;
+	o = log_rb->head;
+	do {
+		c++;
+		len = ringbuffer_peek(log_rb, o, buf, MEM_LOG_BUF_SIZE, &next, &prev);
+		if (len > 0) {
+			//printf("%03d (offset=%d, len=%d): '%s'\n", c, o, len, buf);
+			printf(">%s\n", buf);
+		}
+		o = next;
+	} while (len > 0 && o >= 0);
+
+	free(buf);
+	return 0;
+}
+
 int cmd_syslog_level(const char *cmd, const char *args, int query, char *prev_cmd)
 {
 	int level = get_syslog_level();
@@ -412,6 +445,7 @@ int cmd_reset(const char *cmd, const char *args, int query, char *prev_cmd)
 
 	log_msg(LOG_ALERT, "Initiating reboot...");
 	display_message(1, msg);
+	update_persistent_memory();
 
 	watchdog_disable();
 	sleep_ms(500);
@@ -1347,6 +1381,7 @@ const struct cmd_t system_commands[] = {
 	{ "OUTputs",   3, NULL,              cmd_outputs },
 	{ "LED",       3, NULL,              cmd_led },
 	{ "LOG",       3, NULL,              cmd_log_level },
+	{ "MEMLOG",    6, NULL,              cmd_mem_log },
 	{ "MEMory",    3, NULL,              cmd_memory },
 	{ "MQTT",      4, mqtt_commands,     NULL },
 	{ "NAME",      4, NULL,              cmd_name },

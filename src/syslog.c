@@ -124,7 +124,7 @@ void syslog_close()
 int syslog_msg(int severity, const char *format, ...)
 {
 	va_list args;
-	char buf[SYSLOG_MAX_MSG_LEN];
+	char *buf;
 	datetime_t t;
 	struct tm tm;
 	uint16_t len;
@@ -133,6 +133,8 @@ int syslog_msg(int severity, const char *format, ...)
 		return 1;
 	if (!rtc_get_datetime(&t))
 		return 2;
+	if (!(buf = malloc(SYSLOG_MAX_MSG_LEN)))
+		return 3;
 
 	/* Build syslog 'packet' ... */
 
@@ -163,6 +165,7 @@ int syslog_msg(int severity, const char *format, ...)
 		pbuf_free(p);
 	}
 	cyw43_arch_lwip_end();
+	free(buf);
 
 	return 0;
 }

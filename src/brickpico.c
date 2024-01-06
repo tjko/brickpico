@@ -39,6 +39,7 @@
 #include "hardware/watchdog.h"
 #include "hardware/vreg.h"
 
+#include "ringbuffer.h"
 #include "brickpico.h"
 
 
@@ -48,58 +49,70 @@ static struct brickpico_state transfer_state;
 static struct brickpico_state system_state;
 struct brickpico_state *brickpico_state = &system_state;
 
+struct persistent_memory_block __uninitialized_ram(persistent_memory);
+struct persistent_memory_block *persistent_mem = &persistent_memory;
+ringbuffer_t *log_rb = NULL;
+
 #define PERSISTENT_MEMORY_ID 0xbaddecaf
 #define PERSISTENT_MEMORY_CRC_LEN offsetof(struct persistent_memory_block, crc32)
-struct persistent_memory_block __uninitialized_ram(persistent_mem);
 
+auto_init_mutex(pmem_mutex_inst);
+mutex_t *pmem_mutex = &pmem_mutex_inst;
 auto_init_mutex(state_mutex_inst);
 mutex_t *state_mutex = &state_mutex_inst;
 bool rebooted_by_watchdog = false;
 
 
+void update_persistent_memory_crc()
+{
+	struct persistent_memory_block *m = persistent_mem;
+
+	m->crc32 = xcrc32((unsigned char*)m, PERSISTENT_MEMORY_CRC_LEN, 0);
+}
+
 void init_persistent_memory()
 {
-	struct persistent_memory_block *m = &persistent_mem;
+	struct persistent_memory_block *m = persistent_mem;
 	uint32_t crc;
 	char s[32];
 
 	if (m->id == PERSISTENT_MEMORY_ID) {
 		crc = xcrc32((unsigned char*)m, PERSISTENT_MEMORY_CRC_LEN, 0);
 		if (crc == m->crc32) {
-			log_msg(LOG_NOTICE, "Found persistent memory block");
+			printf("Found persistent memory block\n");
 			datetime_str(s, sizeof(s), &m->saved_time);
-			if (rtc_set_datetime(&m->saved_time)) {
-				log_msg(LOG_NOTICE, "RTC clock restored: %s", s);
-			} else {
-				log_msg(LOG_INFO, "Failed to restore RTC clock: %s", s);
+			if (!rtc_set_datetime(&m->saved_time)) {
+				printf("Failed to restore RTC clock: %s\n", s);
 			}
 			if (m->uptime) {
 				m->prev_uptime = m->uptime;
-				log_msg(LOG_NOTICE, "Previous uptime: %llus",
-					m->prev_uptime / 1000000);
+				update_persistent_memory_crc();
 			}
 			return;
 		}
-		log_msg(LOG_NOTICE, "Found corrupt persistent memory block"
-			" (CRC-32 mismatch  %08lx != %08lx)", crc, m->crc32);
+		printf("Found corrupt persistent memory block"
+			" (CRC-32 mismatch  %08lx != %08lx)\n", crc, m->crc32);
 	}
 
-	log_msg(LOG_NOTICE, "Initializing persistent memory block...");
+	printf("Initializing persistent memory block...\n");
 	memset(m, 0, sizeof(*m));
 	m->id = PERSISTENT_MEMORY_ID;
-//	m->crc32 = xcrc32((unsigned char*)m, PERSISTENT_MEMORY_CRC_LEN, 0);
+	ringbuffer_init(&m->log_rb, m->log, sizeof(m->log));
+	update_persistent_memory_crc();
 }
 
 void update_persistent_memory()
 {
-	struct persistent_memory_block *m = &persistent_mem;
+	struct persistent_memory_block *m = persistent_mem;
 	datetime_t t;
 
+	mutex_enter_blocking(pmem_mutex);
 	if (rtc_get_datetime(&t)) {
 		m->saved_time = t;
 	}
 	m->uptime = to_us_since_boot(get_absolute_time());
-	m->crc32 = xcrc32((unsigned char*)m, PERSISTENT_MEMORY_CRC_LEN, 0);
+	update_persistent_memory_crc();
+	mutex_exit(pmem_mutex);
 }
 
 void boot_reason()
@@ -110,6 +123,7 @@ void boot_reason()
 
 void setup()
 {
+	datetime_t t;
 	int i = 0;
 
 	rtc_init();
@@ -128,6 +142,7 @@ void setup()
 #if TTL_SERIAL > 0
 	stdio_uart_init_full(TTL_SERIAL_UART,
 			TTL_SERIAL_SPEED, TX_PIN, RX_PIN);
+	sleep_ms(5);
 #endif
 	printf("\n\n");
 #ifndef NDEBUG
@@ -147,6 +162,20 @@ void setup()
 		rp2040_model_str(),
 		clock_get_hz(clk_sys) / 1000000.0);
 	printf(" Serial Number: %s\n\n", pico_serial_str());
+
+	init_persistent_memory();
+	log_rb = &persistent_mem->log_rb;
+	printf("\n");
+
+	log_msg(LOG_NOTICE, "System starting...");
+	if (persistent_mem->prev_uptime) {
+		log_msg(LOG_NOTICE, "Uptime before soft reset: %llus\n",
+			persistent_mem->prev_uptime / 1000000);
+	}
+	if (rtc_get_datetime(&t)) {
+		char buf[32];
+		log_msg(LOG_NOTICE, "RTC clock time: %s", datetime_str(buf, sizeof(buf), &t));
+	}
 
 	display_init();
 	network_init(&system_state);
@@ -187,8 +216,6 @@ void setup()
 		setenv("TZ", cfg->timezone, 1);
 		tzset();
 	}
-
-	init_persistent_memory();
 
 	log_msg(LOG_NOTICE, "System initialization complete.");
 }
