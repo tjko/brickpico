@@ -365,10 +365,8 @@ int cmd_mem_log(const char *cmd, const char *args, int query, char *prev_cmd)
 	do {
 		c++;
 		len = ringbuffer_peek(log_rb, o, buf, MEM_LOG_BUF_SIZE, &next, &prev);
-		if (len > 0) {
-			//printf("%03d (offset=%d, len=%d): '%s'\n", c, o, len, buf);
+		if (len > 0)
 			printf(">%s\n", buf);
-		}
 		o = next;
 	} while (len > 0 && o >= 0);
 
@@ -975,6 +973,8 @@ int cmd_tls_pkey(const char *cmd, const char *args, int query, char *prev_cmd)
 			printf("%s\n", buf);
 			free(buf);
 			return 0;
+		} else {
+			printf("No private key present.\n");
 		}
 		return 2;
 	}
@@ -988,22 +988,39 @@ int cmd_tls_pkey(const char *cmd, const char *args, int query, char *prev_cmd)
 #if WATCHDOG_ENABLED
 	watchdog_disable();
 #endif
-	printf("Paste private key in PEM format:\n");
-
-	if (read_pem_file(buf, buf_len, 5000) != 1) {
-		printf("Invalid private key!\n");
-		res = 2;
-	} else {
+	if (!strncasecmp(args, "DELETE", 7)) {
 		multicore_lockout_start_blocking();
-		res = flash_write_file(buf, strlen(buf) + 1, "key.pem");
+		res = flash_delete_file("key.pem");
 		multicore_lockout_end_blocking();
-		if (res) {
-			printf("Failed to save private key.\n");
+		if (res == -2) {
+			printf("No private key present.\n");
+			res = 0;
+		}
+		else if (res) {
+			printf("Failed to delete private key: %d\n", res);
 			res = 2;
 		} else {
-			printf("Private key succesfully saved. (length=%u)\n",
-				strlen(buf));
-			res = 0;
+			printf("Private key succesfully deleted.\n");
+		}
+	}
+	else {
+		printf("Paste private key in PEM format:\n");
+
+		if (read_pem_file(buf, buf_len, 5000) != 1) {
+			printf("Invalid private key!\n");
+			res = 2;
+		} else {
+			multicore_lockout_start_blocking();
+			res = flash_write_file(buf, strlen(buf) + 1, "key.pem");
+			multicore_lockout_end_blocking();
+			if (res) {
+				printf("Failed to save private key.\n");
+				res = 2;
+			} else {
+				printf("Private key succesfully saved. (length=%u)\n",
+					strlen(buf));
+				res = 0;
+			}
 		}
 	}
 #if WATCHDOG_ENABLED
@@ -1029,6 +1046,8 @@ int cmd_tls_cert(const char *cmd, const char *args, int query, char *prev_cmd)
 			printf("%s\n", buf);
 			free(buf);
 			return 0;
+		} else {
+			printf("No certificate present.\n");
 		}
 		return 2;
 	}
@@ -1042,22 +1061,39 @@ int cmd_tls_cert(const char *cmd, const char *args, int query, char *prev_cmd)
 #if WATCHDOG_ENABLED
 	watchdog_disable();
 #endif
-	printf("Paste certificate in PEM format:\n");
-
-	if (read_pem_file(buf, buf_len, 5000) != 1) {
-		printf("Invalid private key!\n");
-		res = 2;
-	} else {
+	if (!strncasecmp(args, "DELETE", 7)) {
 		multicore_lockout_start_blocking();
-		res = flash_write_file(buf, strlen(buf) + 1, "cert.pem");
+		res = flash_delete_file("cert.pem");
 		multicore_lockout_end_blocking();
-		if (res) {
-			printf("Failed to save certificate.\n");
+		if (res == -2) {
+			printf("No certificate present.\n");
+			res = 0;
+		}
+		else if (res) {
+			printf("Failed to delete certificate: %d\n", res);
 			res = 2;
 		} else {
-			printf("Certificate succesfully saved. (length=%u)\n",
-				strlen(buf));
-			res = 0;
+			printf("Certificate succesfully deleted.\n");
+		}
+	}
+	else {
+		printf("Paste certificate in PEM format:\n");
+
+		if (read_pem_file(buf, buf_len, 5000) != 1) {
+			printf("Invalid private key!\n");
+			res = 2;
+		} else {
+			multicore_lockout_start_blocking();
+			res = flash_write_file(buf, strlen(buf) + 1, "cert.pem");
+			multicore_lockout_end_blocking();
+			if (res) {
+				printf("Failed to save certificate.\n");
+				res = 2;
+			} else {
+				printf("Certificate succesfully saved. (length=%u)\n",
+					strlen(buf));
+				res = 0;
+			}
 		}
 	}
 #if WATCHDOG_ENABLED

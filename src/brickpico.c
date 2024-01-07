@@ -314,7 +314,7 @@ int main()
 {
 	absolute_time_t ABSOLUTE_TIME_INITIALIZED_VAR(t_led, 0);
 	absolute_time_t ABSOLUTE_TIME_INITIALIZED_VAR(t_network, 0);
-	absolute_time_t t_now, t_last, t_display, t_timer, t_temp;
+	absolute_time_t t_now, t_last, t_display, t_timer, t_temp, t_ram;
 	uint8_t led_state = 0;
 	int64_t max_delta = 0;
 	int64_t delta;
@@ -346,7 +346,7 @@ int main()
 #endif
 
 	t_last = get_absolute_time();
-	t_temp = t_timer = t_display = t_last;
+	t_ram = t_temp = t_timer = t_display = t_last;
 
 	while (1) {
 		t_now = get_absolute_time();
@@ -361,10 +361,12 @@ int main()
 		if (time_passed(&t_network, 100)) {
 			network_poll();
 		}
+		if (time_passed(&t_ram, 1000)) {
+			update_persistent_memory();
+		}
 
 		/* Toggle LED every 1000ms */
 		if (time_passed(&t_led, 1000)) {
-			update_persistent_memory();
 			if (cfg->led_mode == 0) {
 				/* Slow blinking */
 				led_state = (led_state > 0 ? 0 : 1);
@@ -385,7 +387,6 @@ int main()
 
 		/* Update display every 1000ms */
 		if (time_passed(&t_display, 1000)) {
-			log_msg(LOG_DEBUG, "Update display");
 			update_core1_state();
 			display_status(brickpico_state, cfg);
 		}
