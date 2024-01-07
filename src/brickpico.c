@@ -39,6 +39,7 @@
 #include "hardware/watchdog.h"
 #include "hardware/vreg.h"
 
+#include "ringbuffer.h"
 #include "brickpico.h"
 
 
@@ -48,10 +49,71 @@ static struct brickpico_state transfer_state;
 static struct brickpico_state system_state;
 struct brickpico_state *brickpico_state = &system_state;
 
+struct persistent_memory_block __uninitialized_ram(persistent_memory);
+struct persistent_memory_block *persistent_mem = &persistent_memory;
+ringbuffer_t *log_rb = NULL;
+
+#define PERSISTENT_MEMORY_ID 0xbaddecaf
+#define PERSISTENT_MEMORY_CRC_LEN offsetof(struct persistent_memory_block, crc32)
+
+auto_init_mutex(pmem_mutex_inst);
+mutex_t *pmem_mutex = &pmem_mutex_inst;
 auto_init_mutex(state_mutex_inst);
 mutex_t *state_mutex = &state_mutex_inst;
 bool rebooted_by_watchdog = false;
 
+
+void update_persistent_memory_crc()
+{
+	struct persistent_memory_block *m = persistent_mem;
+
+	m->crc32 = xcrc32((unsigned char*)m, PERSISTENT_MEMORY_CRC_LEN, 0);
+}
+
+void init_persistent_memory()
+{
+	struct persistent_memory_block *m = persistent_mem;
+	uint32_t crc;
+	char s[32];
+
+	if (m->id == PERSISTENT_MEMORY_ID) {
+		crc = xcrc32((unsigned char*)m, PERSISTENT_MEMORY_CRC_LEN, 0);
+		if (crc == m->crc32) {
+			printf("Found persistent memory block\n");
+			datetime_str(s, sizeof(s), &m->saved_time);
+			if (!rtc_set_datetime(&m->saved_time)) {
+				printf("Failed to restore RTC clock: %s\n", s);
+			}
+			if (m->uptime) {
+				m->prev_uptime = m->uptime;
+				update_persistent_memory_crc();
+			}
+			return;
+		}
+		printf("Found corrupt persistent memory block"
+			" (CRC-32 mismatch  %08lx != %08lx)\n", crc, m->crc32);
+	}
+
+	printf("Initializing persistent memory block...\n");
+	memset(m, 0, sizeof(*m));
+	m->id = PERSISTENT_MEMORY_ID;
+	ringbuffer_init(&m->log_rb, m->log, sizeof(m->log));
+	update_persistent_memory_crc();
+}
+
+void update_persistent_memory()
+{
+	struct persistent_memory_block *m = persistent_mem;
+	datetime_t t;
+
+	mutex_enter_blocking(pmem_mutex);
+	if (rtc_get_datetime(&t)) {
+		m->saved_time = t;
+	}
+	m->uptime = to_us_since_boot(get_absolute_time());
+	update_persistent_memory_crc();
+	mutex_exit(pmem_mutex);
+}
 
 void boot_reason()
 {
@@ -61,6 +123,7 @@ void boot_reason()
 
 void setup()
 {
+	datetime_t t;
 	int i = 0;
 
 	rtc_init();
@@ -79,6 +142,7 @@ void setup()
 #if TTL_SERIAL > 0
 	stdio_uart_init_full(TTL_SERIAL_UART,
 			TTL_SERIAL_SPEED, TX_PIN, RX_PIN);
+	sleep_ms(5);
 #endif
 	printf("\n\n");
 #ifndef NDEBUG
@@ -98,6 +162,20 @@ void setup()
 		rp2040_model_str(),
 		clock_get_hz(clk_sys) / 1000000.0);
 	printf(" Serial Number: %s\n\n", pico_serial_str());
+
+	init_persistent_memory();
+	log_rb = &persistent_mem->log_rb;
+	printf("\n");
+
+	log_msg(LOG_NOTICE, "System starting...");
+	if (persistent_mem->prev_uptime) {
+		log_msg(LOG_NOTICE, "Uptime before soft reset: %llus\n",
+			persistent_mem->prev_uptime / 1000000);
+	}
+	if (rtc_get_datetime(&t)) {
+		char buf[32];
+		log_msg(LOG_NOTICE, "RTC clock time: %s", datetime_str(buf, sizeof(buf), &t));
+	}
 
 	display_init();
 	network_init(&system_state);
@@ -236,7 +314,7 @@ int main()
 {
 	absolute_time_t ABSOLUTE_TIME_INITIALIZED_VAR(t_led, 0);
 	absolute_time_t ABSOLUTE_TIME_INITIALIZED_VAR(t_network, 0);
-	absolute_time_t t_now, t_last, t_display, t_timer, t_temp;
+	absolute_time_t t_now, t_last, t_display, t_timer, t_temp, t_ram;
 	uint8_t led_state = 0;
 	int64_t max_delta = 0;
 	int64_t delta;
@@ -268,7 +346,7 @@ int main()
 #endif
 
 	t_last = get_absolute_time();
-	t_temp = t_timer = t_display = t_last;
+	t_ram = t_temp = t_timer = t_display = t_last;
 
 	while (1) {
 		t_now = get_absolute_time();
@@ -282,6 +360,9 @@ int main()
 
 		if (time_passed(&t_network, 100)) {
 			network_poll();
+		}
+		if (time_passed(&t_ram, 1000)) {
+			update_persistent_memory();
 		}
 
 		/* Toggle LED every 1000ms */
@@ -306,7 +387,6 @@ int main()
 
 		/* Update display every 1000ms */
 		if (time_passed(&t_display, 1000)) {
-			log_msg(LOG_DEBUG, "Update display");
 			update_core1_state();
 			display_status(brickpico_state, cfg);
 		}

@@ -31,6 +31,8 @@
 #include "lwip/ip_addr.h"
 #endif
 
+#include "ringbuffer.h"
+
 #ifndef BRICKPICO_MODEL
 #error unknown board model
 #endif
@@ -145,10 +147,27 @@ struct brickpico_state {
 };
 
 
+struct persistent_memory_block {
+	uint32_t id;
+	datetime_t saved_time;
+	uint64_t uptime;
+	uint64_t prev_uptime;
+	ringbuffer_t log_rb;
+	uint32_t crc32;
+	uint8_t log[8192];
+};
+
+
+
 /* brickpico.c */
+extern ringbuffer_t *log_rb;
+extern struct persistent_memory_block *persistent_mem;
 extern struct brickpico_state *brickpico_state;
 extern bool rebooted_by_watchdog;
+extern mutex_t *pmem_mutex;
 extern mutex_t *state_mutex;
+void update_persistent_memory_crc();
+void update_persistent_memory();
 void update_display_state();
 void update_core1_state();
 
@@ -283,6 +302,9 @@ int getstring_timeout_ms(char *str, uint32_t maxlen, uint32_t timeout);
 /* temp.c */
 double get_temperature(double adc_ref_voltage, double temp_offset, double temp_coefficient);
 void update_temp(const struct brickpico_config *conf, struct brickpico_state *state);
+
+/* crc32.c */
+unsigned int xcrc32 (const unsigned char *buf, int len, unsigned int init);
 
 
 #endif /* BRICKPICO_H */

@@ -98,7 +98,7 @@ int mqtt_publish_message(const char *topic, const char *buf, u16_t buf_len,
 	if (!connected)
 		return -3;
 
-	log_msg(LOG_INFO, "MQTT publish to %s: %u bytes.", topic, buf_len);
+	log_msg(LOG_DEBUG, "MQTT publish to %s: %u bytes.", topic, buf_len);
 
 	/* Publish message to a MQTT topic */
 	cyw43_arch_lwip_begin();

@@ -41,6 +41,7 @@
 #include "syslog.h"
 #endif
 
+
 int global_debug_level = 0;
 int global_log_level = LOG_ERR;
 int global_syslog_level = LOG_ERR;
@@ -183,23 +184,28 @@ void set_debug_level(int level)
 }
 
 
+#define LOG_MAX_MSG_LEN 256
+
 void log_msg(int priority, const char *format, ...)
 {
 	va_list ap;
-	char buf[256];
+	char *buf;
+	char tstamp[32];
 	int len;
 	uint64_t start, end;
 	uint core = get_core_num();
 
 	if ((priority > global_log_level) && (priority > global_syslog_level))
 		return;
+	if (!(buf = malloc(LOG_MAX_MSG_LEN)))
+		return;
 
 	start = to_us_since_boot(get_absolute_time());
 	va_start(ap, format);
-	vsnprintf(buf, sizeof(buf), format, ap);
+	vsnprintf(buf, LOG_MAX_MSG_LEN, format, ap);
 	va_end(ap);
 
-	if ((len = strlen(buf)) > 0) {
+	if ((len = strnlen(buf, LOG_MAX_MSG_LEN - 1)) > 0) {
 		/* If string ends with \n, remove it. */
 		if (buf[len - 1] == '\n')
 			buf[len - 1] = 0;
@@ -207,7 +213,22 @@ void log_msg(int priority, const char *format, ...)
 
 	if (priority <= global_log_level) {
 		uint64_t t = to_us_since_boot(get_absolute_time());
-		printf("[%6llu.%06llu][%u] %s\n", (t / 1000000), (t % 1000000), core, buf);
+		snprintf(tstamp, sizeof(tstamp), "[%6llu.%06llu][%u]",
+			(t / 1000000), (t % 1000000), core);
+		printf("%s %s\n", tstamp, buf);
+		char *rbuf = malloc(255);
+		if (rbuf) {
+			if (mutex_enter_timeout_us(pmem_mutex, 100)) {
+				snprintf(rbuf, 255, "%s %s", tstamp, buf);
+				ringbuffer_add(log_rb, (uint8_t*)rbuf, strlen(rbuf) + 1);
+				update_persistent_memory_crc();
+				mutex_exit(pmem_mutex);
+			} else {
+				printf("%s mutex timeout: FAILED to access log rinbuffer\n",
+					tstamp);
+			}
+			free(rbuf);
+		}
 	}
 
 #ifdef WIFI_SUPPORT
@@ -222,6 +243,8 @@ void log_msg(int priority, const char *format, ...)
 		printf("log_msg: core%u: %llu (duration=%llu)\n", core, end, end - start);
 #endif
 	}
+
+	free(buf);
 }
 
 
