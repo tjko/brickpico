@@ -963,6 +963,7 @@ int cmd_tls_pkey(const char *cmd, const char *args, int query, char *prev_cmd)
 	char *buf;
 	uint32_t buf_len = 4096;
 	uint32_t file_size;
+	int incount = 1;
 	int res = 0;
 
 	if (query) {
@@ -1004,12 +1005,20 @@ int cmd_tls_pkey(const char *cmd, const char *args, int query, char *prev_cmd)
 		}
 	}
 	else {
+		int v;
+		if (str_to_int(args, &v, 10)) {
+			if (v >= 1 && v <= 3)
+				incount = v;
+		}
 		printf("Paste private key in PEM format:\n");
-
-		if (read_pem_file(buf, buf_len, 5000) != 1) {
-			printf("Invalid private key!\n");
-			res = 2;
-		} else {
+		for(int i = 0; i < incount; i++) {
+			if (read_pem_file(buf, buf_len, 5000, true) != 1) {
+				printf("Invalid private key!\n");
+				res = 2;
+				break;
+			}
+		}
+		if (res == 0) {
 			multicore_lockout_start_blocking();
 			res = flash_write_file(buf, strlen(buf) + 1, "key.pem");
 			multicore_lockout_end_blocking();
@@ -1079,7 +1088,7 @@ int cmd_tls_cert(const char *cmd, const char *args, int query, char *prev_cmd)
 	else {
 		printf("Paste certificate in PEM format:\n");
 
-		if (read_pem_file(buf, buf_len, 5000) != 1) {
+		if (read_pem_file(buf, buf_len, 5000, false) != 1) {
 			printf("Invalid private key!\n");
 			res = 2;
 		} else {

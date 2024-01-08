@@ -230,7 +230,7 @@ void brickpico_mqtt_scpi_command();
 #endif
 
 /* tls.c */
-int read_pem_file(char *buf, uint32_t size, uint32_t timeout);
+int read_pem_file(char *buf, uint32_t size, uint32_t timeout, bool append);
 #ifdef WIFI_SUPPORT
 struct altcp_tls_config* tls_server_config();
 #endif
