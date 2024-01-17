@@ -367,15 +367,17 @@ Field|Valid Values|Description
 -----|------|-----
 minute|00..59|Minute
 hour|00.23|Hour (24h clock)
-weekdays|1..7|1=Monday, 2=Tuesday, ... 7=Sunday
+weekdays|0..6|0=Sunday, 1=Monday, 2=Tuesday, ... 6=Saturday
 action|ON, OFF|
 outputs|1..n|Outputs that the event affects.
 
 Specifying _weekdays_ and _outputs_:
 
-* = Match all
-1,3,5 = List
-1-5 = Range
+Notation|Description
+--------|-----------
+*|Match all
+1,3,5|List
+1-5|Range
 
 
 Example:
