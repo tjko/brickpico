@@ -48,10 +48,13 @@ BrickPico supports following commands:
 * [SYStem:DISPlay:THEMe](#systemdisplaytheme)
 * [SYStem:DISPlay:THEMe?](#systemdisplaytheme-1)
 * [SYStem:ECHO](#systemecho)
-* [SYStem:ECHO?](#systemecho)
+* [SYStem:ECHO?](#systemecho-1)
+* [SYStem:FLASH?](#systemflash-1)
 * [SYStem:OUTputs?](#systemoutputs)
 * [SYStem:LED](#systemled)
 * [SYStem:LED?](#systemled-1)
+* [SYStem:MEM](#systemmem)
+* [SYStem:MEM?](#systemmem-1)
 * [SYStem:MQTT:SERVer](#systemmqttserver)
 * [SYStem:MQTT:SERVer?](#systemmqttserver-1)
 * [SYStem:MQTT:PORT](#systemmqttport)
@@ -724,6 +727,19 @@ SYS:ECHO?
 ```
 
 
+### SYStem:FLASH?
+Returns information about Pico flash memory usage.
+
+Example:
+```
+SYS:FLASH?
+Flash memory size:                     2097152
+Binary size:                           683520
+LittleFS size:                         262144
+Unused flash memory:                   1151488
+```
+
+
 #### SYStem:OUTPUTS?
 Display number of OUTPUT output ports available.
 
@@ -761,6 +777,50 @@ Example:
 SYS:LED?
 0
 ```
+
+### SYStem:MEM
+Test how much availble (heap) memory system currently has.
+This does simple test to try to determine what is the largest
+block of heap memory that is currently available as well as
+try allocating as many as possible small block of memory to determin
+roughly the total available heap memory.
+
+This command takes optional 'blocksize' parameter to specify the memory
+block size to use in the tests. Default is 1024 bytes.
+
+Example:
+```
+SYS:MEM 512
+Largest available memory block:        114688 bytes
+Total available memory:                111104 bytes (217 x 512bytes)
+```
+
+### SYStem:MEM?
+Returns information about heap and stack size. As well as information
+about current (heap) memory usage as returned by _mallinfo()_ system call.
+
+Note,  _mallinfo()_ doesnt "see" all of the available heap memory, unless ```SYS:MEM``` command
+has been run first.
+
+Example:
+```
+SYS:MEM?
+Core0 stack size:                      8192
+Core1 stack size:                      4096
+Heap size:                             136604
+mallinfo:
+Total non-mmapped bytes (arena):       136604
+# of free chunks (ordblks):            2
+# of free fastbin blocks (smblks):     0
+# of mapped regions (hblks):           0
+Bytes in mapped regions (hblkhd):      0
+Max. total allocated space (usmblks):  0
+Free bytes held in fastbins (fsmblks): 0
+Total allocated space (uordblks):      21044
+Total free space (fordblks):           115560
+Topmost releasable block (keepcost):   114808
+```
+
 
 ### SYStem:MQTT Commands
 BrickPico has MQTT Client that can be confiugred to publish (send) periodic status
