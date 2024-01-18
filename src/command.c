@@ -1182,6 +1182,16 @@ int cmd_name(const char *cmd, const char *args, int query, char *prev_cmd)
 }
 
 
+int cmd_flash(const char *cmd, const char *args, int query, char *prev_cmd)
+{
+	if (!query)
+		return 1;
+
+	print_rp2040_flashinfo();
+	return 0;
+}
+
+
 #define TEST_MEM_SIZE (264*1024)
 
 int cmd_memory(const char *cmd, const char *args, int query, char *prev_cmd)
@@ -1423,6 +1433,7 @@ const struct cmd_t system_commands[] = {
 	{ "DISPlay",   4, display_commands,  cmd_display_type },
 	{ "ECHO",      4, NULL,              cmd_echo },
 	{ "ERRor",     3, NULL,              cmd_err },
+	{ "FLASH",     5, NULL,              cmd_flash },
 	{ "OUTputs",   3, NULL,              cmd_outputs },
 	{ "LED",       3, NULL,              cmd_led },
 	{ "LOG",       3, NULL,              cmd_log_level },

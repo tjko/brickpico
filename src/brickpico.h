@@ -291,6 +291,7 @@ int str_to_bitmask(const char *str, uint16_t len, uint32_t *mask, uint8_t base);
 /*  util_rp2040.c */
 uint32_t get_stack_pointer();
 uint32_t get_stack_free();
+void print_rp2040_flashinfo();
 void print_rp2040_meminfo();
 void print_irqinfo();
 void watchdog_disable();

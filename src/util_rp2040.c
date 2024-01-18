@@ -28,6 +28,7 @@
 #include "pico/multicore.h"
 #include "hardware/watchdog.h"
 
+#include "pico_hal.h"
 
 #include "brickpico.h"
 
@@ -39,7 +40,10 @@ extern char __StackOneBottom;
 extern char __StackLimit;
 extern char __HeapLimit;
 extern char __end__;
+extern char __flash_binary_start;
+extern char __flash_binary_end;
 
+extern struct lfs_config pico_cfg;
 
 inline uint32_t get_stack_pointer() {
 	uint32_t sp;
@@ -58,6 +62,18 @@ inline uint32_t get_stack_free()
 	return (sp > end ? sp - end : 0);
 }
 
+void print_rp2040_flashinfo()
+{
+	size_t binary_size = &__flash_binary_end - &__flash_binary_start;
+	size_t fs_size = pico_cfg.block_count * pico_cfg.block_size;
+
+	printf("Flash memory size:                     %u\n", PICO_FLASH_SIZE_BYTES);
+	printf("Binary size:                           %u\n", binary_size);
+	printf("LittleFS size:                         %u\n", fs_size);
+	printf("Unused flash memory:                   %u\n",
+		PICO_FLASH_SIZE_BYTES - binary_size - fs_size);
+
+}
 
 void print_rp2040_meminfo()
 {
