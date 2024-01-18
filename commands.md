@@ -49,7 +49,7 @@ BrickPico supports following commands:
 * [SYStem:DISPlay:THEMe?](#systemdisplaytheme-1)
 * [SYStem:ECHO](#systemecho)
 * [SYStem:ECHO?](#systemecho-1)
-* [SYStem:FLASH?](#systemflash-1)
+* [SYStem:FLASH?](#systemflash)
 * [SYStem:OUTputs?](#systemoutputs)
 * [SYStem:LED](#systemled)
 * [SYStem:LED?](#systemled-1)
