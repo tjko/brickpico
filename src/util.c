@@ -29,10 +29,6 @@
 #include <malloc.h>
 #include <time.h>
 #include "pico/stdlib.h"
-#include "pico/mutex.h"
-#include "pico/unique_id.h"
-#include "pico/util/datetime.h"
-#include "hardware/watchdog.h"
 #include "b64/cencode.h"
 #include "b64/cdecode.h"
 
@@ -163,14 +159,21 @@ char* datetime_str(char *buf, size_t size, const datetime_t *t)
 	return buf;
 }
 
+const char *mac_address_str_r(const uint8_t *mac, char *buf, size_t buf_len)
+{
+	if (!buf || buf_len < 1)
+		return NULL;
+
+	snprintf(buf, buf_len, "%02x:%02x:%02x:%02x:%02x:%02x",
+		mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+	return buf;
+}
+
 const char *mac_address_str(const uint8_t *mac)
 {
-	static char buf[32];
+	static char buf[18];
 
-	snprintf(buf, sizeof(buf), "%02x:%02x:%02x:%02x:%02x:%02x",
-		mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
-
-	return buf;
+	return mac_address_str_r(mac, buf, sizeof(buf));
 }
 
 int valid_wifi_country(const char *country)
@@ -418,32 +421,37 @@ void* memmem(const void *haystack, size_t haystacklen,
 }
 
 
-char *bitmask_to_str(uint32_t mask, uint16_t len, uint8_t base, bool range)
+char *bitmask_to_str_r(uint32_t mask, uint8_t len, uint8_t base, bool range, char *buf, size_t buf_len)
 {
-	static char buf[96 + 16];
 	int state = 0;
 	int prev = -2;
 	char *s = buf;
-	int i, w, last;
+	size_t buf_free;
+	int i, last;
 
-	buf[0] = 0;
+	if (!buf || buf_len < 1)
+		return NULL;
 
-	if (len < 1 || len > 32)
+	*s = 0;
+	buf_free = buf_len;
+
+	if (len < 1 || len > 32 || buf_len < 2)
 		return buf;
 
+	/* Handle special case of all bits set... */
 	if (!range && mask == (1 << len) - 1) {
-		buf[0] = '*';
-		buf[1] = 0;
+		*s++ = '*';
+		*s = 0;
 		return buf;
 	}
 
 	for (i = 0; i < len; i++) {
 		if (mask & (1 << i)) {
 			int consecutive = (i - prev == 1 ? 1 : 0);
+			int w = 0;
+
 			if (state == 0) {
-				w = snprintf(s, 3, "%d", i + base);
-				if (w > 2) w = 2;
-				s += w;
+				w = snprintf(s, buf_free, "%d", i + base);
 				state = 1;
 			}
 			else if (state == 1) {
@@ -451,33 +459,44 @@ char *bitmask_to_str(uint32_t mask, uint16_t len, uint8_t base, bool range)
 					last = i;
 					state = 2;
 				} else {
-					w = snprintf(s, 4, ",%d", i + base);
-					if (w > 3) w = 3;
-					s += w;
+					w = snprintf(s, buf_free, ",%d", i + base);
 				}
 			}
 			else if (state == 2) {
 				if (consecutive) {
 					last = i;
 				} else {
-					w = snprintf(s, 7, "-%d,%d", last + base, i + base);
-					if (w > 6) w = 6;
-					s += w;
+					w = snprintf(s, buf_free, "-%d,%d", last + base, i + base);
 					state = 1;
 				}
+			}
+
+			if (w > 0) {
+				if (w >= buf_free)
+					return buf;
+				s += w;
+				buf_free -= w;
 			}
 			prev = i;
 		}
 	}
 	if (range && state == 2) {
-		snprintf(s , 12, "-%d", last + base);
+		snprintf(s , buf_free, "-%d", last + base);
 	}
 
 	return buf;
 }
 
 
-int str_to_bitmask(const char *str, uint16_t len, uint32_t *mask, uint8_t base)
+char *bitmask_to_str(uint32_t mask, uint8_t len, uint8_t base, bool range)
+{
+	static char buf[96];
+
+	return bitmask_to_str_r(mask, len, base, range, buf, sizeof(buf));
+}
+
+
+int str_to_bitmask(const char *str, uint8_t len, uint32_t *mask, uint8_t base)
 {
 	char *s, *tok, *saveptr, *saveptr2;
 

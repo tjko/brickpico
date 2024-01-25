@@ -270,6 +270,7 @@ int str_to_int(const char *str, int *val, int base);
 int str_to_float(const char *str, float *val);
 int str_to_datetime(const char *str, datetime_t *t);
 char* datetime_str(char *buf, size_t size, const datetime_t *t);
+const char *mac_address_str_r(const uint8_t *mac, char *buf, size_t buf_len);
 const char *mac_address_str(const uint8_t *mac);
 int valid_wifi_country(const char *country);
 int valid_hostname(const char *hostname);
@@ -285,8 +286,9 @@ struct tm *datetime_to_tm(const datetime_t *t, struct tm *tm);
 time_t datetime_to_time(const datetime_t *datetime);
 int clamp_int(int val, int min, int max);
 void* memmem(const void *haystack, size_t haystacklen, const void *needle, size_t needlelen);
-char *bitmask_to_str(uint32_t mask, uint16_t len, uint8_t base, bool range);
-int str_to_bitmask(const char *str, uint16_t len, uint32_t *mask, uint8_t base);
+char *bitmask_to_str_r(uint32_t mask, uint8_t len, uint8_t base, bool range, char *buf, size_t buf_len);
+char *bitmask_to_str(uint32_t mask, uint8_t len, uint8_t base, bool range);
+int str_to_bitmask(const char *str, uint8_t len, uint32_t *mask, uint8_t base);
 
 /*  util_rp2040.c */
 uint32_t get_stack_pointer();
