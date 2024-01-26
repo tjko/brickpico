@@ -51,7 +51,7 @@ struct brickpico_state *brickpico_state = &system_state;
 
 struct persistent_memory_block __uninitialized_ram(persistent_memory);
 struct persistent_memory_block *persistent_mem = &persistent_memory;
-ringbuffer_t *log_rb = NULL;
+u8_ringbuffer_t *log_rb = NULL;
 
 #define PERSISTENT_MEMORY_ID 0xbaddecaf
 #define PERSISTENT_MEMORY_CRC_LEN offsetof(struct persistent_memory_block, crc32)
@@ -97,7 +97,7 @@ void init_persistent_memory()
 	printf("Initializing persistent memory block...\n");
 	memset(m, 0, sizeof(*m));
 	m->id = PERSISTENT_MEMORY_ID;
-	ringbuffer_init(&m->log_rb, m->log, sizeof(m->log));
+	u8_ringbuffer_init(&m->log_rb, m->log, sizeof(m->log));
 	update_persistent_memory_crc();
 }
 

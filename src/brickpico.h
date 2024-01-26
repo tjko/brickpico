@@ -152,7 +152,7 @@ struct persistent_memory_block {
 	datetime_t saved_time;
 	uint64_t uptime;
 	uint64_t prev_uptime;
-	ringbuffer_t log_rb;
+	u8_ringbuffer_t log_rb;
 	uint32_t crc32;
 	uint8_t log[8192];
 };
@@ -160,7 +160,7 @@ struct persistent_memory_block {
 
 
 /* brickpico.c */
-extern ringbuffer_t *log_rb;
+extern u8_ringbuffer_t *log_rb;
 extern struct persistent_memory_block *persistent_mem;
 extern struct brickpico_state *brickpico_state;
 extern bool rebooted_by_watchdog;
@@ -213,13 +213,15 @@ void set_pico_system_time(long unsigned int sec);
 const char *network_ip();
 const char *network_hostname();
 
-/* httpd.c */
 #if WIFI_SUPPORT
+
+/* httpd.c */
 void brickpico_setup_http_handlers();
-#endif
+
+/* tcpserver.c */
+void tcpserver_init();
 
 /* mqtt.c */
-#if WIFI_SUPPORT
 void brickpico_setup_mqtt_client();
 int brickpico_mqtt_client_active();
 void brickpico_mqtt_reconnect();
@@ -227,6 +229,7 @@ void brickpico_mqtt_publish();
 void brickpico_mqtt_publish_duty();
 void brickpico_mqtt_publish_temp();
 void brickpico_mqtt_scpi_command();
+
 #endif
 
 /* tls.c */

@@ -364,7 +364,7 @@ int cmd_mem_log(const char *cmd, const char *args, int query, char *prev_cmd)
 	o = log_rb->head;
 	do {
 		c++;
-		len = ringbuffer_peek(log_rb, o, buf, MEM_LOG_BUF_SIZE, &next, &prev);
+		len = u8_ringbuffer_peek(log_rb, o, buf, MEM_LOG_BUF_SIZE, &next, &prev);
 		if (len > 0)
 			printf(">%s\n", buf);
 		o = next;

@@ -220,7 +220,7 @@ void log_msg(int priority, const char *format, ...)
 		if (rbuf) {
 			if (mutex_enter_timeout_us(pmem_mutex, 100)) {
 				snprintf(rbuf, 255, "%s %s", tstamp, buf);
-				ringbuffer_add(log_rb, (uint8_t*)rbuf, strlen(rbuf) + 1);
+				u8_ringbuffer_add(log_rb, (uint8_t*)rbuf, strlen(rbuf) + 1, true);
 				update_persistent_memory_crc();
 				mutex_exit(pmem_mutex);
 			} else {

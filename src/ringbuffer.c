@@ -32,7 +32,178 @@
 
 
 
-int ringbuffer_init(ringbuffer_t *rb, uint8_t *buf, size_t size)
+int simple_ringbuffer_init(simple_ringbuffer_t *rb, uint8_t *buf, size_t size)
+{
+	if (!rb)
+		return -1;
+
+	if (!buf) {
+		if (!(rb->buf = calloc(1, size)))
+			return -2;
+		rb->free_buf = true;
+	} else {
+		rb->buf = buf;
+		rb->free_buf = false;
+	}
+
+	rb->size = size;
+	rb->free = size;
+	rb->head = 0;
+	rb->tail = 0;
+
+	return 0;
+}
+
+
+int simple_ringbuffer_free(simple_ringbuffer_t *rb)
+{
+	if (!rb)
+		return -1;
+
+	if (rb->free_buf && rb->buf)
+		free(rb->buf);
+
+	rb->buf = NULL;
+	rb->size = 0;
+	rb->free = 0;
+	rb->head = 0;
+	rb->tail = 0;
+
+	return 0;
+}
+
+
+int simple_ringbuffer_flush(simple_ringbuffer_t *rb)
+{
+	if (!rb)
+		return -1;
+
+	rb->head = 0;
+	rb->tail = 0;
+	rb->free = rb->size;
+
+	return 0;
+}
+
+inline size_t simple_ringbuffer_size(simple_ringbuffer_t *rb)
+{
+	return (rb ? rb->size - rb->free : 0);
+}
+
+
+static size_t simple_ringbuffer_offset(simple_ringbuffer_t *rb, size_t offset, size_t delta, int direction)
+{
+	size_t o = offset % rb->size;
+	size_t d = delta % rb->size;
+
+	if (direction >= 0) {
+		o = (o + d) % rb->size;
+	} else {
+		if (o < d) {
+			o = rb->size - (d - o);
+		} else {
+			o -= d;
+		}
+	}
+
+	return o;
+}
+
+int simple_ringbuffer_add_char(simple_ringbuffer_t *rb, uint8_t ch, bool overwrite)
+{
+	if (!rb)
+		return -1;
+
+	if (overwrite && rb->free < 1) {
+		rb->head = simple_ringbuffer_offset(rb, rb->head, 1, 1);
+		rb->free += 1;
+	}
+	if (rb->free < 1)
+		return -2;
+
+	rb->buf[rb->head] = ch;
+	rb->head = simple_ringbuffer_offset(rb, rb->head, 1, 1);
+	rb->free--;
+
+	return 0;
+}
+
+int simple_ringbuffer_add(simple_ringbuffer_t *rb, uint8_t *data, size_t len, bool overwrite)
+{
+	if (!rb || !data)
+		return -1;
+
+	if (len == 0)
+		return 0;
+
+	if (len > rb->size)
+		return -2;
+
+	if (overwrite && rb->free < len) {
+		size_t needed = len - rb->free;
+		rb->head = simple_ringbuffer_offset(rb, rb->head, needed, 1);
+		rb->free += needed;
+	}
+	if (rb->free < len)
+		return -3;
+
+	size_t new_tail = simple_ringbuffer_offset(rb, rb->tail, len, 1);
+
+	if (new_tail > rb->tail) {
+		memcpy(rb->buf + rb->tail, data, len);
+	} else {
+		size_t part1 = rb->size - rb->tail;
+		size_t part2 = len - part1;
+		memcpy(rb->buf + rb->tail, data, part1);
+		memcpy(rb->buf, data + part1, part2);
+	}
+
+	rb->tail = new_tail;
+	rb->free -= len;
+
+	return 0;
+}
+
+int simple_ringbuffer_read_char(simple_ringbuffer_t *rb)
+{
+	if (!rb)
+		return -1;
+	if (rb->head == rb->tail)
+		return -2;
+
+	int val = rb->buf[rb->head];
+	rb->head = simple_ringbuffer_offset(rb, rb->head, 1, 1);
+
+	return val;
+}
+
+int simple_ringbuffer_read(simple_ringbuffer_t *rb, uint8_t *ptr, size_t size)
+{
+	if (!rb || !ptr || size < 1)
+		return -1;
+
+	size_t used = rb->size - rb->free;
+	if (used < size)
+		return -2;
+
+	size_t new_head = simple_ringbuffer_offset(rb, rb->head, size, 1);
+
+	if (new_head > rb->head) {
+		memcpy(ptr, rb->buf + rb->head, size);
+	} else {
+		size_t part1 = rb->size - rb->head;
+		size_t part2 = size - part1;
+		memcpy(ptr, rb->buf + rb->head, part1);
+		memcpy(ptr + part1, rb->buf, part2);
+	}
+
+	rb->head = new_head;
+	rb->free += size;
+
+	return 0;
+}
+
+int u8_ringbuffer_init(u8_ringbuffer_t *rb, uint8_t *buf, size_t size)
 {
 	if (!rb)
 		return -1;
@@ -56,7 +227,7 @@ int ringbuffer_init(ringbuffer_t *rb, uint8_t *buf, size_t size)
 }
 
 
-int ringbuffer_free(ringbuffer_t *rb)
+int u8_ringbuffer_free(u8_ringbuffer_t *rb)
 {
 	if (!rb)
 		return -1;
@@ -75,7 +246,7 @@ int ringbuffer_free(ringbuffer_t *rb)
 }
 
 
-size_t next_item_offset(ringbuffer_t *rb, size_t offset)
+static size_t u8_next_item_offset(u8_ringbuffer_t *rb, size_t offset)
 {
 	size_t o = (offset % rb->size) + PREFIX_LEN + rb->buf[offset] + SUFFIX_LEN;
 
@@ -86,7 +257,7 @@ size_t next_item_offset(ringbuffer_t *rb, size_t offset)
 }
 
 
-size_t previous_item_offset(ringbuffer_t *rb, size_t offset)
+static size_t u8_previous_item_offset(u8_ringbuffer_t *rb, size_t offset)
 {
 	size_t o = offset % rb->size;
 
@@ -105,7 +276,7 @@ size_t previous_item_offset(ringbuffer_t *rb, size_t offset)
 }
 
 
-int ringbuffer_remove_first_item(ringbuffer_t *rb)
+int u8_ringbuffer_remove_first_item(u8_ringbuffer_t *rb)
 {
 	if (!rb)
 		return -1;
@@ -115,7 +286,7 @@ int ringbuffer_remove_first_item(ringbuffer_t *rb)
 		return -3;
 
 	size_t item_len = PREFIX_LEN + rb->buf[rb->head] + SUFFIX_LEN;
-	rb->head = next_item_offset(rb, rb->head);
+	rb->head = u8_next_item_offset(rb, rb->head);
 	rb->free += item_len;
 	rb->items--;
 
@@ -123,7 +294,7 @@ int ringbuffer_remove_first_item(ringbuffer_t *rb)
 }
 
 
-int ringbuffer_remove_last_item(ringbuffer_t *rb)
+int u8_ringbuffer_remove_last_item(u8_ringbuffer_t *rb)
 {
 	if (!rb)
 		return -1;
@@ -133,7 +304,7 @@ int ringbuffer_remove_last_item(ringbuffer_t *rb)
 		return -3;
 
 	size_t item_len = PREFIX_LEN + rb->buf[rb->tail] + SUFFIX_LEN;
-	rb->tail = previous_item_offset(rb, rb->tail);
+	rb->tail = u8_previous_item_offset(rb, rb->tail);
 	rb->free += item_len;
 	rb->items--;
 
@@ -141,7 +312,7 @@ int ringbuffer_remove_last_item(ringbuffer_t *rb)
 }
 
 
-int ringbuffer_add(ringbuffer_t *rb, uint8_t *data, uint8_t len)
+int u8_ringbuffer_add(u8_ringbuffer_t *rb, uint8_t *data, uint8_t len, bool overwrite)
 {
 	size_t item_len = len + PREFIX_LEN + SUFFIX_LEN;
 
@@ -150,18 +321,18 @@ int ringbuffer_add(ringbuffer_t *rb, uint8_t *data, uint8_t len)
 	if (rb->tail >= rb->size || rb->free > rb->size)
 		return -2;
 
-	if (rb->free < item_len) {
-		while (!ringbuffer_remove_first_item(rb)) {
+	if (overwrite && rb->free < item_len) {
+		while (!u8_ringbuffer_remove_first_item(rb)) {
 			if (rb->free >= item_len)
 				break;
 		}
-		if (rb->free < item_len)
-			return -2;
 	}
+	if (rb->free < item_len)
+		return -2;
 
 	uint8_t *src = data;
 	if (rb->items > 0)
-		rb->tail = next_item_offset(rb, rb->tail);
+		rb->tail = u8_next_item_offset(rb, rb->tail);
 	uint8_t *dst = rb->buf + rb->tail;
 	*dst++ = len;
 	int i = 0;
@@ -179,7 +350,7 @@ int ringbuffer_add(ringbuffer_t *rb, uint8_t *data, uint8_t len)
 }
 
 
-int ringbuffer_peek(ringbuffer_t *rb, size_t offset, uint8_t *ptr, size_t size, int *next, int *prev)
+int u8_ringbuffer_peek(u8_ringbuffer_t *rb, size_t offset, uint8_t *ptr, size_t size, int *next, int *prev)
 {
 	if (!rb || !ptr)
 		return -1;
@@ -209,19 +380,29 @@ int ringbuffer_peek(ringbuffer_t *rb, size_t offset, uint8_t *ptr, size_t size, 
 	}
 
 	if (next && offset != rb->tail)
-		*next = next_item_offset(rb, offset);
+		*next = u8_next_item_offset(rb, offset);
 	if (prev && offset != rb->head)
-		*prev = previous_item_offset(rb, offset);
+		*prev = u8_previous_item_offset(rb, offset);
 
 	return len;
 }
 
 
-int ringbuffer_remove(ringbuffer_t *rb, uint8_t *ptr, size_t size)
+int u8_ringbuffer_remove_first(u8_ringbuffer_t *rb, uint8_t *ptr, size_t size)
 {
-	int len = ringbuffer_peek(rb, rb->head, ptr, size, NULL, NULL);
+	int len = u8_ringbuffer_peek(rb, rb->head, ptr, size, NULL, NULL);
 	if (len > 0) {
-		ringbuffer_remove_first_item(rb);
+		u8_ringbuffer_remove_first_item(rb);
+	}
+	return len;
+}
+
+
+int u8_ringbuffer_remove_last(u8_ringbuffer_t *rb, uint8_t *ptr, size_t size)
+{
+	int len = u8_ringbuffer_peek(rb, rb->tail, ptr, size, NULL, NULL);
+	if (len > 0) {
+		u8_ringbuffer_remove_last_item(rb);
 	}
 	return len;
 }
