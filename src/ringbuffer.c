@@ -91,7 +91,7 @@ inline size_t simple_ringbuffer_size(simple_ringbuffer_t *rb)
 }
 
 
-static size_t simple_ringbuffer_offset(simple_ringbuffer_t *rb, size_t offset, size_t delta, int direction)
+static inline size_t simple_ringbuffer_offset(simple_ringbuffer_t *rb, size_t offset, size_t delta, int direction)
 {
 	size_t o = offset % rb->size;
 	size_t d = delta % rb->size;
@@ -109,7 +109,7 @@ static size_t simple_ringbuffer_offset(simple_ringbuffer_t *rb, size_t offset, s
 	return o;
 }
 
-int simple_ringbuffer_add_char(simple_ringbuffer_t *rb, uint8_t ch, bool overwrite)
+inline int simple_ringbuffer_add_char(simple_ringbuffer_t *rb, uint8_t ch, bool overwrite)
 {
 	if (!rb)
 		return -1;
@@ -121,8 +121,8 @@ int simple_ringbuffer_add_char(simple_ringbuffer_t *rb, uint8_t ch, bool overwri
 	if (rb->free < 1)
 		return -2;
 
-	rb->buf[rb->head] = ch;
-	rb->head = simple_ringbuffer_offset(rb, rb->head, 1, 1);
+	rb->buf[rb->tail] = ch;
+	rb->tail = simple_ringbuffer_offset(rb, rb->tail, 1, 1);
 	rb->free--;
 
 	return 0;
@@ -164,7 +164,7 @@ int simple_ringbuffer_add(simple_ringbuffer_t *rb, uint8_t *data, size_t len, bo
 	return 0;
 }
 
-int simple_ringbuffer_read_char(simple_ringbuffer_t *rb)
+inline int simple_ringbuffer_read_char(simple_ringbuffer_t *rb)
 {
 	if (!rb)
 		return -1;
@@ -173,13 +173,14 @@ int simple_ringbuffer_read_char(simple_ringbuffer_t *rb)
 
 	int val = rb->buf[rb->head];
 	rb->head = simple_ringbuffer_offset(rb, rb->head, 1, 1);
+	rb->free++;
 
 	return val;
 }
 
 int simple_ringbuffer_read(simple_ringbuffer_t *rb, uint8_t *ptr, size_t size)
 {
-	if (!rb || !ptr || size < 1)
+	if (!rb || size < 1)
 		return -1;
 
 	size_t used = rb->size - rb->free;
@@ -188,19 +189,39 @@ int simple_ringbuffer_read(simple_ringbuffer_t *rb, uint8_t *ptr, size_t size)
 
 	size_t new_head = simple_ringbuffer_offset(rb, rb->head, size, 1);
 
-	if (new_head > rb->head) {
-		memcpy(ptr, rb->buf + rb->head, size);
-	} else {
-		size_t part1 = rb->size - rb->head;
-		size_t part2 = size - part1;
-		memcpy(ptr, rb->buf + rb->head, part1);
-		memcpy(ptr + part1, rb->buf, part2);
+	if (ptr) {
+		if (new_head > rb->head) {
+			memcpy(ptr, rb->buf + rb->head, size);
+		} else {
+			size_t part1 = rb->size - rb->head;
+			size_t part2 = size - part1;
+			memcpy(ptr, rb->buf + rb->head, part1);
+			memcpy(ptr + part1, rb->buf, part2);
+		}
 	}
 
 	rb->head = new_head;
 	rb->free += size;
 
 	return 0;
+}
+
+size_t simple_ringbuffer_peek(simple_ringbuffer_t *rb, uint8_t **ptr, size_t size)
+{
+	if (!rb || !ptr || size < 1)
+		return 0;
+
+	*ptr = NULL;
+	size_t used = rb->size - rb->free;
+	size_t toread = (size < used ? size : used);
+	size_t len = rb->size - rb->head;
+
+	if (used < 1)
+		return 0;
+
+	*ptr = rb->buf + rb->head;
+
+	return (len < toread ? len : toread);
 }
 
 int u8_ringbuffer_init(u8_ringbuffer_t *rb, uint8_t *buf, size_t size)

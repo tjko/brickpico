@@ -210,6 +210,7 @@ void wifi_init()
 	}
 #endif
 	brickpico_setup_http_handlers();
+	tcpserver_init();
 
 	cyw43_arch_lwip_end();
 
