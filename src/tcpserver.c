@@ -201,10 +201,9 @@ static err_t process_received_data(void *arg, uint8_t *buf, size_t len)
 
 	simple_ringbuffer_t *rb = &st->rb_in;
 
-	//printf("data: ");
+
 	for(int i = 0; i < len; i++) {
 		uint8_t c = buf[i];
-		//printf("%c(%d) ", (isprint(c) ? c : '?'), c);
 
 		if (st->mode == TELNET_MODE) {
 		telnet_state_macine:
@@ -233,7 +232,6 @@ static err_t process_received_data(void *arg, uint8_t *buf, size_t len)
 				}
 			}
 			else if (st->telnet_state == 2) { /* Telnet option */
-				//printf("\n");
 				st->telnet_opt = c;
 				if (st->telnet_cmd == TELNET_SB) {
 					st->telnet_state = 3;
@@ -261,14 +259,72 @@ static err_t process_received_data(void *arg, uint8_t *buf, size_t len)
 			}
 		}
 
+		if (st->cstate == CS_AUTH_LOGIN) {
+			/* Echo back characters when in login prompt... */
+			char buf[1];
+			buf[0] = c;
+			tcp_write(st->client, buf, 1, TCP_WRITE_FLAG_COPY);
+			tcp_output(st->client);
+		}
 		if (simple_ringbuffer_add_char(rb, c, false) < 0)
 			return ERR_MEM;
 	}
-	//printf("\n");
 
 	return ERR_OK;
 }
 
+
+static err_t authenticate_connection(tcp_server_t *st)
+{
+	int i;
+	int l = -1;
+	int len = simple_ringbuffer_size(&st->rb_in);
+
+	for (i = 0; i < len; i++) {
+		int c = simple_ringbuffer_peek_char(&st->rb_in, i);
+		if (c == 10 || c == 13) {
+			l = i;
+			break;
+		}
+	}
+	if (l < 0)
+		return ERR_OK;
+
+	if (st->cstate == CS_AUTH_LOGIN) {
+		if (l >= sizeof(st->login))
+			l = sizeof(st->login) - 1;
+		simple_ringbuffer_read(&st->rb_in, st->login, l+1);
+		st->login[l] = 0;
+		st->cstate = CS_AUTH_PASSWD;
+		tcp_write(st->client, telnet_passwd_prompt, strlen(telnet_passwd_prompt), 0);
+		tcp_output(st->client);
+	} else if (st->cstate == CS_AUTH_PASSWD) {
+		if (l >= sizeof(st->passwd))
+			l = sizeof(st->passwd) - 1;
+		simple_ringbuffer_read(&st->rb_in, st->passwd, l+1);
+		st->passwd[l] = 0;
+		if (st->auth_cb((const char*)st->login, (const char*)st->passwd) == 0) {
+			st->cstate = CS_CONNECT;
+			tcp_write(st->client, telnet_login_success,
+				strlen(telnet_login_success), 0);
+			log_msg(LOG_NOTICE, "Successful login: %s (%s)",
+				st->login, ip4addr_ntoa(&st->client->remote_ip));
+		} else {
+			st->cstate = CS_ACCEPT;
+			tcp_write(st->client, telnet_login_failed,
+				strlen(telnet_login_failed), 0);
+			log_msg(LOG_WARNING, "Login failure: %s (%s)",
+				st->login, ip4addr_ntoa(&st->client->remote_ip));
+		}
+		tcp_output(st->client);
+		memset(st->login, 0, sizeof(st->login));
+		memset(st->passwd, 0, sizeof(st->passwd));
+	}
+
+	simple_ringbuffer_flush(&st->rb_in);
+
+	return ERR_OK;
+}
 
 static err_t tcp_server_recv(void *arg, struct tcp_pcb *pcb, struct pbuf *p, err_t err)
 {
@@ -278,7 +334,8 @@ static err_t tcp_server_recv(void *arg, struct tcp_pcb *pcb, struct pbuf *p, err
 
 	if (!p) {
 		/* Connection closed by client */
-		log_msg(LOG_INFO, "Client closed connection: %d (%x)", err, pcb);
+		log_msg(LOG_INFO, "Client closed connection: %s:%u (%d)",
+			ip4addr_ntoa(&pcb->remote_ip), pcb->remote_port, err);
 		close_client_connection(pcb);
 		st->cstate = CS_NONE;
 		st->client = NULL;
@@ -296,8 +353,6 @@ static err_t tcp_server_recv(void *arg, struct tcp_pcb *pcb, struct pbuf *p, err
 	log_msg(LOG_DEBUG, "tcp_server_recv: data received (pcb=%x): tot_len=%d, len=%d, err=%d",
 		pcb, p->tot_len, p->len, err);
 
-//	if (st->cstate == CS_ACCEPT)
-//		st->cstate = CS_CONNECT;
 
 	buf = p;
 	while (buf != NULL) {
@@ -309,52 +364,12 @@ static err_t tcp_server_recv(void *arg, struct tcp_pcb *pcb, struct pbuf *p, err
 
 	if ((len = simple_ringbuffer_size(&st->rb_in)) > 0) {
 		if (st->cstate == CS_AUTH_LOGIN || st->cstate == CS_AUTH_PASSWD) {
-			int i;
-			int l = -1;
-			for (i = 0; i < len; i++) {
-				int c = simple_ringbuffer_peek_char(&st->rb_in, i);
-				if (c == 10 || c == 13) {
-					l = i;
-					break;
-				}
-			}
-			if (l >= 0) {
-				if (st->cstate == CS_AUTH_LOGIN) {
-					if (l >= sizeof(st->login))
-						l = sizeof(st->login) - 1;
-					simple_ringbuffer_read(&st->rb_in, st->login, l+1);
-					st->login[l] = 0;
-					st->cstate = CS_AUTH_PASSWD;
-					tcp_write(pcb, telnet_passwd_prompt, strlen(telnet_passwd_prompt), 0);
-					tcp_output(pcb);
-				} else {
-					if (l >= sizeof(st->passwd))
-						l = sizeof(st->passwd) - 1;
-					simple_ringbuffer_read(&st->rb_in, st->passwd, l+1);
-					st->passwd[l] = 0;
-					if (st->auth_cb((const char*)st->login, (const char*)st->passwd) == 0) {
-						st->cstate = CS_CONNECT;
-						tcp_write(pcb, telnet_login_success,
-							strlen(telnet_login_success), 0);
-					} else {
-						st->cstate = CS_ACCEPT;
-						tcp_write(pcb, telnet_login_failed,
-							strlen(telnet_login_failed), 0);
-					}
-					tcp_output(pcb);
-				}
-				simple_ringbuffer_flush(&st->rb_in);
-
-			}
+			authenticate_connection(st);
 		}
-		else if (st->cstate == CS_CONNECT) {
-			if (chars_available_callback && len > 0) {
-				chars_available_callback(chars_available_param);
-			}
+		else if (st->cstate == CS_CONNECT && chars_available_callback) {
+			chars_available_callback(chars_available_param);
 		}
 	}
-
-	//printf("buffer len: %u\n", simple_ringbuffer_size(&st->rb_in));
 
 	tcp_recved(pcb, p->tot_len);
 	pbuf_free(p);
@@ -375,8 +390,6 @@ static err_t tcp_server_poll(void *arg, struct tcp_pcb *pcb)
 	err_t err;
 
 
-	//log_msg(LOG_DEBUG, "tcp_server_poll: poll %x", pcb);
-
 	if (st->cstate == CS_ACCEPT) {
 		if ((st->mode == TELNET_MODE && st->telnet_cmd_count > 0) ||
 			st->mode == RAW_MODE)
@@ -388,15 +401,16 @@ static err_t tcp_server_poll(void *arg, struct tcp_pcb *pcb)
 		}
 	}
 
-	while ((waiting = simple_ringbuffer_size(&st->rb_out)) > 0) {
-		size_t len = simple_ringbuffer_peek(&st->rb_out, &rbuf, waiting);
-		if (len > 0) {
-			//printf("tcp_write: %u\n", len);
-			err = tcp_write(pcb, rbuf, len, TCP_WRITE_FLAG_COPY);
-			if (err != ERR_OK)
-				break;
-			simple_ringbuffer_read(&st->rb_out, NULL, len);
-			wcount++;
+	if (st->cstate == CS_CONNECT) {
+		while ((waiting = simple_ringbuffer_size(&st->rb_out)) > 0) {
+			size_t len = simple_ringbuffer_peek(&st->rb_out, &rbuf, waiting);
+			if (len > 0) {
+				err = tcp_write(pcb, rbuf, len, TCP_WRITE_FLAG_COPY);
+				if (err != ERR_OK)
+					break;
+				simple_ringbuffer_read(&st->rb_out, NULL, len);
+				wcount++;
+			}
 		}
 	}
 
@@ -426,7 +440,8 @@ static err_t tcp_server_accept(void *arg, struct tcp_pcb *pcb, err_t err)
 		return ERR_VAL;
 	}
 
-	log_msg(LOG_INFO, "Client connected: %x", pcb);
+	log_msg(LOG_INFO, "Client connected: %s:%u",
+		ip4addr_ntoa(&pcb->remote_ip), pcb->remote_port);
 
 	if (st->cstate != CS_NONE) {
 		log_msg(LOG_ERR, "tcp_server_accept: reject connection");
