@@ -96,6 +96,11 @@ static inline size_t simple_ringbuffer_offset(simple_ringbuffer_t *rb, size_t of
 	size_t o = offset % rb->size;
 	size_t d = delta % rb->size;
 
+	if (!rb)
+		return 0;
+	if (d == 0)
+		return o;
+
 	if (direction >= 0) {
 		o = (o + d) % rb->size;
 	} else {
@@ -176,6 +181,18 @@ inline int simple_ringbuffer_read_char(simple_ringbuffer_t *rb)
 	rb->free++;
 
 	return val;
+}
+
+inline int simple_ringbuffer_peek_char(simple_ringbuffer_t *rb, size_t offset)
+{
+	if (!rb)
+		return -1;
+	if (rb->head == rb->tail)
+		return -2;
+	if (offset >= (rb->size - rb->free))
+		return -3;
+
+	return rb->buf[simple_ringbuffer_offset(rb, rb->head, offset, 1)];
 }
 
 int simple_ringbuffer_read(simple_ringbuffer_t *rb, uint8_t *ptr, size_t size)

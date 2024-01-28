@@ -34,7 +34,8 @@
 #include "lwip/pbuf.h"
 #include "lwip/tcp.h"
 
-#define TCP_SERVER_MAX_CON 1
+#define TELNET_DEFAULT_PORT 23
+#define TCP_SERVER_MAX_CONN 1
 #define TCP_CLIENT_POLL_TIME 1
 
 tcp_server_t *tcpserv = NULL;
@@ -43,15 +44,31 @@ static void (*chars_available_callback)(void*) = NULL;
 static void *chars_available_param = NULL;
 
 
-static tcp_server_t* tcp_server_init(void) {
-	tcp_server_t *state = calloc(1, sizeof(tcp_server_t));
+const char* telnet_login_prompt = "\r\nlogin: ";
+const char* telnet_passwd_prompt = "\r\npassword: ";
+const char* telnet_login_failed = "\r\nLogin failed.\r\n";
+const char* telnet_login_success = "\r\nLogin successful.\r\n";
 
-	if (!state)
+const uint8_t telnet_default_options[] = {
+	IAC, TELNET_DO, TO_SUP_GA,
+	IAC, TELNET_WILL, TO_ECHO,
+	IAC, TELNET_WONT, TO_LINEMODE,
+};
+
+static tcp_server_t* tcp_server_init(void) {
+	tcp_server_t *st = calloc(1, sizeof(tcp_server_t));
+
+	if (!st)
 		log_msg(LOG_WARNING, "Failed to allocate tcp server state");
 
-	simple_ringbuffer_init(&state->rb_in, state->in_buf, sizeof(state->in_buf));
-	simple_ringbuffer_init(&state->rb_out, state->out_buf, sizeof(state->out_buf));
-	return state;
+	simple_ringbuffer_init(&st->rb_in, st->in_buf, sizeof(st->in_buf));
+	simple_ringbuffer_init(&st->rb_out, st->out_buf, sizeof(st->out_buf));
+	st->mode = RAW_MODE;
+	st->cstate = CS_NONE;
+	st->auth_cb = NULL;
+	st->port = TELNET_DEFAULT_PORT;
+
+	return st;
 }
 
 
@@ -75,24 +92,24 @@ static err_t close_client_connection(struct tcp_pcb *pcb)
 
 
 static err_t tcp_server_close(void *arg) {
-	tcp_server_t *state = (tcp_server_t*)arg;
+	tcp_server_t *st = (tcp_server_t*)arg;
 	err_t err = ERR_OK;
 
-	state->connected = false;
-	if (state->client) {
-		err = close_client_connection(state->client);
-		state->client = NULL;
+	st->cstate = CS_NONE;
+	if (st->client) {
+		err = close_client_connection(st->client);
+		st->client = NULL;
 	}
 
-	if (state->listen) {
-		tcp_arg(state->listen, NULL);
-		tcp_accept(state->listen, NULL);
-		if ((err = tcp_close(state->listen)) != ERR_OK) {
+	if (st->listen) {
+		tcp_arg(st->listen, NULL);
+		tcp_accept(st->listen, NULL);
+		if ((err = tcp_close(st->listen)) != ERR_OK) {
 			log_msg(LOG_NOTICE, "tcp_server_close: failed to close listen pcb: %d", err);
-			tcp_abort(state->listen);
+			tcp_abort(st->listen);
 			err = ERR_ABRT;
 		}
-		state->listen = NULL;
+		st->listen = NULL;
 	}
 
 	return err;
@@ -106,40 +123,142 @@ static err_t tcp_server_sent(void *arg, struct tcp_pcb *pcb, u16_t len)
 }
 
 
-static err_t process_received_data(simple_ringbuffer_t *rb, uint8_t *buf, size_t len)
+static void process_telnet_cmd(tcp_server_t *st)
 {
-	int state = 0;
+	int resp = -1;
+//	printf("process_telnet_cmd(%d,%d)\n", st->telnet_cmd, st->telnet_opt);
 
-	if (!rb || !buf)
+
+	switch(st->telnet_cmd) {
+	case TELNET_DO:
+		switch (st->telnet_opt) {
+		case TO_ECHO:
+			/* do nothing since we sent WILL for these...*/
+			break;
+
+		case TO_BINARY:
+		case TO_SUP_GA:
+			resp = TELNET_WILL;
+			break;
+
+		default:
+			resp = TELNET_WONT;
+			break;
+		}
+		break;
+
+	case TELNET_WILL:
+		switch (st->telnet_opt) {
+		case TO_SUP_GA:
+			/* do nothing since we sent DO for these... */
+			break;
+
+		case TO_NAWS:
+		case TO_TSPEED:
+		case TO_RFLOWCTRL:
+		case TO_LINEMODE:
+		case TO_XDISPLOC:
+		case TO_ENV:
+		case TO_AUTH:
+		case TO_ENCRYPT:
+		case TO_NEWENV:
+			resp = TELNET_DONT;
+			break;
+
+		default:
+			resp = TELNET_DO;
+		}
+		break;
+
+	case TELNET_DONT:
+	case TELNET_WONT:
+		/* ignore these */
+		break;
+
+	default:
+		//printf("Unknown command: %d\n", st->telnet_cmd);
+		break;
+	}
+
+
+	if (resp >= 0) {
+		uint8_t buf[3] = { IAC, resp, st->telnet_opt };
+		tcp_write(st->client, buf, 3, TCP_WRITE_FLAG_COPY);
+	}
+
+	st->telnet_cmd_count++;
+}
+
+static err_t process_received_data(void *arg, uint8_t *buf, size_t len)
+{
+	tcp_server_t *st = (tcp_server_t*)arg;
+
+	if (!arg || !buf)
 		return ERR_VAL;
 
 	if (len < 1)
 		return ERR_OK;
+
+	simple_ringbuffer_t *rb = &st->rb_in;
 
 	//printf("data: ");
 	for(int i = 0; i < len; i++) {
 		uint8_t c = buf[i];
 		//printf("%c(%d) ", (isprint(c) ? c : '?'), c);
 
-		/* "filter out" telnet protocol... */
-		if (state == 0) {
-			if (c == 255) {
-				state = 1;
+		if (st->mode == TELNET_MODE) {
+		telnet_state_macine:
+			if (st->telnet_state == 0) { /* normal (pass-through) mode */
+				if (c == IAC) {
+					st->telnet_state = 1;
+					continue;
+				}
+			}
+			else if (st->telnet_state == 1) { /* IAC seen */
+				if (c == IAC) { /* escaped 0xff */
+					st->telnet_state = 0;
+				}
+				else { /* Telnet command */
+					st->telnet_cmd = c;
+					st->telnet_opt = 0;
+					if (c == TELNET_WILL || c == TELNET_WONT
+						|| c == TELNET_DO || c == TELNET_DONT
+						|| c== TELNET_SB) {
+						st->telnet_state = 2;
+					} else {
+						process_telnet_cmd(st);
+						st->telnet_state = 0;
+					}
+					continue;
+				}
+			}
+			else if (st->telnet_state == 2) { /* Telnet option */
+				//printf("\n");
+				st->telnet_opt = c;
+				if (st->telnet_cmd == TELNET_SB) {
+					st->telnet_state = 3;
+				} else {
+					process_telnet_cmd(st);
+					st->telnet_state = 0;
+				}
 				continue;
 			}
-		}
-		else if (state == 1) {
-			if (c == 255) {
-				state = 0;
+			else if (st->telnet_state == 3) { /* Subnegotiation data */
+				if (c == IAC)
+					st->telnet_state = 4;
+				continue;
+			}
+			else if (st->telnet_state == 4) { /* subnegotiation end? */
+				if (c == IAC)
+					st->telnet_state = 3;
+				else {
+					st->telnet_state = 1;
+					goto telnet_state_macine;
+				}
 			}
 			else {
-				state = 2;
-				continue;
+				st->telnet_state = 0;
 			}
-		}
-		else {
-			state = 0;
-			continue;
 		}
 
 		if (simple_ringbuffer_add_char(rb, c, false) < 0)
@@ -153,15 +272,16 @@ static err_t process_received_data(simple_ringbuffer_t *rb, uint8_t *buf, size_t
 
 static err_t tcp_server_recv(void *arg, struct tcp_pcb *pcb, struct pbuf *p, err_t err)
 {
-	tcp_server_t *state = (tcp_server_t*)arg;
+	tcp_server_t *st = (tcp_server_t*)arg;
 	struct pbuf *buf;
+	size_t len;
 
 	if (!p) {
 		/* Connection closed by client */
 		log_msg(LOG_INFO, "Client closed connection: %d (%x)", err, pcb);
-		state->connected = false;
 		close_client_connection(pcb);
-		state->client = NULL;
+		st->cstate = CS_NONE;
+		st->client = NULL;
 		return ERR_OK;
 	}
 	if (err != ERR_OK) {
@@ -176,19 +296,65 @@ static err_t tcp_server_recv(void *arg, struct tcp_pcb *pcb, struct pbuf *p, err
 	log_msg(LOG_DEBUG, "tcp_server_recv: data received (pcb=%x): tot_len=%d, len=%d, err=%d",
 		pcb, p->tot_len, p->len, err);
 
+//	if (st->cstate == CS_ACCEPT)
+//		st->cstate = CS_CONNECT;
+
 	buf = p;
 	while (buf != NULL) {
-		err = process_received_data(&state->rb_in, buf->payload, buf->len);
+		err = process_received_data(st, buf->payload, buf->len);
 		if  (err != ERR_OK)
 			break;
 		buf = buf->next;
 	}
 
-	if (chars_available_callback && (simple_ringbuffer_size(&state->rb_in) > 0)) {
-		chars_available_callback(chars_available_param);
+	if ((len = simple_ringbuffer_size(&st->rb_in)) > 0) {
+		if (st->cstate == CS_AUTH_LOGIN || st->cstate == CS_AUTH_PASSWD) {
+			int i;
+			int l = -1;
+			for (i = 0; i < len; i++) {
+				int c = simple_ringbuffer_peek_char(&st->rb_in, i);
+				if (c == 10 || c == 13) {
+					l = i;
+					break;
+				}
+			}
+			if (l >= 0) {
+				if (st->cstate == CS_AUTH_LOGIN) {
+					if (l >= sizeof(st->login))
+						l = sizeof(st->login) - 1;
+					simple_ringbuffer_read(&st->rb_in, st->login, l+1);
+					st->login[l] = 0;
+					st->cstate = CS_AUTH_PASSWD;
+					tcp_write(pcb, telnet_passwd_prompt, strlen(telnet_passwd_prompt), 0);
+					tcp_output(pcb);
+				} else {
+					if (l >= sizeof(st->passwd))
+						l = sizeof(st->passwd) - 1;
+					simple_ringbuffer_read(&st->rb_in, st->passwd, l+1);
+					st->passwd[l] = 0;
+					if (st->auth_cb((const char*)st->login, (const char*)st->passwd) == 0) {
+						st->cstate = CS_CONNECT;
+						tcp_write(pcb, telnet_login_success,
+							strlen(telnet_login_success), 0);
+					} else {
+						st->cstate = CS_ACCEPT;
+						tcp_write(pcb, telnet_login_failed,
+							strlen(telnet_login_failed), 0);
+					}
+					tcp_output(pcb);
+				}
+				simple_ringbuffer_flush(&st->rb_in);
+
+			}
+		}
+		else if (st->cstate == CS_CONNECT) {
+			if (chars_available_callback && len > 0) {
+				chars_available_callback(chars_available_param);
+			}
+		}
 	}
 
-	//printf("buffer len: %u\n", simple_ringbuffer_size(&state->rb_in));
+	//printf("buffer len: %u\n", simple_ringbuffer_size(&st->rb_in));
 
 	tcp_recved(pcb, p->tot_len);
 	pbuf_free(p);
@@ -197,25 +363,45 @@ static err_t tcp_server_recv(void *arg, struct tcp_pcb *pcb, struct pbuf *p, err
 }
 
 
+
+
+
 static err_t tcp_server_poll(void *arg, struct tcp_pcb *pcb)
 {
-	tcp_server_t *state = (tcp_server_t*)arg;
-	int count;
+	tcp_server_t *st = (tcp_server_t*)arg;
+	int wcount = 0;
+	int waiting;
 	uint8_t *rbuf;
 	err_t err;
 
+
 	//log_msg(LOG_DEBUG, "tcp_server_poll: poll %x", pcb);
 
-	while ((count = simple_ringbuffer_size(&state->rb_out)) > 0) {
-		size_t len = simple_ringbuffer_peek(&state->rb_out, &rbuf, count);
+	if (st->cstate == CS_ACCEPT) {
+		if ((st->mode == TELNET_MODE && st->telnet_cmd_count > 0) ||
+			st->mode == RAW_MODE)
+			st->cstate = (st->auth_cb ? CS_AUTH_LOGIN : CS_CONNECT);
+
+		if (st->cstate == CS_AUTH_LOGIN) {
+			tcp_write(pcb, telnet_login_prompt, strlen(telnet_login_prompt), 0);
+			wcount++;
+		}
+	}
+
+	while ((waiting = simple_ringbuffer_size(&st->rb_out)) > 0) {
+		size_t len = simple_ringbuffer_peek(&st->rb_out, &rbuf, waiting);
 		if (len > 0) {
 			//printf("tcp_write: %u\n", len);
 			err = tcp_write(pcb, rbuf, len, TCP_WRITE_FLAG_COPY);
 			if (err != ERR_OK)
 				break;
-			simple_ringbuffer_read(&state->rb_out, NULL, len);
+			simple_ringbuffer_read(&st->rb_out, NULL, len);
+			wcount++;
 		}
 	}
+
+	if (wcount > 0)
+		tcp_output(pcb);
 
 	return ERR_OK;
 }
@@ -232,7 +418,8 @@ static void tcp_server_err(void *arg, err_t err)
 
 static err_t tcp_server_accept(void *arg, struct tcp_pcb *pcb, err_t err)
 {
-	tcp_server_t *state = (tcp_server_t*)arg;
+	tcp_server_t *st = (tcp_server_t*)arg;
+
 
 	if (!pcb || err != ERR_OK) {
 		log_msg(LOG_ERR, "tcp_server_accept: failure: %d", err);
@@ -241,32 +428,41 @@ static err_t tcp_server_accept(void *arg, struct tcp_pcb *pcb, err_t err)
 
 	log_msg(LOG_INFO, "Client connected: %x", pcb);
 
-	if (state->connected) {
+	if (st->cstate != CS_NONE) {
 		log_msg(LOG_ERR, "tcp_server_accept: reject connection");
 		return ERR_MEM;
 	}
 
-	state->client = pcb;
-	tcp_arg(pcb, state);
+	st->client = pcb;
+	tcp_arg(pcb, st);
 	tcp_sent(pcb, tcp_server_sent);
 	tcp_recv(pcb, tcp_server_recv);
 	tcp_poll(pcb, tcp_server_poll, TCP_CLIENT_POLL_TIME);
 	tcp_err(pcb, tcp_server_err);
 
-	state->connected = true;
-	simple_ringbuffer_flush(&state->rb_in);
-	simple_ringbuffer_flush(&state->rb_out);
+	st->cstate = CS_ACCEPT;
+	st->telnet_state = 0;
+	st->telnet_cmd_count = 0;
+	simple_ringbuffer_flush(&st->rb_in);
+	simple_ringbuffer_flush(&st->rb_out);
+
+	if (st->mode == TELNET_MODE) {
+		tcp_write(pcb, telnet_default_options, sizeof(telnet_default_options), 0);
+		tcp_output(pcb);
+	} else {
+		tcp_write(pcb, "BrickPico\r\n", 11, 0);
+		tcp_output(pcb);
+	}
 
 	return ERR_OK;
 }
 
 
-static bool tcp_server_open(void *arg, u16_t port) {
-	tcp_server_t *state = (tcp_server_t*)arg;
+static bool tcp_server_open(tcp_server_t *st) {
 	struct tcp_pcb *pcb;
 	err_t err;
 
-	if (!arg)
+	if (!st)
 		return false;
 
 	if (!(pcb = tcp_new_ip_type(IPADDR_TYPE_ANY))) {
@@ -274,20 +470,20 @@ static bool tcp_server_open(void *arg, u16_t port) {
 		return false;
 	}
 
-	if ((err = tcp_bind(pcb, NULL, port)) != ERR_OK) {
-		log_msg(LOG_ERR, "tcp_server_open: cannot bind to port %d: %d", port, err);
+	if ((err = tcp_bind(pcb, NULL, st->port)) != ERR_OK) {
+		log_msg(LOG_ERR, "tcp_server_open: cannot bind to port %d: %d", st->port, err);
 		tcp_abort(pcb);
 		return false;
 	}
 
-	if (!(state->listen = tcp_listen_with_backlog(pcb, TCP_SERVER_MAX_CON))) {
-		log_msg(LOG_ERR, "tcp_server_open: failed to listen on port %d", port);
+	if (!(st->listen = tcp_listen_with_backlog(pcb, TCP_SERVER_MAX_CONN))) {
+		log_msg(LOG_ERR, "tcp_server_open: failed to listen on port %d", st->port);
 		tcp_abort(pcb);
 		return false;
 	}
 
-	tcp_arg(state->listen, state);
-	tcp_accept(state->listen, tcp_server_accept);
+	tcp_arg(st->listen, st);
+	tcp_accept(st->listen, tcp_server_accept);
 
 	return true;
 }
@@ -308,7 +504,7 @@ static void stdio_tcp_out_chars(const char *buf, int length)
 {
 	if (!tcpserv)
 		return;
-	if (!tcpserv->connected)
+	if (tcpserv->cstate != CS_CONNECT)
 		return;
 
 	for (int i = 0; i <length; i++) {
@@ -324,7 +520,7 @@ static int stdio_tcp_in_chars(char *buf, int length)
 
 	if (!tcpserv)
 		return PICO_ERROR_NO_DATA;
-	if (!tcpserv->connected)
+	if (tcpserv->cstate != CS_CONNECT)
 		return PICO_ERROR_NO_DATA;
 
 	while (i < length && ((c = simple_ringbuffer_read_char(&tcpserv->rb_in)) >= 0)) {
@@ -342,6 +538,11 @@ static void stdio_tcp_set_chars_available_callback(void (*fn)(void*), void *para
 }
 
 
+int dummy_auth_cb(const char *login, const char *password)
+{
+	printf("login='%s', password='%s'\n", login, password);
+	return 0;
+}
 
 void tcpserver_init()
 {
@@ -350,8 +551,11 @@ void tcpserver_init()
 	if (!tcpserv)
 		return;
 
+	tcpserv->mode = TELNET_MODE;
+	tcpserv->auth_cb = dummy_auth_cb;
+
 	cyw43_arch_lwip_begin();
-	if (!tcp_server_open(tcpserv, 23)) {
+	if (!tcp_server_open(tcpserv)) {
 		log_msg(LOG_ERR, "Failed to start TCP/Telnet server");
 		tcp_server_close(tcpserv);
 	} else {

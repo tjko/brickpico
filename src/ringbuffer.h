@@ -55,6 +55,7 @@ int simple_ringbuffer_add(simple_ringbuffer_t *rb, uint8_t *data, size_t len, bo
 int simple_ringbuffer_read_char(simple_ringbuffer_t *rb);
 int simple_ringbuffer_read(simple_ringbuffer_t *rb, uint8_t *ptr, size_t size);
 size_t simple_ringbuffer_peek(simple_ringbuffer_t *rb, uint8_t **ptr, size_t size);
+int simple_ringbuffer_peek_char(simple_ringbuffer_t *rb, size_t offset);
 
 
 int u8_ringbuffer_init(u8_ringbuffer_t *rb, uint8_t *buf, size_t size);
