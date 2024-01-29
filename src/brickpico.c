@@ -38,7 +38,6 @@
 #include "hardware/clocks.h"
 #include "hardware/watchdog.h"
 #include "hardware/vreg.h"
-
 #include "ringbuffer.h"
 #include "brickpico.h"
 

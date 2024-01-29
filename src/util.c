@@ -420,7 +420,6 @@ void* memmem(const void *haystack, size_t haystacklen,
 	return NULL;
 }
 
-
 char *bitmask_to_str_r(uint32_t mask, uint8_t len, uint8_t base, bool range, char *buf, size_t buf_len)
 {
 	int state = 0;

@@ -36,27 +36,6 @@ typedef struct u8_ringbuffer {
 } u8_ringbuffer_t;
 
 
-typedef struct simple_ringbuffer {
-	uint8_t *buf;
-	bool free_buf;
-	size_t size;
-	size_t free;
-	size_t head;
-	size_t tail;
-} simple_ringbuffer_t;
-
-
-int simple_ringbuffer_init(simple_ringbuffer_t *rb, uint8_t *buf, size_t size);
-int simple_ringbuffer_free(simple_ringbuffer_t *rb);
-int simple_ringbuffer_flush(simple_ringbuffer_t *rb);
-size_t simple_ringbuffer_size(simple_ringbuffer_t *rb);
-int simple_ringbuffer_add_char(simple_ringbuffer_t *rb, uint8_t ch, bool overwrite);
-int simple_ringbuffer_add(simple_ringbuffer_t *rb, uint8_t *data, size_t len, bool overwrite);
-int simple_ringbuffer_read_char(simple_ringbuffer_t *rb);
-int simple_ringbuffer_read(simple_ringbuffer_t *rb, uint8_t *ptr, size_t size);
-size_t simple_ringbuffer_peek(simple_ringbuffer_t *rb, uint8_t **ptr, size_t size);
-int simple_ringbuffer_peek_char(simple_ringbuffer_t *rb, size_t offset);
-
 
 int u8_ringbuffer_init(u8_ringbuffer_t *rb, uint8_t *buf, size_t size);
 int u8_ringbuffer_free(u8_ringbuffer_t *rb);
