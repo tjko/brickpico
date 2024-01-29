@@ -23,9 +23,11 @@
 #include <string.h>
 #include <time.h>
 #include <assert.h>
+#include "mbedtls/sha256.h"
 #include "hardware/rtc.h"
 #include "pico/stdlib.h"
 #include "pico/stdio/driver.h"
+#include "sha512crypt.h"
 #include "tcpserver.h"
 #include "brickpico.h"
 
@@ -303,7 +305,7 @@ static err_t authenticate_connection(tcp_server_t *st)
 			l = sizeof(st->passwd) - 1;
 		simple_ringbuffer_read(&st->rb_in, st->passwd, l+1);
 		st->passwd[l] = 0;
-		if (st->auth_cb((const char*)st->login, (const char*)st->passwd) == 0) {
+		if (st->auth_cb(st->auth_cb_param, (const char*)st->login, (const char*)st->passwd) == 0) {
 			st->cstate = CS_CONNECT;
 			tcp_write(st->client, telnet_login_success,
 				strlen(telnet_login_success), 0);
@@ -391,9 +393,13 @@ static err_t tcp_server_poll(void *arg, struct tcp_pcb *pcb)
 
 
 	if (st->cstate == CS_ACCEPT) {
-		if ((st->mode == TELNET_MODE && st->telnet_cmd_count > 0) ||
-			st->mode == RAW_MODE)
+		if ((st->mode == TELNET_MODE && st->telnet_cmd_count > 0) || st->mode == RAW_MODE) {
 			st->cstate = (st->auth_cb ? CS_AUTH_LOGIN : CS_CONNECT);
+			if (st->banner) {
+				tcp_write(pcb, st->banner, strlen(st->banner), TCP_WRITE_FLAG_COPY);
+				wcount++;
+			}
+		}
 
 		if (st->cstate == CS_AUTH_LOGIN) {
 			tcp_write(pcb, telnet_login_prompt, strlen(telnet_login_prompt), 0);
@@ -405,7 +411,10 @@ static err_t tcp_server_poll(void *arg, struct tcp_pcb *pcb)
 		while ((waiting = simple_ringbuffer_size(&st->rb_out)) > 0) {
 			size_t len = simple_ringbuffer_peek(&st->rb_out, &rbuf, waiting);
 			if (len > 0) {
-				err = tcp_write(pcb, rbuf, len, TCP_WRITE_FLAG_COPY);
+				u8_t flags = TCP_WRITE_FLAG_COPY;
+				if (len < waiting)
+					flags |= TCP_WRITE_FLAG_MORE;
+				err = tcp_write(pcb, rbuf, len, flags);
 				if (err != ERR_OK)
 					break;
 				simple_ringbuffer_read(&st->rb_out, NULL, len);
@@ -553,10 +562,39 @@ static void stdio_tcp_set_chars_available_callback(void (*fn)(void*), void *para
 }
 
 
-int dummy_auth_cb(const char *login, const char *password)
+int dummy_auth_cb(void *param, const char *login, const char *password)
 {
-	printf("login='%s', password='%s'\n", login, password);
 	return 0;
+}
+
+
+user_pwhash_entry_t users[] = {
+	{ "admin", "$6$caRtcnraEpbI48d3$YizNnV2hIwqZ/Gu4jh9ebV/DXCRhCzvUM2E0yTF3BgGrMw1HrfYIJJ9CQ0rcVBbpScCfwBtKhynVpKSnW/5o.." },
+	{ NULL, NULL }
+};
+
+int sha512crypt_auth_cb(void *param, const char *login, const char *password)
+{
+	user_pwhash_entry_t *users = (user_pwhash_entry_t*)param;
+	int i = 0;
+
+	while (users[i].login) {
+		if (!strcmp(login, users[i].login)) {
+			/* Found matching user */
+			char *hash = sha512_crypt(password, users[i].hash);
+			if (!strcmp(hash, users[i].hash)) {
+				/* password matches */
+				return 0;
+			} else {
+				/* password does not match */
+				return 1;
+			}
+		}
+		i++;
+	}
+
+	/* no user found, authentication failure... */
+	return -1;
 }
 
 void tcpserver_init()
@@ -567,7 +605,10 @@ void tcpserver_init()
 		return;
 
 	tcpserv->mode = TELNET_MODE;
-	tcpserv->auth_cb = dummy_auth_cb;
+//	tcpserv->auth_cb = dummy_auth_cb;
+	tcpserv->auth_cb = sha512crypt_auth_cb;
+	tcpserv->auth_cb_param = (void*)users;
+	tcpserv->banner = "\r\nBrickPico\r\n";
 
 	cyw43_arch_lwip_begin();
 	if (!tcp_server_open(tcpserv)) {

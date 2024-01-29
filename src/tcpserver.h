@@ -63,6 +63,11 @@
 #define TO_NEWENV     39
 
 
+typedef struct user_pwhash_entry {
+	const char *login;
+	const char *hash;
+} user_pwhash_entry_t;
+
 
 typedef enum tcp_server_mode {
 	RAW_MODE = 0,
@@ -92,9 +97,11 @@ typedef struct tcp_server_t {
 	uint8_t telnet_cmd;
 	uint8_t telnet_opt;
 	int telnet_cmd_count;
-	int (*auth_cb)(const char *login, const char *password);
-	uint8_t login[32];
-	uint8_t passwd[64];
+	int (*auth_cb)(void* param, const char *login, const char *password);
+	void *auth_cb_param;
+	uint8_t login[32 + 1];
+	uint8_t passwd[64 + 1];
+	const char *banner;
 } tcp_server_t;
 
 
