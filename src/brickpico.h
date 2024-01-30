@@ -136,6 +136,12 @@ struct brickpico_config {
 	uint32_t mqtt_pwm_interval;
 	uint32_t mqtt_temp_interval;
 	uint16_t mqtt_pwm_mask;
+	bool telnet_active;
+	bool telnet_auth;
+	bool telnet_raw_mode;
+	uint32_t telnet_port;
+	char telnet_user[16 + 1];
+	char telnet_pwhash[128 + 1];
 #endif
 };
 

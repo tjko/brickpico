@@ -34,27 +34,37 @@
 #include "brickpico.h"
 
 
-user_pwhash_entry_t users[] = {
-	{ "admin", "$6$caRtcnraEpbI48d3$YizNnV2hIwqZ/Gu4jh9ebV/DXCRhCzvUM2E0yTF3BgGrMw1HrfYIJJ9CQ0rcVBbpScCfwBtKhynVpKSnW/5o.." },
+static const char *telnet_banner = "\r\n"
+	"______      _      _   ______ _\r\n"
+	"| ___ \\    (_)    | |  | ___ (_)\r\n"
+	"| |_/ /_ __ _  ___| | _| |_/ /_  ___ ___\r\n"
+	"| ___ \\ '__| |/ __| |/ /  __/| |/ __/ _ \\\r\n"
+	"| |_/ / |  | | (__|   <| |   | | (_| (_) |\r\n"
+	"\\____/|_|  |_|\\___|_|\\_\\_|   |_|\\___\\___/\r\n";
+
+
+static user_pwhash_entry_t users[] = {
+	{ NULL, NULL },
 	{ NULL, NULL }
 };
 
 void tcpserver_init()
 {
-	tcp_server_t *srv = telnet_server_init();
+	tcp_server_t *srv = telnet_server_init(4096, 10240);
 
 	if (!srv)
 		return;
 
-	srv->mode = TELNET_MODE;
+	users[0].login = cfg->telnet_user;
+	users[0].hash = cfg->telnet_pwhash;
+	srv->mode = (cfg->telnet_raw_mode ? RAW_MODE : TELNET_MODE);
+	if (cfg->telnet_port > 0)
+		srv->port = cfg->telnet_port;
 	srv->log_cb = log_msg;
-	srv->auth_cb = sha512crypt_auth_cb;
+	srv->auth_cb = (cfg->telnet_auth ? sha512crypt_auth_cb : NULL);
 	srv->auth_cb_param = (void*)users;
-	srv->banner = "\r\nBrickPico\r\n=========\r\n";
+	srv->banner = telnet_banner;
 
-//	telnetd_log_level(LOG_INFO);
-
-	telnet_server_start(true);
-
+	telnet_server_start(srv, true);
 }
 
