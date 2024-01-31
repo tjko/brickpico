@@ -60,9 +60,11 @@ void tcpserver_init()
 	srv->mode = (cfg->telnet_raw_mode ? RAW_MODE : TELNET_MODE);
 	if (cfg->telnet_port > 0)
 		srv->port = cfg->telnet_port;
+	if (cfg->telnet_auth) {
+		srv->auth_cb = sha512crypt_auth_cb;
+		srv->auth_cb_param = (void*)users;
+	}
 	srv->log_cb = log_msg;
-	srv->auth_cb = (cfg->telnet_auth ? sha512crypt_auth_cb : NULL);
-	srv->auth_cb_param = (void*)users;
 	srv->banner = telnet_banner;
 
 	telnet_server_start(srv, true);

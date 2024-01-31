@@ -23,6 +23,7 @@ BrickPico is an Open-source hardware (OSHW) project.
 * SCPI "like" programming interface (see [Command Reference](commands.md))
 * WiFi support if opting to mount Pico W on the board. This turns fanpico to "IoT" device with basic web interface.
 * MQTT support for sending status and to receive commands.
+* Telnet support for remote configuration and monitoring.
 
 [![BrickPico](images/brickpico-08-small.jpg)](images/brickpico-08.jpg?raw=true)
 

@@ -210,8 +210,11 @@ void wifi_init()
 	}
 #endif
 	brickpico_setup_http_handlers();
-	if (cfg->telnet_active)
+
+	if (cfg->telnet_active) {
+		log_msg(LOG_NOTICE, "Telnet Server enabled");
 		tcpserver_init();
+	}
 
 	cyw43_arch_lwip_end();
 

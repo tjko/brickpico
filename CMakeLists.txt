@@ -8,7 +8,7 @@ include($ENV{PICO_SDK_PATH}/external/pico_sdk_import.cmake)
 
 
 project(brickpico
-  VERSION 1.1.0
+  VERSION 1.2.0
   LANGUAGES C CXX ASM
   )
 set(CMAKE_C_STANDARD 11)
@@ -38,6 +38,7 @@ pico_sdk_init()
 
 # External libaries
 
+# pico-telnetd
 add_subdirectory(libs/pico-telnetd)
 
 # littlefs-lib
