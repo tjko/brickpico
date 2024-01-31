@@ -41,6 +41,7 @@
 #ifdef WIFI_SUPPORT
 #include "lwip/ip_addr.h"
 #include "lwip/stats.h"
+#include "pico_telnetd/util.h"
 #endif
 
 
@@ -364,7 +365,7 @@ int cmd_mem_log(const char *cmd, const char *args, int query, char *prev_cmd)
 	o = log_rb->head;
 	do {
 		c++;
-		len = ringbuffer_peek(log_rb, o, buf, MEM_LOG_BUF_SIZE, &next, &prev);
+		len = u8_ringbuffer_peek(log_rb, o, buf, MEM_LOG_BUF_SIZE, &next, &prev);
 		if (len > 0)
 			printf(">%s\n", buf);
 		o = next;
@@ -1113,6 +1114,57 @@ int cmd_tls_cert(const char *cmd, const char *args, int query, char *prev_cmd)
 	return res;
 }
 #endif /* TLS_SUPPORT */
+
+
+int cmd_telnet_auth(const char *cmd, const char *args, int query, char *prev_cmd)
+{
+	return bool_setting(cmd, args, query, prev_cmd,
+			&conf->telnet_auth, "Telnet Server Authentication");
+}
+
+int cmd_telnet_rawmode(const char *cmd, const char *args, int query, char *prev_cmd)
+{
+	return bool_setting(cmd, args, query, prev_cmd,
+			&conf->telnet_raw_mode, "Telnet Server Raw Mode");
+}
+
+int cmd_telnet_server(const char *cmd, const char *args, int query, char *prev_cmd)
+{
+	return bool_setting(cmd, args, query, prev_cmd,
+			&conf->telnet_active, "Telnet Server");
+}
+
+int cmd_telnet_port(const char *cmd, const char *args, int query, char *prev_cmd)
+{
+	return uint32_setting(cmd, args, query, prev_cmd,
+			&conf->telnet_port, 0, 65535, "Telnet Port");
+}
+
+int cmd_telnet_user(const char *cmd, const char *args, int query, char *prev_cmd)
+{
+	return string_setting(cmd, args, query, prev_cmd,
+			conf->telnet_user, sizeof(conf->telnet_user),
+			"Telnet Username", NULL);
+}
+
+int cmd_telnet_pass(const char *cmd, const char *args, int query, char *prev_cmd)
+{
+	if (query) {
+		printf("%s\n", cfg->telnet_pwhash);
+		return 0;
+	}
+
+	if (strlen(args) > 0) {
+		strncopy(conf->telnet_pwhash, generate_sha512crypt_pwhash(args),
+			sizeof(conf->telnet_pwhash));
+	} else {
+		conf->telnet_pwhash[0] = 0;
+		log_msg(LOG_NOTICE, "Telnet password removed.");
+	}
+	return 0;
+}
+
+
 #endif /* WIFI_SUPPOERT */
 
 int cmd_time(const char *cmd, const char *args, int query, char *prev_cmd)
@@ -1428,6 +1480,18 @@ const struct cmd_t tls_commands[] = {
 	{ 0, 0, 0, 0 }
 };
 
+const struct cmd_t telnet_commands[] = {
+#ifdef WIFI_SUPPORT
+	{ "AUTH",      4, NULL,              cmd_telnet_auth },
+	{ "PORT",      4, NULL,              cmd_telnet_port },
+	{ "RAWmode",   3, NULL,              cmd_telnet_rawmode },
+	{ "SERVer",    4, NULL,              cmd_telnet_server },
+	{ "PASSword",  4, NULL,              cmd_telnet_pass },
+	{ "USER",      4, NULL,              cmd_telnet_user },
+#endif
+	{ 0, 0, 0, 0 }
+};
+
 const struct cmd_t system_commands[] = {
 	{ "DEBUG",     5, NULL,              cmd_debug }, /* Obsolete ? */
 	{ "DISPlay",   4, display_commands,  cmd_display_type },
@@ -1445,6 +1509,7 @@ const struct cmd_t system_commands[] = {
 	{ "SERIAL",    6, NULL,              cmd_serial },
 	{ "SPI",       3, NULL,              cmd_spi },
 	{ "SYSLOG",    6, NULL,              cmd_syslog_level },
+	{ "TELNET",    6, telnet_commands,   NULL },
 	{ "TIMEZONE",  8, NULL,              cmd_timezone },
 	{ "TIME",      4, NULL,              cmd_time },
 	{ "TLS",       3, tls_commands,      NULL },

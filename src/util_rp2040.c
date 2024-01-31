@@ -107,7 +107,7 @@ void print_irqinfo()
 
 const char *rp2040_model_str()
 {
-	static char buf[32];
+	static char buf[16];
 	uint8_t version = 0;
 	uint8_t known_chip = 0;
 	uint8_t chip_version = rp2040_chip_version();

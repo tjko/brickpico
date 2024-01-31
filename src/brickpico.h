@@ -136,6 +136,12 @@ struct brickpico_config {
 	uint32_t mqtt_pwm_interval;
 	uint32_t mqtt_temp_interval;
 	uint16_t mqtt_pwm_mask;
+	bool telnet_active;
+	bool telnet_auth;
+	bool telnet_raw_mode;
+	uint32_t telnet_port;
+	char telnet_user[16 + 1];
+	char telnet_pwhash[128 + 1];
 #endif
 };
 
@@ -152,7 +158,7 @@ struct persistent_memory_block {
 	datetime_t saved_time;
 	uint64_t uptime;
 	uint64_t prev_uptime;
-	ringbuffer_t log_rb;
+	u8_ringbuffer_t log_rb;
 	uint32_t crc32;
 	uint8_t log[8192];
 };
@@ -160,7 +166,7 @@ struct persistent_memory_block {
 
 
 /* brickpico.c */
-extern ringbuffer_t *log_rb;
+extern u8_ringbuffer_t *log_rb;
 extern struct persistent_memory_block *persistent_mem;
 extern struct brickpico_state *brickpico_state;
 extern bool rebooted_by_watchdog;
@@ -213,13 +219,15 @@ void set_pico_system_time(long unsigned int sec);
 const char *network_ip();
 const char *network_hostname();
 
-/* httpd.c */
 #if WIFI_SUPPORT
+
+/* httpd.c */
 void brickpico_setup_http_handlers();
-#endif
+
+/* tcpserver.c */
+void tcpserver_init();
 
 /* mqtt.c */
-#if WIFI_SUPPORT
 void brickpico_setup_mqtt_client();
 int brickpico_mqtt_client_active();
 void brickpico_mqtt_reconnect();
@@ -227,6 +235,7 @@ void brickpico_mqtt_publish();
 void brickpico_mqtt_publish_duty();
 void brickpico_mqtt_publish_temp();
 void brickpico_mqtt_scpi_command();
+
 #endif
 
 /* tls.c */
@@ -270,6 +279,7 @@ int str_to_int(const char *str, int *val, int base);
 int str_to_float(const char *str, float *val);
 int str_to_datetime(const char *str, datetime_t *t);
 char* datetime_str(char *buf, size_t size, const datetime_t *t);
+const char *mac_address_str_r(const uint8_t *mac, char *buf, size_t buf_len);
 const char *mac_address_str(const uint8_t *mac);
 int valid_wifi_country(const char *country);
 int valid_hostname(const char *hostname);
@@ -285,8 +295,9 @@ struct tm *datetime_to_tm(const datetime_t *t, struct tm *tm);
 time_t datetime_to_time(const datetime_t *datetime);
 int clamp_int(int val, int min, int max);
 void* memmem(const void *haystack, size_t haystacklen, const void *needle, size_t needlelen);
-char *bitmask_to_str(uint32_t mask, uint16_t len, uint8_t base, bool range);
-int str_to_bitmask(const char *str, uint16_t len, uint32_t *mask, uint8_t base);
+char *bitmask_to_str_r(uint32_t mask, uint8_t len, uint8_t base, bool range, char *buf, size_t buf_len);
+char *bitmask_to_str(uint32_t mask, uint8_t len, uint8_t base, bool range);
+int str_to_bitmask(const char *str, uint8_t len, uint32_t *mask, uint8_t base);
 
 /*  util_rp2040.c */
 uint32_t get_stack_pointer();

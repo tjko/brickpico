@@ -8,7 +8,7 @@ include($ENV{PICO_SDK_PATH}/external/pico_sdk_import.cmake)
 
 
 project(brickpico
-  VERSION 1.1.0
+  VERSION 1.2.0
   LANGUAGES C CXX ASM
   )
 set(CMAKE_C_STANDARD 11)
@@ -37,6 +37,9 @@ pico_sdk_init()
 
 
 # External libaries
+
+# pico-telnetd
+add_subdirectory(libs/pico-telnetd)
 
 # littlefs-lib
 add_subdirectory(libs/littlefs-lib)
@@ -127,12 +130,14 @@ if (PICO_CYW43_SUPPORTED) # set by PICO_BOARD=pico_w
     src/syslog.c
     src/httpd.c
     src/mqtt.c
+    src/telnetd.c
     )
   target_link_libraries(brickpico PRIVATE
     pico_cyw43_arch_lwip_threadsafe_background
     pico_lwip_sntp
     pico_lwip_http
     pico_lwip_mqtt
+    pico-telnetd-lib
     )
   if (TLS_SUPPORT)
     target_link_libraries(brickpico PRIVATE

@@ -25,7 +25,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-typedef struct ringbuffer {
+typedef struct u8_ringbuffer {
 	uint8_t *buf;
 	bool free_buf;
 	size_t size;
@@ -33,17 +33,18 @@ typedef struct ringbuffer {
 	size_t head;
 	size_t tail;
 	size_t items;
-} ringbuffer_t;
+} u8_ringbuffer_t;
 
 
 
-int ringbuffer_init(ringbuffer_t *rb, uint8_t *buf, size_t size);
-int ringbuffer_free(ringbuffer_t *rb);
-int ringbuffer_remove_first_item(ringbuffer_t *rb);
-int ringbuffer_remove_last_item(ringbuffer_t *rb);
-int ringbuffer_add(ringbuffer_t *rb, uint8_t *data, uint8_t len);
-int ringbuffer_peek(ringbuffer_t *rb, size_t offset, uint8_t *ptr, size_t size, int *next, int *prev);
-int ringbuffer_remove(ringbuffer_t *rb, uint8_t *ptr, size_t size);
+int u8_ringbuffer_init(u8_ringbuffer_t *rb, uint8_t *buf, size_t size);
+int u8_ringbuffer_free(u8_ringbuffer_t *rb);
+int u8_ringbuffer_remove_first_item(u8_ringbuffer_t *rb);
+int u8_ringbuffer_remove_last_item(u8_ringbuffer_t *rb);
+int u8_ringbuffer_add(u8_ringbuffer_t *rb, uint8_t *data, uint8_t len, bool overwrite);
+int u8_ringbuffer_peek(u8_ringbuffer_t *rb, size_t offset, uint8_t *ptr, size_t size, int *next, int *prev);
+int u8_ringbuffer_remove_first(u8_ringbuffer_t *rb, uint8_t *ptr, size_t size);
+int u8_ringbuffer_remove_last(u8_ringbuffer_t *rb, uint8_t *ptr, size_t size);
 
 
 #endif /* BRICKPICO_RINGBUFFER_H */
