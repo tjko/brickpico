@@ -30,14 +30,12 @@ BrickPico is an Open-source hardware (OSHW) project.
 ### Interfaces
 
 * Serial "Console". Primary method for configuring/monitoring FanPico units is via (USB) Serial console (some units also have 3.3V TTL Serial connection).
+* Telnet server allows configuration and monitoring over network.
 * Web Interface (available when using _Pico W_) over WiFi
 
    [![BrickPico](images/brickpico-web-small.png)](images/brickpico-web.png?raw=true)
 
 For more documentation check [BrickPico Wiki](https://github.com/tjko/brickpico/wiki)
-
-
-   ![Falcon Lights](images/falcon-lights-small.jpg)
 
 
 ## Where can I get one?
@@ -127,6 +125,7 @@ Raspberry Pi Pico C/C++ SDK is required for compiling the firmware:
 * [littlefs-lib](https://github.com/lurk101/littlefs-lib)
 * [ss_oled-lib](https://github.com/tjko/ss_oled-lib)
 * [libb64](https://github.com/libb64/libb64)
+* [pico-telnetd](https://github.com/tjko/pico-telnetd)
 
 ##### Install Pico SDK
 Pico SDK must be installed working before you can compile fanpico.
