@@ -53,6 +53,7 @@ BrickPico supports following commands:
 * [SYStem:OUTputs?](#systemoutputs)
 * [SYStem:LED](#systemled)
 * [SYStem:LED?](#systemled-1)
+* [SYStem:LFS?](#systemlfs)
 * [SYStem:MEM](#systemmem)
 * [SYStem:MEM?](#systemmem-1)
 * [SYStem:MQTT:SERVer](#systemmqttserver)
@@ -791,6 +792,21 @@ Example:
 SYS:LED?
 0
 ```
+
+
+#### SYStem:LFS?
+Display information about the LittleFS filesystem in the flash memory.
+
+Example:
+```
+SYS:LFS?
+Filesystem size:                       262144
+Filesystem used:                       24576
+Filesystem free:                       237568
+Number of files:                       3
+Number of subdirectories:              0
+```
+
 
 ### SYStem:MEM
 Test how much availble (heap) memory system currently has.
