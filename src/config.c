@@ -21,11 +21,10 @@
 
 #include <stdio.h>
 #include <malloc.h>
+#include <string.h>
 #include "pico/stdlib.h"
-#include "pico/multicore.h"
 #include "pico/mutex.h"
 #include "cJSON.h"
-#include "pico_hal.h"
 #ifdef WIFI_SUPPORT
 #include "lwip/ip_addr.h"
 #endif
@@ -549,7 +548,7 @@ int json_to_config(cJSON *config, struct brickpico_config *cfg)
 }
 
 
-void read_config(bool multicore)
+void read_config()
 {
 	cJSON *config = NULL;
 	int res;
@@ -559,11 +558,7 @@ void read_config(bool multicore)
 
 	log_msg(LOG_INFO, "Reading configuration...");
 
-	if (multicore)
-		multicore_lockout_start_blocking();
-	res = flash_read_file(&buf, &file_size, "brickpico.cfg", true);
-	if (multicore)
-		multicore_lockout_end_blocking();
+	res = flash_read_file(&buf, &file_size, "brickpico.cfg");
 	if (res == 0 && buf != NULL) {
 		/* parse saved config... */
 		config = cJSON_Parse(buf);
@@ -591,7 +586,7 @@ void read_config(bool multicore)
 }
 
 
-void save_config(bool multicore)
+void save_config()
 {
 	cJSON *config;
 	char *str;
@@ -608,11 +603,7 @@ void save_config(bool multicore)
 		log_msg(LOG_ERR, "Failed to generate JSON output");
 	} else {
 		uint32_t config_size = strlen(str) + 1;
-		if (multicore)
-			multicore_lockout_start_blocking();
 		flash_write_file(str, config_size, "brickpico.cfg");
-		if (multicore)
-			multicore_lockout_end_blocking();
 		free(str);
 	}
 
@@ -642,16 +633,11 @@ void print_config()
 }
 
 
-void delete_config(bool multicore)
+void delete_config()
 {
 	int res;
 
-	if (multicore)
-		multicore_lockout_start_blocking();
 	res = flash_delete_file("fanpico.cfg");
-	if (multicore)
-		multicore_lockout_end_blocking();
-
 	if (res) {
 		log_msg(LOG_ERR, "Failed to delete configuration.");
 	}

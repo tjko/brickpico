@@ -204,7 +204,7 @@ int valid_hostname(const char *name)
 		return 0;
 
 	for (int i = 0; i < strlen(name); i++) {
-		if (!(isalpha((int)name[i]) || name[i] == '-')) {
+		if (!(isalnum((int)name[i]) || name[i] == '-')) {
 			return 0;
 		}
 	}

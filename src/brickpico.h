@@ -188,9 +188,9 @@ int last_command_status();
 /* config.c */
 extern mutex_t *config_mutex;
 extern const struct brickpico_config *cfg;
-void read_config(bool multicore);
-void save_config(bool multicore);
-void delete_config(bool multicore);
+void read_config();
+void save_config();
+void delete_config();
 void print_config();
 
 /* display.c */
@@ -206,11 +206,13 @@ void oled_display_status(const struct brickpico_state *state, const struct brick
 void oled_display_message(int rows, const char **text_lines);
 
 /* flash.h */
-int flash_read_file(char **bufptr, uint32_t *sizeptr, const char *filename, int init_flash);
+void lfs_setup();
+int flash_read_file(char **bufptr, uint32_t *sizeptr, const char *filename);
 int flash_write_file(const char *buf, uint32_t size, const char *filename);
 int flash_delete_file(const char *filename);
 int flash_get_fs_info(size_t *size, size_t *free, size_t *files,
 		size_t *directories, size_t *filesizetotal);
+void print_rp2040_flashinfo();
 
 /* network.c */
 void network_init();
@@ -304,7 +306,6 @@ int str_to_bitmask(const char *str, uint8_t len, uint32_t *mask, uint8_t base);
 /*  util_rp2040.c */
 uint32_t get_stack_pointer();
 uint32_t get_stack_free();
-void print_rp2040_flashinfo();
 void print_rp2040_meminfo();
 void print_irqinfo();
 void watchdog_disable();
