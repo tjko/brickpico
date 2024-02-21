@@ -41,11 +41,11 @@ pico_sdk_init()
 # pico-telnetd
 add_subdirectory(libs/pico-telnetd)
 
-# littlefs-lib
-add_subdirectory(libs/littlefs-lib)
+# pico-lfs
+add_subdirectory(libs/pico-lfs)
 # prevent warnings from littlefs...
 set_source_files_properties(
-  libs/littlefs-lib/lfs.c
+  libs/pico-lfs/libs/littlefs/lfs.c
   PROPERTIES
   COMPILE_OPTIONS "-Wno-unused-function"
   )
@@ -118,7 +118,7 @@ target_link_libraries(brickpico PRIVATE
   hardware_i2c
   hardware_rtc
   hardware_adc
-  littlefs-lib
+  pico-lfs
   cJSON
   ss_oled-lib
   libb64
@@ -165,6 +165,12 @@ target_compile_definitions(brickpico PRIVATE PICO_STACK_SIZE=0x2000)
 target_compile_definitions(brickpico PRIVATE PICO_CORE1_STACK_SIZE=0x1000)
 target_compile_definitions(brickpico PRIVATE PICO_USE_STACK_GUARDS=1)
 target_compile_definitions(brickpico PRIVATE PICO_RP2040_USB_DEVICE_ENUMERATION_FIX=1)
+
+target_compile_definitions(brickpico PRIVATE
+  LFS_THREADSAFE=1
+  LFS_NO_DEBUG=1
+#  LFS_YES_TRACE=1
+  )
 
 pico_set_linker_script(brickpico ${CMAKE_SOURCE_DIR}/src/memmap_custom.ld)
 
