@@ -236,7 +236,7 @@ cJSON *config_to_json(const struct brickpico_config *cfg)
 						1, true)));
 	if (cfg->telnet_active)
 		cJSON_AddItemToObject(config, "telnet_active", cJSON_CreateNumber(cfg->telnet_active));
-	if (cfg->telnet_active != true)
+	if (cfg->telnet_auth != true)
 		cJSON_AddItemToObject(config, "telnet_auth", cJSON_CreateNumber(cfg->telnet_auth));
 	if (cfg->telnet_raw_mode)
 		cJSON_AddItemToObject(config, "telnet_raw_mode", cJSON_CreateNumber(cfg->telnet_raw_mode));
