@@ -299,7 +299,7 @@ int json_to_config(cJSON *config, struct brickpico_config *cfg)
 	cJSON *ref, *item;
 	int id;
 	const char *name, *val;
-	uint32_t m;
+
 
 	if (!config || !cfg)
 		return -1;
@@ -460,6 +460,7 @@ int json_to_config(cJSON *config, struct brickpico_config *cfg)
 		cfg->mqtt_pwm_interval = cJSON_GetNumberValue(ref);
 	}
 	if ((ref = cJSON_GetObjectItem(config, "mqtt_pwm_mask"))) {
+		uint32_t m;
 		if (!str_to_bitmask(cJSON_GetStringValue(ref), OUTPUT_COUNT, &m, 1))
 			cfg->mqtt_pwm_mask = m;
 	}
