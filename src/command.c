@@ -34,7 +34,6 @@
 #include "hardware/watchdog.h"
 #include "hardware/rtc.h"
 #include "cJSON.h"
-#include "lfs.h"
 
 #include "brickpico.h"
 #ifdef WIFI_SUPPORT
@@ -1220,7 +1219,7 @@ int cmd_name(const char *cmd, const char *args, int query, char *prev_cmd)
 			conf->name, sizeof(conf->name), "System Name", NULL);
 }
 
-int cmd_littlefs(const char *cmd, const char *args, int query, char *prev_cmd)
+int cmd_lfs(const char *cmd, const char *args, int query, char *prev_cmd)
 {
 	size_t size, free, used, files, dirs;
 
@@ -1235,6 +1234,19 @@ int cmd_littlefs(const char *cmd, const char *args, int query, char *prev_cmd)
 	printf("Filesystem free:                       %u\n", free);
 	printf("Number of files:                       %u\n", files);
 	printf("Number of subdirectories:              %u\n", dirs);
+
+	return 0;
+}
+
+int cmd_lfs_format(const char *cmd, const char *args, int query, char *prev_cmd)
+{
+	if (query)
+		return 1;
+
+	printf("Formatting flash filesystem...\n");
+	if (flash_format(true))
+		return 2;
+	printf("Filesystem successfully formatted.\n");
 
 	return 0;
 }
@@ -1414,6 +1426,11 @@ const struct cmd_t display_commands[] = {
 	{ 0, 0, 0, 0 }
 };
 
+const struct cmd_t lfs_commands[] = {
+	{ "FORMAT",    6, NULL,              cmd_lfs_format },
+	{ 0, 0, 0, 0 }
+};
+
 const struct cmd_t wifi_commands[] = {
 #ifdef WIFI_SUPPORT
 	{ "COUntry",   3, NULL,              cmd_wifi_country },
@@ -1505,7 +1522,7 @@ const struct cmd_t system_commands[] = {
 	{ "FLASH",     5, NULL,              cmd_flash },
 	{ "OUTputs",   3, NULL,              cmd_outputs },
 	{ "LED",       3, NULL,              cmd_led },
-	{ "LFS",       3, NULL,              cmd_littlefs },
+	{ "LFS",       3, lfs_commands,      cmd_lfs },
 	{ "LOG",       3, NULL,              cmd_log_level },
 	{ "MEMLOG",    6, NULL,              cmd_mem_log },
 	{ "MEMory",    3, NULL,              cmd_memory },

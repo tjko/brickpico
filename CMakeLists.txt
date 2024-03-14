@@ -8,7 +8,7 @@ include($ENV{PICO_SDK_PATH}/external/pico_sdk_import.cmake)
 
 
 project(brickpico
-  VERSION 1.2.0
+  VERSION 1.2.1
   LANGUAGES C CXX ASM
   )
 set(CMAKE_C_STANDARD 11)
@@ -153,7 +153,10 @@ if (PICO_CYW43_SUPPORTED) # set by PICO_BOARD=pico_w
   endif()
 endif()
 
+
 target_compile_options(brickpico PRIVATE -Wall)
+target_compile_options(brickpico PRIVATE -fmacro-prefix-map=${CMAKE_SOURCE_DIR}/=)
+
 target_compile_definitions(brickpico PRIVATE USBD_MANUFACTURER="TJKO Industries")
 target_compile_definitions(brickpico PRIVATE USBD_PRODUCT="BrickPico-${BRICKPICO_BOARD} LED Controller")
 target_compile_definitions(brickpico PRIVATE USBD_DESC_STR_MAX=32)
