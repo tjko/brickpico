@@ -88,7 +88,7 @@ jobs:
     - name: Upload Artifacts
       uses: actions/upload-artifact@v4
       with:
-      name: firmware-${{matrix.brickpico_board}}-${{matrix.pico_board}}-build${{github.run_number}}-${{env.BUILD_DATE}}
+        name: firmware-${{matrix.brickpico_board}}-${{matrix.pico_board}}-build${{github.run_number}}-${{env.BUILD_DATE}}
         path: main/build/dist
 
 
