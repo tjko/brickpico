@@ -35,7 +35,6 @@
 #include "hardware/adc.h"
 #include "hardware/gpio.h"
 #include "hardware/pwm.h"
-#include "hardware/rtc.h"
 #include "hardware/clocks.h"
 #include "hardware/watchdog.h"
 #include "hardware/vreg.h"
@@ -118,7 +117,9 @@ void update_persistent_memory()
 
 void boot_reason()
 {
+#if PICO_RP2040
 	printf("     CHIP_RESET: %08lx\n", vreg_and_chip_reset_hw->chip_reset);
+#endif
 	printf("WATCHDOG_REASON: %08lx\n", watchdog_hw->reason);
 }
 
@@ -127,7 +128,6 @@ void setup()
 	char buf[32];
 	int i = 0;
 
-	rtc_init();
 
 	stdio_usb_init();
 	/* Wait a while for USB Serial to connect... */

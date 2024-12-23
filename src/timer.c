@@ -1,5 +1,5 @@
 /* timer.c
-   Copyright (C) 2023 Timo Kokkonen <tjko@iki.fi>
+   Copyright (C) 2023-2024 Timo Kokkonen <tjko@iki.fi>
 
    SPDX-License-Identifier: GPL-3.0-or-later
 
@@ -23,7 +23,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include "pico/stdlib.h"
-#include "hardware/rtc.h"
 
 #include "brickpico.h"
 

@@ -120,7 +120,6 @@ target_link_libraries(brickpico PRIVATE
   pico_aon_timer
   hardware_pwm
   hardware_i2c
-  hardware_rtc
   hardware_adc
   pico-lfs
   cJSON

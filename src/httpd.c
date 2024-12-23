@@ -1,5 +1,5 @@
 /* httpd.c
-   Copyright (C) 2023 Timo Kokkonen <tjko@iki.fi>
+   Copyright (C) 2023-2024 Timo Kokkonen <tjko@iki.fi>
 
    SPDX-License-Identifier: GPL-3.0-or-later
 
@@ -23,7 +23,6 @@
 #include <string.h>
 #include <time.h>
 #include <assert.h>
-#include "hardware/rtc.h"
 #include "pico/stdlib.h"
 #include "cJSON.h"
 #ifdef LIB_PICO_CYW43_ARCH
@@ -298,10 +297,10 @@ u16_t brickpico_ssi_handler(const char *tag, char *insert, int insertlen,
 		}
 	}
 	else if (!strncmp(tag, "datetime", 8)) {
-		datetime_t t;
-		if (rtc_get_datetime(&t)) {
-			printed = snprintf(insert, insertlen, "%04d-%02d-%02d %02d:%02d:%02d",
-					t.year, t.month, t.day, t.hour, t.min, t.sec);
+		time_t t;
+		if (rtc_get_time(&t)) {
+			time_t_to_str(insert, insertlen, t);
+			printed = strnlen(insert, insertlen);
 		}
 	}
 	else if (!strncmp(tag, "uptime", 6)) {

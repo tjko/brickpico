@@ -26,7 +26,6 @@
 #include <assert.h>
 #include "pico/stdlib.h"
 #include "hardware/i2c.h"
-#include "hardware/rtc.h"
 
 #include "ss_oled.h"
 #include "brickpico.h"
@@ -153,7 +152,7 @@ void oled_display_status(const struct brickpico_state *state,
 {
 	char buf[64];
 	int i;
-	datetime_t t;
+	struct tm t;
 	static int bg_drawn = 0;
 
 
@@ -214,15 +213,15 @@ void oled_display_status(const struct brickpico_state *state,
 		hours % 24,
 		mins % 60,
 		secs % 60);
-	if (rtc_get_datetime(&t)) {
+	if (rtc_get_tm(&t)) {
 		if (oled_height > 64)
 			oledWriteString(&oled, 0, 28, 14, buf, FONT_6x8, 0, 1);
 		if (oled_height > 64) {
-			snprintf(buf, sizeof(buf), "%02d:%02d:%02d", t.hour, t.min, t.sec);
+			snprintf(buf, sizeof(buf), "%02d:%02d:%02d", t.tm_hour, t.tm_min, t.tm_sec);
 			oledWriteString(&oled, 0, 16, 11, buf, FONT_12x16, 0, 1);
 		}
 		else {
-			snprintf(buf, sizeof(buf), " %02d:%02d:%02d ", t.hour, t.min, t.sec);
+			snprintf(buf, sizeof(buf), " %02d:%02d:%02d ", t.tm_hour, t.tm_min, t.tm_sec);
 			oledWriteString(&oled, 0, 24, 6, buf, FONT_8x8, 0, 1);
 		}
 	} else {

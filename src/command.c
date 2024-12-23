@@ -33,7 +33,6 @@
 #include "pico/aon_timer.h"
 #include "pico/rand.h"
 #include "hardware/watchdog.h"
-#include "hardware/rtc.h"
 #include "cJSON.h"
 
 #include "brickpico.h"

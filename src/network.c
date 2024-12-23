@@ -1,5 +1,5 @@
 /* network.c
-   Copyright (C) 2022 Timo Kokkonen <tjko@iki.fi>
+   Copyright (C) 2022-2024 Timo Kokkonen <tjko@iki.fi>
 
    SPDX-License-Identifier: GPL-3.0-or-later
 
@@ -22,7 +22,6 @@
 #include <stdio.h>
 #include <time.h>
 #include <assert.h>
-#include "hardware/rtc.h"
 #include "hardware/watchdog.h"
 #include "pico/stdlib.h"
 #include "pico/util/datetime.h"
