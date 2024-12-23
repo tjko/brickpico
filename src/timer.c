@@ -1,5 +1,5 @@
 /* timer.c
-   Copyright (C) 2023 Timo Kokkonen <tjko@iki.fi>
+   Copyright (C) 2023-2024 Timo Kokkonen <tjko@iki.fi>
 
    SPDX-License-Identifier: GPL-3.0-or-later
 
@@ -23,7 +23,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include "pico/stdlib.h"
-#include "hardware/rtc.h"
 
 #include "brickpico.h"
 
@@ -203,16 +202,16 @@ const char* timer_event_str(const struct timer_event *e)
 }
 
 
-int check_timer_event(const struct timer_event *e, const datetime_t *t)
+int check_timer_event(const struct timer_event *e, struct tm *t)
 {
 	if (!e || !t)
 		return 0;
 
-	if (e->minute >= 0 && e->minute != t->min)
+	if (e->minute >= 0 && e->minute != t->tm_min)
 		return 0;
-	if (e->hour >= 0 && e->hour != t->hour)
+	if (e->hour >= 0 && e->hour != t->tm_hour)
 		return 0;
-	if (e->wday > 0 && !(e->wday & ((1 << t->dotw))))
+	if (e->wday > 0 && !(e->wday & ((1 << t->tm_wday))))
 			return 0;
 
 	return 1;
@@ -223,7 +222,7 @@ int handle_timer_events(const struct brickpico_config *conf, struct brickpico_st
 	static time_t lastevent[MAX_EVENT_COUNT];
 	static uint8_t initialized = 0;
 	char tmp[32];
-	datetime_t t;
+	struct tm t;
 	time_t t_now;
 	int res = 0;
 	int i, o;
@@ -237,10 +236,9 @@ int handle_timer_events(const struct brickpico_config *conf, struct brickpico_st
 	}
 
 	/* Get current time from RTC */
-	if (!rtc_get_datetime(&t))
+	if (!rtc_get_time(&t_now))
 		return -1;
-
-	t_now = datetime_to_time(&t);
+	localtime_r(&t_now, &t);
 
 	/* Check if any of the timer events match current RTC time... */
 	for (i = 0; i < conf->event_count; i++) {
@@ -255,7 +253,7 @@ int handle_timer_events(const struct brickpico_config *conf, struct brickpico_st
 			i + 1,
 			bitmask_to_str(e->mask, OUTPUT_COUNT, 1, true),
 			timer_action_type_str(e->action),
-			datetime_str(tmp, sizeof(tmp), &t));
+			time_t_to_str(tmp, sizeof(tmp), t_now));
 
 		for (o = 0; o < OUTPUT_COUNT; o++) {
 			if (e->mask & (1 << o)) {

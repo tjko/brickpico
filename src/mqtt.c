@@ -23,7 +23,6 @@
 #include <string.h>
 #include <time.h>
 #include <assert.h>
-#include "hardware/rtc.h"
 #include "pico/stdlib.h"
 #include "cJSON.h"
 #ifdef LIB_PICO_CYW43_ARCH

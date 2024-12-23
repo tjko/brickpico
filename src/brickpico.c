@@ -1,5 +1,5 @@
 /* brickpico.c
-   Copyright (C) 2023 Timo Kokkonen <tjko@iki.fi>
+   Copyright (C) 2023-2024 Timo Kokkonen <tjko@iki.fi>
 
    SPDX-License-Identifier: GPL-3.0-or-later
 
@@ -28,13 +28,13 @@
 #include "pico/mutex.h"
 #include "pico/multicore.h"
 #include "pico/util/datetime.h"
+#include "pico/aon_timer.h"
 #ifdef LIB_PICO_CYW43_ARCH
 #include "pico/cyw43_arch.h"
 #endif
 #include "hardware/adc.h"
 #include "hardware/gpio.h"
 #include "hardware/pwm.h"
-#include "hardware/rtc.h"
 #include "hardware/clocks.h"
 #include "hardware/watchdog.h"
 #include "hardware/vreg.h"
@@ -73,16 +73,13 @@ void init_persistent_memory()
 {
 	struct persistent_memory_block *m = persistent_mem;
 	uint32_t crc;
-	char s[32];
 
 	if (m->id == PERSISTENT_MEMORY_ID) {
 		crc = xcrc32((unsigned char*)m, PERSISTENT_MEMORY_CRC_LEN, 0);
 		if (crc == m->crc32) {
 			printf("Found persistent memory block\n");
-			datetime_str(s, sizeof(s), &m->saved_time);
-			if (!rtc_set_datetime(&m->saved_time)) {
-				printf("Failed to restore RTC clock: %s\n", s);
-			}
+			if (m->saved_time.tv_sec > 0)
+				aon_timer_start(&m->saved_time);
 			if (m->uptime) {
 				m->prev_uptime = m->uptime;
 				update_persistent_memory_crc();
@@ -103,29 +100,34 @@ void init_persistent_memory()
 void update_persistent_memory()
 {
 	struct persistent_memory_block *m = persistent_mem;
-	datetime_t t;
+	struct timespec t;
 
-	mutex_enter_blocking(pmem_mutex);
-	if (rtc_get_datetime(&t)) {
-		m->saved_time = t;
+	if (mutex_enter_timeout_us(pmem_mutex, 100)) {
+		if (aon_timer_is_running()) {
+			aon_timer_get_time(&t);
+			m->saved_time = t;
+		}
+		m->uptime = to_us_since_boot(get_absolute_time());
+		update_persistent_memory_crc();
+		mutex_exit(pmem_mutex);
+	} else {
+		log_msg(LOG_DEBUG, "update_persistent_memory(): Failed to get pmem_mutex");
 	}
-	m->uptime = to_us_since_boot(get_absolute_time());
-	update_persistent_memory_crc();
-	mutex_exit(pmem_mutex);
 }
 
 void boot_reason()
 {
+#if PICO_RP2040
 	printf("     CHIP_RESET: %08lx\n", vreg_and_chip_reset_hw->chip_reset);
+#endif
 	printf("WATCHDOG_REASON: %08lx\n", watchdog_hw->reason);
 }
 
 void setup()
 {
-	datetime_t t;
+	char buf[32];
 	int i = 0;
 
-	rtc_init();
 
 	stdio_usb_init();
 	/* Wait a while for USB Serial to connect... */
@@ -171,9 +173,11 @@ void setup()
 		log_msg(LOG_NOTICE, "Uptime before soft reset: %llus\n",
 			persistent_mem->prev_uptime / 1000000);
 	}
-	if (rtc_get_datetime(&t)) {
-		char buf[32];
-		log_msg(LOG_NOTICE, "RTC clock time: %s", datetime_str(buf, sizeof(buf), &t));
+	if (aon_timer_is_running()) {
+		struct timespec ts;
+		aon_timer_get_time(&ts);
+		log_msg(LOG_NOTICE, "RTC clock time: %s",
+			time_t_to_str(buf, sizeof(buf), timespec_to_time_t(&ts)));
 	}
 
 	display_init();

@@ -9,6 +9,7 @@
 #include "boards/@BRICKPICO_BOARD@.h"
 #define BRICKPICO_BOARD "@BRICKPICO_BOARD@"
 
+#define BRICKPICO_BUILD_TAG       "@BRICKPICO_BUILD@"
 
 #include "brickpico-compile.h"
 
