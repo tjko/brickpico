@@ -1,5 +1,5 @@
 /* brickpico.h
-   Copyright (C) 2021-2023 Timo Kokkonen <tjko@iki.fi>
+   Copyright (C) 2021-2024 Timo Kokkonen <tjko@iki.fi>
 
    SPDX-License-Identifier: GPL-3.0-or-later
 
@@ -155,7 +155,7 @@ struct brickpico_state {
 
 struct persistent_memory_block {
 	uint32_t id;
-	datetime_t saved_time;
+	struct timespec saved_time;
 	uint64_t uptime;
 	uint64_t prev_uptime;
 	u8_ringbuffer_t log_rb;
@@ -282,8 +282,12 @@ void print_mallinfo();
 char *trim_str(char *s);
 int str_to_int(const char *str, int *val, int base);
 int str_to_float(const char *str, float *val);
-int str_to_datetime(const char *str, datetime_t *t);
-char* datetime_str(char *buf, size_t size, const datetime_t *t);
+time_t timespec_to_time_t(const struct timespec *ts);
+struct timespec* time_t_to_timespec(time_t t, struct timespec *ts);
+char* time_t_to_str(char *buf, size_t size, const time_t t);
+bool str_to_time_t(const char *str, time_t *t);
+bool rtc_get_tm(struct tm *tm);
+bool rtc_get_time(time_t *t);
 const char *mac_address_str_r(const uint8_t *mac, char *buf, size_t buf_len);
 const char *mac_address_str(const uint8_t *mac);
 int valid_wifi_country(const char *country);
@@ -295,9 +299,6 @@ char* base64encode(const char *input);
 char* base64decode(const char *input);
 char *strncopy(char *dst, const char *src, size_t size);
 char *strncatenate(char *dst, const char *src, size_t size);
-datetime_t *tm_to_datetime(const struct tm *tm, datetime_t *t);
-struct tm *datetime_to_tm(const datetime_t *t, struct tm *tm);
-time_t datetime_to_time(const datetime_t *datetime);
 int clamp_int(int val, int min, int max);
 void* memmem(const void *haystack, size_t haystacklen, const void *needle, size_t needlelen);
 char *bitmask_to_str_r(uint32_t mask, uint8_t len, uint8_t base, bool range, char *buf, size_t buf_len);

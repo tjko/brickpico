@@ -8,7 +8,7 @@ include($ENV{PICO_SDK_PATH}/external/pico_sdk_import.cmake)
 
 
 project(brickpico
-  VERSION 1.2.1
+  VERSION 1.3.0
   LANGUAGES C CXX ASM
   )
 set(CMAKE_C_STANDARD 11)
@@ -16,6 +16,7 @@ set(CMAKE_CXX_STANDARD 17)
 
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
+set(FANPICO_BUILD beta CACHE STRING "Fanpico Build Tag")
 set(BRICKPICO_BOARD 8 CACHE STRING "Brickpico Board Model")
 set(PICO_BOARD pico_w CACHE STRING "Pico Board")
 set(TLS_SUPPORT 1 CACHE STRING "TLS Support")
@@ -30,6 +31,8 @@ string(RANDOM LENGTH ${EXTRA_ENTROPY_LEN} EXTRA_ENTROPY)
 message("---------------------------------")
 message("     BRICKPICO_BOARD: ${BRICKPICO_BOARD}")
 message("          PICO_BOARD: ${PICO_BOARD}")
+message("       PICO_PLATFORM: ${PICO_PLATFORM}")
+message("         TLS_SUPPORT: ${TLS_SUPPORT}")
 message("    CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}")
 message("---------------------------------")
 
@@ -114,6 +117,7 @@ target_link_libraries(brickpico PRIVATE
   pico_stdio_uart
   pico_multicore
   pico_rand
+  pico_aon_timer
   hardware_pwm
   hardware_i2c
   hardware_rtc
@@ -175,6 +179,15 @@ target_compile_definitions(brickpico PRIVATE
 #  LFS_YES_TRACE=1
   )
 
-pico_set_linker_script(brickpico ${CMAKE_SOURCE_DIR}/src/memmap_custom.ld)
+if (${PICO_SDK_VERSION_MAJOR} LESS 2)
+  pico_set_linker_script(brickpico ${CMAKE_SOURCE_DIR}/src/memmap_custom.ld)
+else()
+  if (${PICO_PLATFORM} MATCHES rp2350)
+    pico_set_linker_script(brickpico ${CMAKE_SOURCE_DIR}/src/memmap_custom_rp2350.ld)
+  else()
+    pico_set_linker_script(brickpico ${CMAKE_SOURCE_DIR}/src/memmap_custom_rp2040.ld)
+  endif()
+endif()
+
 
 # eof :-)
