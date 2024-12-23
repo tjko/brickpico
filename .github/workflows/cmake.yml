@@ -8,8 +8,9 @@ on:
 
 env:
   BUILD_TYPE: Release
-  # Pico-SDK v1.5.1
-  PICO_SDK_REF: 6a7db34ff63345a7badec79ebea3aaef1712f374
+  # Pico-SDK version
+  PICO_SDK_REF: 2.1.0
+  PICOTOOL_REF: 2.1.0
 
 jobs:
   build:
@@ -41,11 +42,34 @@ jobs:
         repository: raspberrypi/pico-sdk
         ref: ${{env.PICO_SDK_REF}}
         path: pico-sdk
-        submodules: true
+        submodules: recursive
 
     - name: Add PICO_SDK_PATH to Environment
       run: |
         echo "PICO_SDK_PATH=${{github.workspace}}/pico-sdk" >> $GITHUB_ENV
+
+    - name: Cache picotool
+      id: cache-picotool
+      uses: actions/cache@v4
+      with:
+        path: picotool
+        key: ${{runner.os}}-picotool-${{env.PICOTOOL_REF}}
+
+    - name: Checkout picotool
+      if: ${{steps.cache-picotool.outputs.cache-hit != 'true' }}
+      uses: actions/checkout@v4
+      with:
+        repository: raspberrypi/picotool
+        ref: ${{env.PICOTOOL_REF}}
+        path: picotool-src
+        submodules: recursive
+
+    - name: Build picotool
+      if: ${{steps.cache-picotool.outputs.cache-hit != 'true' }}
+      run: |
+        cmake -S picotool-src -B picotool-src/build -DCMAKE_INSTALL_PREFIX=${{github.workspace}}/picotool -DPICOTOOL_FLAT_INSTALL=1
+        cd picotool-src/build
+        make -j ${{env.BUILD_THREADS}} install
 
     - name: Checkout
       uses: actions/checkout@v4
