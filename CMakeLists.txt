@@ -16,7 +16,7 @@ set(CMAKE_CXX_STANDARD 17)
 
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
-set(FANPICO_BUILD beta CACHE STRING "Fanpico Build Tag")
+set(BRICKPICO_BUILD beta CACHE STRING "Brickpico Build Tag")
 set(BRICKPICO_BOARD 8 CACHE STRING "Brickpico Board Model")
 set(PICO_BOARD pico_w CACHE STRING "Pico Board")
 set(TLS_SUPPORT 1 CACHE STRING "TLS Support")
