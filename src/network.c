@@ -51,6 +51,67 @@ static ip_addr_t syslog_server;
 static ip_addr_t current_ip;
 
 
+
+struct wifi_auth_type {
+	char *name;
+	uint32_t type;
+};
+
+
+static struct wifi_auth_type auth_types[] = {
+	{ "default",    CYW43_AUTH_WPA2_AES_PSK },
+
+	{ "WPA3_WPA2",  CYW43_AUTH_WPA3_WPA2_AES_PSK },
+	{ "WPA3",       CYW43_AUTH_WPA3_SAE_AES_PSK },
+	{ "WPA2",       CYW43_AUTH_WPA2_AES_PSK },
+	{ "WPA2_WPA",   CYW43_AUTH_WPA2_MIXED_PSK },
+	{ "WPA",        CYW43_AUTH_WPA_TKIP_PSK },
+	{ "OPEN",       CYW43_AUTH_OPEN },
+
+	{ NULL, 0 }
+};
+
+
+bool wifi_get_auth_type(const char *name, uint32_t *type)
+{
+	int len, i;
+
+	if (!name || !type)
+		return false;
+
+	/* Return default type if no match... */
+	*type = auth_types[0].type;
+
+	if ((len = strlen(name)) < 1)
+		return false;
+
+	i = 0;
+	while (auth_types[i].name) {
+		if (!strncasecmp(name, auth_types[i].name, len + 1)) {
+			*type = auth_types[i].type;
+			return true;
+		}
+		i++;
+	}
+
+	return false;
+}
+
+const char* wifi_auth_type_name(uint32_t type)
+{
+	int i = 1;
+
+	while (auth_types[i].name) {
+		if (auth_types[i].type == type) {
+			return auth_types[i].name;
+		}
+		i++;
+	}
+
+	return "Unknown";
+}
+
+
 void wifi_mac()
 {
 	printf("%s\n", mac_address_str(cyw43_mac));
@@ -82,6 +143,7 @@ void wifi_init()
 {
 	uint32_t country_code = CYW43_COUNTRY_WORLDWIDE;
 	struct netif *n = &cyw43_state.netif[CYW43_ITF_STA];
+	uint32_t wifi_auth_mode;
 	int res;
 
 	memset(cyw43_mac, 0, sizeof(cyw43_mac));
@@ -92,17 +154,15 @@ void wifi_init()
 	log_msg(LOG_NOTICE, "Initializing WiFi...");
 
 	/* If WiFi country is defined in configuratio, use it... */
-	if (cfg) {
-		const char *country = cfg->wifi_country;
-		if (strlen(country) > 1) {
-			uint rev = 0;
-			if (country[2] >= '0' && country[2] <= '9') {
-				rev = country[2] - '0';
-			}
-			country_code = CYW43_COUNTRY(country[0], country[1], rev);
-			log_msg(LOG_NOTICE, "WiFi country code: %06x (%s)",
-				country_code, country);
+	const char *country = cfg->wifi_country;
+	if (strlen(country) > 1) {
+		uint rev = 0;
+		if (country[2] >= '0' && country[2] <= '9') {
+			rev = country[2] - '0';
 		}
+		country_code = CYW43_COUNTRY(country[0], country[1], rev);
+		log_msg(LOG_NOTICE, "WiFi country code: %06x (%s)",
+			country_code, country);
 	}
 
 	if ((res = cyw43_arch_init_with_country(country_code))) {
@@ -111,7 +171,7 @@ void wifi_init()
 	}
 
 	cyw43_arch_enable_sta_mode();
-
+	cyw43_wifi_pm(&cyw43_state, CYW43_NONE_PM);
 
 	/* Set WiFi interface hostname... */
 	if (strlen(cfg->hostname) > 0) {
@@ -154,36 +214,41 @@ void wifi_init()
 		return;
 	}
 	log_msg(LOG_NOTICE, "WiFi MAC: %s", mac_address_str(cyw43_mac));
+	wifi_get_auth_type(cfg->wifi_auth_mode, &wifi_auth_mode);
+	log_msg(LOG_INFO, "WiFi Authentication mode: %s",
+		wifi_auth_type_name(wifi_auth_mode));
 
 	/* Attempt to connect to a WiFi network... */
-	if (cfg) {
-		if (strlen(cfg->wifi_ssid) > 0 && strlen(cfg->wifi_passwd) > 0) {
-			log_msg(LOG_NOTICE, "WiFi connecting to network: %s", cfg->wifi_ssid);
-			if (cfg->wifi_mode == 0) {
-				/* Default is to initiate asynchronous connection. */
-				res = cyw43_arch_wifi_connect_async(cfg->wifi_ssid,
-								cfg->wifi_passwd,
-								CYW43_AUTH_WPA2_AES_PSK);
-			} else {
-				/* If "SYS:WIFI:MODE 1" has been used, attemp synchronous connection
-				   as connection to some buggy(?) APs don't seem to always work with
-				   asynchronouse connection... */
-				int retries = 2;
-
-				do {
-					res = cyw43_arch_wifi_connect_timeout_ms(cfg->wifi_ssid,
-										cfg->wifi_passwd,
-										CYW43_AUTH_WPA2_AES_PSK,
-										30000);
-					log_msg(LOG_INFO, "cyw43_arch_wifi_connect_timeout_ms(): %d", res);
-				} while (res != 0 && --retries > 0);
-			}
-			if (res != 0) {
-				log_msg(LOG_ERR, "WiFi connect failed: %d", res);
-				cyw43_arch_deinit();
-				return;
-			}
+	if (strlen(cfg->wifi_ssid) > 0) {
+		if ( strlen(cfg->wifi_passwd) < 1 && wifi_auth_mode != CYW43_AUTH_OPEN ) {
+			log_msg(LOG_ERR, "No WiFi Password configured.");
+			return;
 		}
+		log_msg(LOG_NOTICE, "WiFi connecting to network: %s", cfg->wifi_ssid);
+		if (cfg->wifi_mode == 0) {
+			/* Default is to initiate asynchronous connection. */
+			res = cyw43_arch_wifi_connect_async(cfg->wifi_ssid,
+							cfg->wifi_passwd, wifi_auth_mode);
+		} else {
+			/* If "SYS:WIFI:MODE 1" has been used, attemp synchronous connection
+			   as connection to some buggy(?) APs don't seem to always work with
+			   asynchronouse connection... */
+			int retries = 2;
+
+			do {
+				res = cyw43_arch_wifi_connect_timeout_ms(cfg->wifi_ssid,
+									cfg->wifi_passwd,
+									wifi_auth_mode, 30000);
+				log_msg(LOG_INFO, "cyw43_arch_wifi_connect_timeout_ms(): %d", res);
+			} while (res != 0 && --retries > 0);
+		}
+		if (res != 0) {
+			log_msg(LOG_ERR, "WiFi connect failed: %d", res);
+			return;
+		}
+	} else {
+		log_msg(LOG_ERR, "No WiFi SSID configured.");
+		return;
 	}
 
 	wifi_initialized = true;
