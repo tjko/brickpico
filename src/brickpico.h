@@ -112,6 +112,7 @@ struct brickpico_config {
 	char wifi_ssid[WIFI_SSID_MAX_LEN + 1];
 	char wifi_passwd[WIFI_PASSWD_MAX_LEN + 1];
 	char wifi_country[WIFI_COUNTRY_MAX_LEN + 1];
+	char wifi_auth_mode[16];
 	uint8_t wifi_mode;
 	char hostname[32];
 	ip_addr_t syslog_server;
@@ -223,8 +224,9 @@ void network_status();
 void set_pico_system_time(long unsigned int sec);
 const char *network_ip();
 const char *network_hostname();
-
 #if WIFI_SUPPORT
+bool wifi_get_auth_type(const char *name, uint32_t *type);
+const char* wifi_auth_type_name(uint32_t type);
 
 /* httpd.c */
 void brickpico_setup_http_handlers();
