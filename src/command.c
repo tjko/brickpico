@@ -969,6 +969,12 @@ int cmd_mqtt_mask_pwm(const char *cmd, const char *args, int query, char *prev_c
 				1, "MQTT PWM Mask");
 }
 
+int cmd_mqtt_ha_discovery(const char *cmd, const char *args, int query, char *prev_cmd)
+{
+	return string_setting(cmd, args, query, prev_cmd,
+			conf->mqtt_ha_discovery_prefix,
+			sizeof(conf->mqtt_ha_discovery_prefix), "MQTT Home Assistant Discovery Prefix", NULL);
+}
 
 #if TLS_SUPPORT
 int cmd_mqtt_tls(const char *cmd, const char *args, int query, char *prev_cmd)
@@ -1502,7 +1508,11 @@ const struct cmd_t mqtt_topic_commands[] = {
 	{ "WARNing",   4, NULL,              cmd_mqtt_warn_topic },
 	{ 0, 0, 0, 0 }
 };
-#endif
+
+const struct cmd_t mqtt_ha_commands[] = {
+	{ "DISCovery", 4, NULL,              cmd_mqtt_ha_discovery },
+	{ 0, 0, 0, 0 }
+};
 
 const struct cmd_t mqtt_commands[] = {
 #ifdef WIFI_SUPPORT
@@ -1514,12 +1524,14 @@ const struct cmd_t mqtt_commands[] = {
 #if TLS_SUPPORT
 	{ "TLS",       3, NULL,              cmd_mqtt_tls },
 #endif
+	{ "HA",        2, mqtt_ha_commands, NULL },
 	{ "INTerval",  3, mqtt_interval_commands, NULL },
 	{ "MASK",      4, mqtt_mask_commands, NULL },
 	{ "TOPIC",     5, mqtt_topic_commands, NULL },
 #endif
 	{ 0, 0, 0, 0 }
 };
+#endif
 
 const struct cmd_t tls_commands[] = {
 #ifdef WIFI_SUPPORT

@@ -111,6 +111,7 @@ void clear_config(struct brickpico_config *cfg)
 	cfg->mqtt_temp_interval = DEFAULT_MQTT_TEMP_INTERVAL;
 	cfg->mqtt_pwm_interval = DEFAULT_MQTT_PWM_INTERVAL;
 	cfg->mqtt_pwm_mask = 0;
+	cfg->mqtt_ha_discovery_prefix[0] = 0;
 	cfg->telnet_active = false;
 	cfg->telnet_auth = true;
 	cfg->telnet_raw_mode = false;
@@ -237,6 +238,9 @@ cJSON *config_to_json(const struct brickpico_config *cfg)
 				cJSON_CreateString(
 					bitmask_to_str(cfg->mqtt_pwm_mask, OUTPUT_COUNT,
 						1, true)));
+	if (strlen(cfg->mqtt_ha_discovery_prefix) > 0)
+		cJSON_AddItemToObject(config, "mqtt_ha_discovery_prefix",
+				cJSON_CreateString(cfg->mqtt_ha_discovery_prefix));
 	if (cfg->telnet_active)
 		cJSON_AddItemToObject(config, "telnet_active", cJSON_CreateNumber(cfg->telnet_active));
 	if (cfg->telnet_auth != true)
@@ -471,6 +475,10 @@ int json_to_config(cJSON *config, struct brickpico_config *cfg)
 		uint32_t m;
 		if (!str_to_bitmask(cJSON_GetStringValue(ref), OUTPUT_COUNT, &m, 1))
 			cfg->mqtt_pwm_mask = m;
+	}
+	if ((ref = cJSON_GetObjectItem(config, "mqtt_ha_discovery_prefix"))) {
+		if ((val = cJSON_GetStringValue(ref)))
+			strncopy(cfg->mqtt_ha_discovery_prefix, val, sizeof(cfg->mqtt_ha_discovery_prefix));
 	}
 	if ((ref = cJSON_GetObjectItem(config, "telnet_active"))) {
 		cfg->telnet_active = cJSON_GetNumberValue(ref);

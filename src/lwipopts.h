@@ -71,7 +71,7 @@ void pico_set_system_time(long int sec);
 #define LWIP_HOOK_DHCP_APPEND_OPTIONS   pico_dhcp_option_add_hook
 #define LWIP_HOOK_DHCP_PARSE_OPTION     pico_dhcp_option_parse_hook
 
-#define MQTT_OUTPUT_RINGBUF_SIZE        2048
+#define MQTT_OUTPUT_RINGBUF_SIZE        6144
 #define MQTT_REQ_MAX_IN_FLIGHT          16
 #define HTTPD_FSDATA_FILE               "brickpico_fsdata.c"
 #define HTTPD_USE_MEM_POOL              0

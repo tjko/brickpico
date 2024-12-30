@@ -350,7 +350,7 @@ void wifi_poll()
 
 	if (brickpico_mqtt_client_active()) {
 		/* Check for pending SCPI command received via MQTT */
-		if (time_passed(&command_t, 250)) {
+		if (time_passed(&command_t, 500)) {
 			brickpico_mqtt_scpi_command();
 		}
 

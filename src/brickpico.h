@@ -47,9 +47,9 @@
 #define WIFI_PASSWD_MAX_LEN    64
 #define WIFI_COUNTRY_MAX_LEN   3
 
-#define MQTT_MAX_TOPIC_LEN            32
-#define MQTT_MAX_USERNAME_LEN         80
-#define MQTT_MAX_PASSWORD_LEN         64
+#define MQTT_MAX_TOPIC_LEN            49
+#define MQTT_MAX_USERNAME_LEN         81
+#define MQTT_MAX_PASSWORD_LEN         65
 #define DEFAULT_MQTT_STATUS_INTERVAL  600
 #define DEFAULT_MQTT_TEMP_INTERVAL    60
 #define DEFAULT_MQTT_PWR_INTERVAL     600
@@ -137,6 +137,7 @@ struct brickpico_config {
 	uint32_t mqtt_pwm_interval;
 	uint32_t mqtt_temp_interval;
 	uint16_t mqtt_pwm_mask;
+	char mqtt_ha_discovery_prefix[32 + 1];
 	bool telnet_active;
 	bool telnet_auth;
 	bool telnet_raw_mode;
