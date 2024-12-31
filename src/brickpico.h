@@ -238,11 +238,12 @@ void tcpserver_init();
 /* mqtt.c */
 void brickpico_setup_mqtt_client();
 int brickpico_mqtt_client_active();
-void brickpico_mqtt_reconnect();
+int brickpico_mqtt_client_connected();
 void brickpico_mqtt_publish();
 void brickpico_mqtt_publish_duty();
 void brickpico_mqtt_publish_temp();
 void brickpico_mqtt_scpi_command();
+void brickpico_mqtt_poll();
 
 #endif
 
