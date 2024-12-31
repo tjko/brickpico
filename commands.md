@@ -69,6 +69,8 @@ BrickPico supports following commands:
 * [SYStem:MQTT:SCPI?](#systemmqttscpi-1)
 * [SYStem:MQTT:TLS](#systemmqtttls)
 * [SYStem:MQTT:TLS?](#systemmqtttls-1)
+* [SYStem:MQTT:HA:DISCovery](#systemmqtthadiscovery)
+* [SYStem:MQTT:HA:DISCcovery?](#systemmqtthadiscovery-1)
 * [SYStem:MQTT:INTerval:STATus](#systemmqttintervalstatus)
 * [SYStem:MQTT:INTerval:STATus?](#systemmqttintervalstatus-1)
 * [SYStem:MQTT:INTerval:TEMP](#systemmqttintervaltemp)
@@ -1013,6 +1015,32 @@ Example:
 ```
 SYS:MQTT:TLS?
 ON
+```
+
+
+#### SYStem:MQTT:HA:DISCovery
+Configure Home Assistant MQTT Discovery prefix. This must be set to enable
+Home Assistant support/integration in BrickPico.
+
+If this is left to empty (string), then Home Assistant support is disabled.
+
+Default: <empty>
+
+Example (enable Home Assistant support using default prefix):
+```
+SYS:MQTT:HA:DISC homeassistant
+```
+
+
+#### SYStem:MQTT:HA:DISCovery?
+Query currently set Home Assistant MQTT Discovery prefix.
+
+Note, if this is empty, then Home Assistant support is disabled.
+
+Example:
+```
+SYS:MQTT:HA:DISC?
+homeassistant
 ```
 
 
