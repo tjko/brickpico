@@ -1020,7 +1020,7 @@ ON
 
 #### SYStem:MQTT:HA:DISCovery
 Configure Home Assistant MQTT Discovery prefix. This must be set to enable
-Home Assistant support/integration in FanPico.
+Home Assistant support/integration in BrickPico.
 
 If this is left to empty (string), then Home Assistant support is disabled.
 

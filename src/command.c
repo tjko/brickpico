@@ -1513,6 +1513,7 @@ const struct cmd_t mqtt_ha_commands[] = {
 	{ "DISCovery", 4, NULL,              cmd_mqtt_ha_discovery },
 	{ 0, 0, 0, 0 }
 };
+#endif
 
 const struct cmd_t mqtt_commands[] = {
 #ifdef WIFI_SUPPORT
@@ -1531,7 +1532,6 @@ const struct cmd_t mqtt_commands[] = {
 #endif
 	{ 0, 0, 0, 0 }
 };
-#endif
 
 const struct cmd_t tls_commands[] = {
 #ifdef WIFI_SUPPORT
