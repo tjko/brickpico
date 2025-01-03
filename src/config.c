@@ -1,5 +1,5 @@
 /* config.c
-   Copyright (C) 2023 Timo Kokkonen <tjko@iki.fi>
+   Copyright (C) 2023-2025 Timo Kokkonen <tjko@iki.fi>
 
    SPDX-License-Identifier: GPL-3.0-or-later
 
@@ -38,6 +38,37 @@ auto_init_mutex(config_mutex_inst);
 mutex_t *config_mutex = &config_mutex_inst;
 
 
+void json2effect(cJSON *item, enum light_effect_types *effect, void **effect_ctx)
+{
+	cJSON *args;
+	const char *a = "";
+
+	*effect = str2effect(cJSON_GetStringValue(cJSON_GetObjectItem(item, "name")));
+	if ((args = cJSON_GetObjectItem(item, "args")))
+		a = cJSON_GetStringValue(args);
+	*effect_ctx = effect_parse_args(*effect, a);
+	if (!*effect_ctx)
+		*effect = EFFECT_NONE;
+}
+
+
+cJSON* effect2json(enum light_effect_types effect, void *effect_ctx)
+{
+	cJSON *o;
+	char *s;
+
+	if ((o = cJSON_CreateObject()) == NULL)
+		return NULL;
+
+	cJSON_AddItemToObject(o, "name", cJSON_CreateString(effect2str(effect)));
+	s = effect_print_args(effect, effect_ctx);
+	cJSON_AddItemToObject(o, "args", cJSON_CreateString(s ? s : ""));
+	if (s)
+		free(s);
+
+	return o;
+}
+
 
 void clear_config(struct brickpico_config *cfg)
 {
@@ -55,6 +86,8 @@ void clear_config(struct brickpico_config *cfg)
 		o->default_pwm = 100;
 		o->default_state = 0;
 		o->type = 0;
+		o->effect = EFFECT_NONE;
+		o->effect_ctx = NULL;
 	}
 
 	for (i = 0; i < MAX_EVENT_COUNT; i++) {
@@ -272,6 +305,7 @@ cJSON *config_to_json(const struct brickpico_config *cfg)
 		cJSON_AddItemToObject(o, "default_pwm", cJSON_CreateNumber(f->default_pwm));
 		cJSON_AddItemToObject(o, "default_state", cJSON_CreateNumber(f->default_state));
 		cJSON_AddItemToObject(o, "type", cJSON_CreateNumber(f->type));
+		cJSON_AddItemToObject(o, "effect", effect2json(f->effect, f->effect_ctx));
 		cJSON_AddItemToArray(outputs, o);
 	}
 	cJSON_AddItemToObject(config, "outputs", outputs);
@@ -526,6 +560,9 @@ int json_to_config(cJSON *config, struct brickpico_config *cfg)
 			}
 			if ((ref = cJSON_GetObjectItem(item, "type"))) {
 				f->type = cJSON_GetNumberValue(ref);
+			}
+			if ((ref = cJSON_GetObjectItem(item, "effect"))) {
+				json2effect(ref, &f->effect, &f->effect_ctx);
 			}
 		}
 	}
