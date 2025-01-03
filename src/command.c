@@ -1,5 +1,5 @@
 /* command.c
-   Copyright (C) 2023 Timo Kokkonen <tjko@iki.fi>
+   Copyright (C) 2023-2024 Timo Kokkonen <tjko@iki.fi>
 
    SPDX-License-Identifier: GPL-3.0-or-later
 
@@ -676,6 +676,51 @@ int cmd_out_read(const char *cmd, const char *args, int query, char *prev_cmd)
 	}
 
 	return 1;
+}
+
+int cmd_out_effect(const char *cmd, const char *args, int query, char *prev_cmd)
+{
+	int out;
+	int ret = 0;
+	char *tok, *saveptr, *param;
+	struct pwm_output *o;
+	enum light_effect_types new_effect;
+	void *new_ctx;
+
+
+	out = atoi(&prev_cmd[6]) - 1;
+	if (out < 0 || out >= OUTPUT_COUNT)
+		return 1;
+
+	o = &conf->outputs[out];
+	if (query) {
+		printf("%s", effect2str(o->effect));
+		tok = effect_print_args(o->effect, o->effect_ctx);
+		if (tok) {
+			printf(",%s\n", tok);
+			free(tok);
+		} else {
+			printf(",\n");
+		}
+	} else {
+		param = strdup(args);
+		if ((tok = strtok_r(param, ",", &saveptr)) != NULL) {
+			new_effect = str2effect(tok);
+			tok += strlen(tok) + 1;
+			new_ctx = effect_parse_args(new_effect, tok);
+			if (new_effect == EFFECT_NONE || new_ctx != NULL) {
+				o->effect = new_effect;
+				if (o->effect_ctx)
+					free(o->effect_ctx);
+				o->effect_ctx = new_ctx;
+			} else {
+				ret = 1;
+			}
+		}
+		free(param);
+	}
+
+	return ret;
 }
 
 int cmd_write_state(const char *cmd, const char *args, int query, char *prev_cmd)
@@ -1591,6 +1636,7 @@ const struct cmd_t defaults_c_commands[] = {
 };
 
 const struct cmd_t output_c_commands[] = {
+	{ "EFFect",    3, NULL,              cmd_out_effect },
 	{ "MAXpwm",    3, NULL,              cmd_out_max_pwm },
 	{ "MINpwm",    3, NULL,              cmd_out_min_pwm },
 	{ "NAME",      4, NULL,              cmd_out_name },

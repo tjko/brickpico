@@ -248,17 +248,19 @@ void core1_main()
 	struct brickpico_config *config = &core1_config;
 	struct brickpico_state *state = &core1_state;
 	struct brickpico_state prev_state;
-	absolute_time_t t_now, t_last, t_config, t_state, t_tick;
+	absolute_time_t t_now, t_last, t_config, t_state, t_tick, t_effect;
 	int64_t max_delta = 0;
 	int64_t delta;
+	uint8_t pwm[OUTPUT_MAX_COUNT];
 
 	log_msg(LOG_INFO, "core1: started...");
+	memset(pwm, 0, sizeof(pwm));
 
 	/* Allow core0 to pause this core... */
 	multicore_lockout_victim_init();
 
 	clear_state(&prev_state);
-	t_last = t_config = t_state = t_tick = get_absolute_time();
+	t_last = t_effect = t_config = t_state = t_tick = get_absolute_time();
 
 	while (1) {
 		t_now = get_absolute_time();
@@ -296,17 +298,32 @@ void core1_main()
 					if (prev_state.pwm[i] != state->pwm[i]) {
 						log_msg(LOG_INFO, "output%d: PWM change '%u' -> '%u'", i + 1,
 							prev_state.pwm[i], state->pwm[i]);
-						if (state->pwr[i])
-							set_pwm_duty_cycle(i, state->pwm[i]);
+//						if (state->pwr[i])
+//							set_pwm_duty_cycle(i, state->pwm[i]);
 					}
 					if (prev_state.pwr[i] != state->pwr[i]) {
 						log_msg(LOG_INFO, "output%d: state change %u -> %u", i + 1,
 							prev_state.pwr[i], state->pwr[i]);
-						set_pwm_duty_cycle(i, (state->pwr[i] ? state->pwm[i] : 0));
+//						set_pwm_duty_cycle(i, (state->pwr[i] ? state->pwm[i] : 0));
 					}
 				}
 			} else {
 				log_msg(LOG_INFO, "failed to get state_mutex");
+			}
+		}
+
+		if (time_passed(&t_effect, 100)) {
+			uint8_t new;
+			for(int i = 0; i < OUTPUT_COUNT; i++) {
+				new = light_effect(config->outputs[i].effect,
+						config->outputs[i].effect_ctx,
+						state->pwm[i],state->pwr[i]);
+
+				if (new != pwm[i]) {
+					pwm[i] = new;
+					set_pwm_duty_cycle(i, new);
+					//log_msg(LOG_INFO, "effect(%d): %d", i + 1, new);
+				}
 			}
 		}
 	}
