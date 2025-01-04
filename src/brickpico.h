@@ -31,6 +31,7 @@
 #include "lwip/ip_addr.h"
 #endif
 
+#include "effects.h"
 #include "ringbuffer.h"
 
 #ifndef BRICKPICO_MODEL
@@ -69,6 +70,7 @@ enum timer_action_types {
 	ACTION_ON = 1,
 	ACTION_OFF = 2,
 };
+#define TIMER_ACTION_ENUM_MAX 2
 
 struct timer_event {
 	char name[MAX_EVENT_NAME_LEN];
@@ -82,12 +84,16 @@ struct timer_event {
 struct pwm_output {
 	char name[MAX_NAME_LEN];
 
-	/* output PWM signal settings */
+	/* Output PWM signal settings */
 	uint8_t min_pwm;
 	uint8_t max_pwm;
 	uint8_t default_pwm;   /* 0..100 (PWM duty cycle) */
 	uint8_t default_state; /* 0 = off, 1 = on */
 	uint8_t type; /* 0 = Dimmer, 1 = Toggle (on/off) */
+
+	/* Light effect settings */
+	enum light_effect_types effect;
+	void *effect_ctx;
 };
 
 struct brickpico_config {
@@ -206,6 +212,13 @@ void oled_display_init();
 void oled_clear_display();
 void oled_display_status(const struct brickpico_state *state, const struct brickpico_config *conf);
 void oled_display_message(int rows, const char **text_lines);
+
+/* effects.c */
+int str2effect(const char *s);
+const char* effect2str(enum light_effect_types effect);
+void* effect_parse_args(enum light_effect_types effect, const char *args);
+char* effect_print_args(enum light_effect_types effect, void *ctx);
+uint8_t light_effect(enum light_effect_types effect, void *ctx, uint64_t t, uint8_t pwm, uint8_t pwr);
 
 /* flash.h */
 void lfs_setup(bool multicore);
