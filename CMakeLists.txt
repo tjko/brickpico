@@ -94,6 +94,7 @@ add_executable(brickpico
   src/effects.c
   src/effects_fade.c
   src/effects_blink.c
+  src/effects_pulse.c
   src/util.c
   src/util_rp2040.c
   src/log.c

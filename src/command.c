@@ -703,11 +703,12 @@ int cmd_out_effect(const char *cmd, const char *args, int query, char *prev_cmd)
 			printf(",\n");
 		}
 	} else {
-		param = strdup(args);
+		if (!(param = strdup(args)))
+			return 2;
 		if ((tok = strtok_r(param, ",", &saveptr)) != NULL) {
 			new_effect = str2effect(tok);
-			tok += strlen(tok) + 1;
-			new_ctx = effect_parse_args(new_effect, tok);
+			tok = strtok_r(NULL, "\n", &saveptr);
+			new_ctx = effect_parse_args(new_effect, tok ? tok : "");
 			if (new_effect == EFFECT_NONE || new_ctx != NULL) {
 				o->effect = new_effect;
 				if (o->effect_ctx)

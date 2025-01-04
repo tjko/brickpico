@@ -22,21 +22,35 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
-#include <assert.h>
 #include "pico/stdlib.h"
 
 #include "brickpico.h"
-#include "effects.h"
+
+
+/* effects_fade.c */
+void* effect_fade_parse_args(const char *args);
+char* effect_fade_print_args(void *ctx);
+uint8_t effect_fade(void *ctx, uint64_t t_now, uint8_t pwm, uint8_t pwr);
+
+/* effects_blink.c */
+void* effect_blink_parse_args(const char *args);
+char* effect_blink_print_args(void *ctx);
+uint8_t effect_blink(void *ctx, uint64_t t_now, uint8_t pwm, uint8_t pwr);
+
+/* effects_pulse.c */
+void* effect_pulse_parse_args(const char *args);
+char* effect_pulse_print_args(void *ctx);
+uint8_t effect_pulse(void *ctx, uint64_t t_now, uint8_t pwm, uint8_t pwr);
 
 
 static const effect_entry_t effects[] = {
 	{ "none", NULL, NULL, NULL }, /* EFFECT_NONE */
 	{ "fade", effect_fade_parse_args, effect_fade_print_args, effect_fade }, /* EFFECT_FADE */
 	{ "blink", effect_blink_parse_args, effect_blink_print_args, effect_blink }, /* EFFECT_BLINK */
-	{ "pulse", effect_fade_parse_args, effect_fade_print_args, effect_fade }, /* EFFECT_PULSE */
+	{ "pulse", effect_pulse_parse_args, effect_pulse_print_args, effect_pulse }, /* EFFECT_PULSE */
 	{ NULL, NULL, NULL, NULL }
 };
+
 
 
 int str2effect(const char *s)
@@ -44,7 +58,7 @@ int str2effect(const char *s)
 	int ret = EFFECT_NONE;
 
 	for(int i = 0; effects[i].name; i++) {
-		if (!strcasecmp(s, effects[i].name)) {
+		if (!strncasecmp(s, effects[i].name, strlen(effects[i].name) + 1)) {
 			ret = i;
 			break;
 		}
@@ -90,13 +104,13 @@ char* effect_print_args(enum light_effect_types effect, void *ctx)
 }
 
 
-uint8_t light_effect(enum light_effect_types effect, void *ctx, uint8_t pwm, uint8_t pwr)
+inline uint8_t light_effect(enum light_effect_types effect, void *ctx, uint64_t t, uint8_t pwm, uint8_t pwr)
 {
 	uint8_t ret = 0;
 
 	if (effect <= EFFECT_ENUM_MAX) {
 		if (effects[effect].effect_func)
-			ret = effects[effect].effect_func(ctx, pwm, pwr);
+			ret = effects[effect].effect_func(ctx, t, pwm, pwr);
 		else
 			ret = (pwr ? pwm : 0);
 	}

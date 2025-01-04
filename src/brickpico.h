@@ -31,6 +31,7 @@
 #include "lwip/ip_addr.h"
 #endif
 
+#include "effects.h"
 #include "ringbuffer.h"
 
 #ifndef BRICKPICO_MODEL
@@ -70,14 +71,6 @@ enum timer_action_types {
 	ACTION_OFF = 2,
 };
 #define TIMER_ACTION_ENUM_MAX 2
-
-enum light_effect_types {
-	EFFECT_NONE          = 0, /* No effects */
-	EFFECT_FADE          = 1, /* Fade in/out at defined rates */
-	EFFECT_BLINK         = 2, /* Blink at defined rate */
-	EFFECT_PULSE         = 3, /* Pulse at defined rate */
-};
-#define EFFECT_ENUM_MAX 3
 
 struct timer_event {
 	char name[MAX_EVENT_NAME_LEN];
@@ -225,7 +218,7 @@ int str2effect(const char *s);
 const char* effect2str(enum light_effect_types effect);
 void* effect_parse_args(enum light_effect_types effect, const char *args);
 char* effect_print_args(enum light_effect_types effect, void *ctx);
-uint8_t light_effect(enum light_effect_types effect, void *ctx, uint8_t pwm, uint8_t pwr);
+uint8_t light_effect(enum light_effect_types effect, void *ctx, uint64_t t, uint8_t pwm, uint8_t pwr);
 
 /* flash.h */
 void lfs_setup(bool multicore);

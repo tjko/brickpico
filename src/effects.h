@@ -22,9 +22,18 @@
 #ifndef BRICKPICO_EFFECTS_H
 #define BRICKPICO_EFFECTS_H 1
 
+enum light_effect_types {
+	EFFECT_NONE          = 0, /* No effects */
+	EFFECT_FADE          = 1, /* Fade in/out at defined rates */
+	EFFECT_BLINK         = 2, /* Blink at defined rate */
+	EFFECT_PULSE         = 3, /* Pulse at defined rate */
+};
+#define EFFECT_ENUM_MAX 3
+
+
 typedef void* (effect_parse_args_func_t)(const char *args);
 typedef char* (effect_print_args_func_t)(void *ctx);
-typedef uint8_t (effect_func_t)(void *ctx, uint8_t pwm, uint8_t pwr);
+typedef uint8_t (effect_func_t)(void *ctx, uint64_t t_now, uint8_t pwm, uint8_t pwr);
 
 typedef struct effect_entry {
 	const char* name;
@@ -33,15 +42,7 @@ typedef struct effect_entry {
 	effect_func_t *effect_func;
 } effect_entry_t;
 
-/* effects_fade.c */
-void* effect_fade_parse_args(const char *args);
-char* effect_fade_print_args(void *ctx);
-uint8_t effect_fade(void *ctx, uint8_t pwm, uint8_t pwr);
 
-/* effects_blink.c */
-void* effect_blink_parse_args(const char *args);
-char* effect_blink_print_args(void *ctx);
-uint8_t effect_blink(void *ctx, uint8_t pwm, uint8_t pwr);
 
 
 

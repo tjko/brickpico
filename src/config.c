@@ -691,7 +691,7 @@ void delete_config()
 {
 	int res;
 
-	res = flash_delete_file("fanpico.cfg");
+	res = flash_delete_file("brickpico.cfg");
 	if (res) {
 		log_msg(LOG_ERR, "Failed to delete configuration.");
 	}

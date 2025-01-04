@@ -22,8 +22,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
-#include <assert.h>
 #include "pico/stdlib.h"
 
 #include "brickpico.h"
@@ -37,7 +35,7 @@ typedef struct blink_context {
 	int64_t off_l;
 	uint8_t last_state;
 	uint8_t mode;
-	absolute_time_t start_t;
+	uint64_t start_t;
 } blink_context_t;
 
 
@@ -45,37 +43,35 @@ void* effect_blink_parse_args(const char *args)
 {
 	blink_context_t *c;
 	char *tok, *saveptr, s[64];
-	float on_time, off_time;
+	float arg;
 
 	if (!args)
 		return NULL;
+	if (!(c = calloc(1, sizeof(blink_context_t))))
+		return NULL;
+
+	/* Defaults (seconds) */
+	c->on_time = 0.5;
+	c->off_time = 1.5;
 
 	strncopy(s, args, sizeof(s));
 
-	/* on time parameter (seconds) */
-	if (!(tok = strtok_r(s, ",", &saveptr)))
-		return NULL;
-	if (!str_to_float(tok, &on_time))
-		return NULL;
-	if (on_time < 0.0)
-		return NULL;
+	/* Parse parameters */
+	if ((tok = strtok_r(s, ",", &saveptr))) {
+		if (str_to_float(tok, &arg)) {
+			if (arg >= 0.0)
+				c->on_time = arg;
+			if ((tok = strtok_r(NULL, ",", &saveptr))) {
+				if (str_to_float(tok, &arg)) {
+					if (arg >= 0.0)
+						c->off_time = arg;
+				}
+			}
+		}
+	}
 
-	/* off time parameter (seconds) */
-	if (!(tok = strtok_r(NULL, ",", &saveptr)))
-		return NULL;
-	if (!str_to_float(tok, &off_time))
-		return NULL;
-	if (off_time < 0.0)
-		return NULL;
-
-
-	if (!(c = malloc(sizeof(blink_context_t))))
-		return NULL;
-
-	c->on_time = on_time;
-	c->off_time = off_time;
-	c->on_l = on_time * 1000000;
-	c->off_l = off_time * 1000000;
+	c->on_l = c->on_time * 1000000;
+	c->off_l = c->off_time * 1000000;
 	c->last_state = 0;
 	c->mode = 0;
 	c->start_t = 0;
@@ -86,17 +82,16 @@ void* effect_blink_parse_args(const char *args)
 char* effect_blink_print_args(void *ctx)
 {
 	blink_context_t *c = (blink_context_t*)ctx;
-	char buf[128];
+	char buf[64];
 
 	snprintf(buf, sizeof(buf), "%f,%f", c->on_time, c->off_time);
 
 	return strdup(buf);
 }
 
-uint8_t effect_blink(void *ctx, uint8_t pwm, uint8_t pwr)
+uint8_t effect_blink(void *ctx, uint64_t t_now, uint8_t pwm, uint8_t pwr)
 {
 	blink_context_t *c = (blink_context_t*)ctx;
-	absolute_time_t t_now = get_absolute_time();
 	int64_t t_d;
 	uint8_t ret = 0;
 
@@ -113,7 +108,7 @@ uint8_t effect_blink(void *ctx, uint8_t pwm, uint8_t pwr)
 	else {
 		ret = 0;
 		if (pwr) {
-			t_d = absolute_time_diff_us(c->start_t, t_now);
+			t_d = t_now - c->start_t;
 
 			if (c->mode == 1) {
 				if (t_d < c->on_l) {

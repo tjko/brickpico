@@ -298,13 +298,10 @@ void core1_main()
 					if (prev_state.pwm[i] != state->pwm[i]) {
 						log_msg(LOG_INFO, "output%d: PWM change '%u' -> '%u'", i + 1,
 							prev_state.pwm[i], state->pwm[i]);
-//						if (state->pwr[i])
-//							set_pwm_duty_cycle(i, state->pwm[i]);
 					}
 					if (prev_state.pwr[i] != state->pwr[i]) {
 						log_msg(LOG_INFO, "output%d: state change %u -> %u", i + 1,
 							prev_state.pwr[i], state->pwr[i]);
-//						set_pwm_duty_cycle(i, (state->pwr[i] ? state->pwm[i] : 0));
 					}
 				}
 			} else {
@@ -314,10 +311,12 @@ void core1_main()
 
 		if (time_passed(&t_effect, 100)) {
 			uint8_t new;
+			absolute_time_t t = get_absolute_time();
+
 			for(int i = 0; i < OUTPUT_COUNT; i++) {
 				new = light_effect(config->outputs[i].effect,
 						config->outputs[i].effect_ctx,
-						state->pwm[i],state->pwr[i]);
+						t, state->pwm[i],state->pwr[i]);
 
 				if (new != pwm[i]) {
 					pwm[i] = new;
