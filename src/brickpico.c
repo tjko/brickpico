@@ -311,7 +311,7 @@ void core1_main()
 
 		if (time_passed(&t_effect, 100)) {
 			uint8_t new;
-			absolute_time_t t = get_absolute_time();
+			uint64_t t = to_us_since_boot(get_absolute_time());
 
 			for(int i = 0; i < OUTPUT_COUNT; i++) {
 				new = light_effect(config->outputs[i].effect,
@@ -319,9 +319,8 @@ void core1_main()
 						t, state->pwm[i],state->pwr[i]);
 
 				if (new != pwm[i]) {
-					pwm[i] = new;
 					set_pwm_duty_cycle(i, new);
-					//log_msg(LOG_INFO, "effect(%d): %d", i + 1, new);
+					pwm[i] = new;
 				}
 			}
 		}

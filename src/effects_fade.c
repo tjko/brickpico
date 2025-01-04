@@ -96,31 +96,40 @@ uint8_t effect_fade(void *ctx, uint64_t t_now, uint8_t pwm, uint8_t pwr)
 	uint8_t ret = 0;
 
 	if (c->last_state != pwr) {
+		/* Start fade in/out sequence... */
 		c->start_t = t_now;
 		if (pwr) {
 			c->mode = 1;
 			ret = 0;
 		} else {
-			c->mode = 0;
+			c->mode = 3;
 			ret = pwm;
 		}
 	}
 	else {
 		t_d = t_now - c->start_t;
 
-		if (c->mode == 1) {
+		if (c->mode == 1) { /* Fade in... */
 			if (t_d < c->in_l) {
 				ret = pwm * t_d / c->in_l;
 			} else {
+				c->mode = 2;
 				ret = pwm;
 			}
 		}
-		else {
+		else if (c->mode == 2) { /* On state after fade in... */
+			ret = pwm;
+		}
+		else if (c->mode == 3) { /* Fade out... */
 			if (t_d < c->out_l) {
 				ret = pwm - (pwm * t_d / c->out_l);
 			} else {
+				c->mode = 4;
 				ret = 0;
 			}
+		}
+		else if (c->mode == 4) { /* Off state after fade out... */
+			ret = 0;
 		}
 	}
 

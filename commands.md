@@ -16,6 +16,8 @@ BrickPico supports following commands:
 * [CONFigure:SAVe](#configuresave)
 * [CONFigure:OUTPUTx:NAME](#configureoutputxname)
 * [CONFigure:OUTPUTx:NAME?](#configureoutputxname-1)
+* [CONFigure:OUTPUTx:EFFect](#configureoutputxeffect)
+* [CONFigure:OUTPUTx:EFFect?](#configureoutputxeffect-1)
 * [CONFigure:OUTPUTx:MINpwm](#configureoutputxminpwm)
 * [CONFigure:OUTPUTx:MINpwm?](#configureoutputxminpwm-1)
 * [CONFigure:OUTPUTx:MAXpwm](#configureoutputxmaxpwm)
@@ -274,6 +276,39 @@ For example:
 ```
 CONF:OUTPUT1:NAME?
 Front Lights
+```
+
+#### CONFigure:OUTPUTx:EFFect
+Configure active effect for an ouput channgel.
+
+Effect|Description|Arguments|Argument Descriptions|Default|Notes
+------|-----------|---------|---------------------|-------|-------
+none|No effect|||
+fade|Fade in/out when channgel is toggled on/off.|fade_in_time,fade_out_time|Fade-in and fade-out times in seconds.|fade,1.0,1.0|
+blink|Blink output at specified rate.|on_time,off_time|Light on and off times in seconds.|blink,0.5,1.5|
+pulse|Pulse output|fade_in_time,on_time,fade_out_time,off_time|Define duration of each 4 sections of a pulse "cycle" inseconds.|fade,2.0,0.5,2.0,0.5|
+
+For example (configur blinking using defaults):
+```
+CONF:OUTPUT1:EFF blink
+```
+
+For example (configure blinking with custom parameters):
+```
+CONF:OUTPUT1:EFF blink,1.0,2.5
+```
+
+
+#### CONFigure:OUTPUTx:EFFect?
+Display currently active effect for an output.
+
+Format: effect,arg_1,arg_2,...arg_n
+
+
+For example:
+```
+CONF:OUTPUT1:EFF?
+blink,0.500000,1.500000
 ```
 
 #### CONFigure:OUTPUTx:MINpwm
