@@ -20,6 +20,7 @@
 */
 
 #include <stdio.h>
+#include <string.h>
 #include <math.h>
 #include "pico/stdlib.h"
 #include "hardware/gpio.h"
@@ -107,19 +108,24 @@ void set_pwm_lightness(uint out, uint lightness)
  *
  * @param pwm_wrap PWM Counter wrap value.
  */
-static void calculate_pwm_lightness(uint16_t pwm_wrap)
+static void calculate_pwm_lightness(uint16_t pwm_wrap, double gamma)
 {
 	int i;
 	double l;
 
 	for (i = 0; i <= LIGHTNESS_MAX; i++) {
-		l = cie_1931_lightness_inverse(i, LIGHTNESS_MAX);
+		if (gamma >= 1.0)
+			l = gamma_lightness_inverse(gamma, i, LIGHTNESS_MAX);
+		else
+			l = cie_1931_lightness_inverse(i, LIGHTNESS_MAX);
 		pwm_lightness_map[i] = (pwm_wrap * l) / LIGHTNESS_MAX;
 #if 0
-		double g = gamma_lightness_inverse(2.2,i,LIGHTNESS_MAX);
-		printf("cie[%3d]: %lf (%lf)  [%lf : %lf]\n", i,
-			l, cie_1931_lightness(l,100),
-			g, gamma_lightness(2.2,g,100));
+		double l_r;
+		if (gamma >= 1.0)
+			l_r = gamma_lightness(gamma, l, LIGHTNESS_MAX);
+		else
+			l_r = cie_1931_lightness(l, LIGHTNESS_MAX);
+		printf("[%3d] %lf : %lf\n", i, l, l_r);
 #endif
 	}
 }
@@ -136,6 +142,7 @@ void setup_pwm_outputs()
 	uint pwm_freq = cfg->pwm_freq;
 	uint clk_div = 1;
 	uint slice_num, top;
+	double gamma = -1.0;
 	int i;
 
 
@@ -154,7 +161,25 @@ void setup_pwm_outputs()
 		top = sys_clock / clk_div / pwm_freq / 2 - 1;  /* for phase-correct PWM signal */
 	}
 	pwm_out_top = top;
-	calculate_pwm_lightness(top);
+
+	/* Lightness (Gamma Correction) */
+	if (strlen(cfg->gamma) > 0) {
+		float val;
+		if (!strncasecmp(cfg->gamma, "cie", 4)) {
+			gamma = 0.0;
+			log_msg(LOG_INFO, "Output PWM mapping: CIE (1931)");
+		}
+		if (str_to_float(cfg->gamma, &val)) {
+			if (val >= 1.0 && val <= 10.0) {
+				gamma = val;
+				log_msg(LOG_INFO, "Output PWM mapping: Gamma %1.1f", val);
+			}
+		}
+	}
+	if (gamma < 0.0) {
+		log_msg(LOG_INFO, "Output PWM mapping: default");
+	}
+	calculate_pwm_lightness(top, gamma);
 
 	log_msg(LOG_DEBUG, "PWM: TOP=%u (max %u), CLK_DIV=%u", pwm_out_top, PWM_TOP_MAX, clk_div);
 	pwm_config_set_clkdiv_int(&config, clk_div);

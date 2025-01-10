@@ -319,7 +319,7 @@ void core1_main()
 						t, state->pwm[i],state->pwr[i]);
 
 				if (new != pwm[i]) {
-					set_pwm_duty_cycle(i, new);
+					set_pwm_lightness(i, new);
 					pwm[i] = new;
 				}
 			}

@@ -37,6 +37,8 @@ BrickPico supports following commands:
 * [SYStem:ERRor?](#systemerror)
 * [SYStem:DEBug](#systemdebug)
 * [SYStem:DEBug?](#systemdebug-1)
+* [SYStem:GAMMA](#systemgamma)
+* [SYStem:GAMMA?](#systemgamma-1)
 * [SYStem:LOG](#systemlog)
 * [SYStem:LOG?](#systemlog-1)
 * [SYStem:SYSLOG](#systemsyslog)
@@ -556,6 +558,44 @@ Example:
 ```
 SYS:DEBUG?
 0
+```
+
+#### SYStem:GAMMA
+Set system PWM output mapping (Lightness/Gamma correction).
+
+Light output from LED lights normally does not correlate linearly
+to PWM duty cycle. PWM output mapping can be used to "correct" this
+to produce more linear light (output) compared to PWM duty cycle.
+
+Value|Description|Value Range|Example
+---------------|-----------|-----------|------
+<number>|Gamma correction factor (valid range 1.0 - 10.0)|2.5
+cie|CIE (1931) Lightness algorithm|N/A|cie
+<blank>|Use default correction|N/A|
+
+
+Default: <blank>   (use default correction method; currently CIE 1931)
+
+Example: Set output PWM mapping to use Gamma 2.2 correction factor
+```
+SYS:GAMMA 2.2
+```
+
+#### SYStem:GAMMA?
+Display current system PWM output mapping (Lightness/Gamma correction).
+
+Value|Description
+-----|----------
+1.0|Gamma correction factor 1.0 (no correction)
+2.2|Gamma correction factor 2.2 (slightly under corrected)
+2.5|Gamma correction factor 2.5 (normal correction)
+cie|Use CIE 1931 Lightness algorithm
+<blank>|Use default correction (currently "cie")
+
+Example:
+```
+SYS:GAMMA?
+2.5
 ```
 
 #### SYStem:LOG

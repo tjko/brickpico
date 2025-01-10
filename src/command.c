@@ -406,6 +406,11 @@ int cmd_echo(const char *cmd, const char *args, int query, char *prev_cmd)
 			&conf->local_echo, "Command Echo");
 }
 
+int cmd_gamma(const char *cmd, const char *args, int query, char *prev_cmd)
+{
+	return string_setting(cmd, args, query, prev_cmd,
+			conf->gamma, sizeof(conf->gamma), "Gamma Correction", NULL);
+}
 
 int cmd_display_type(const char *cmd, const char *args, int query, char *prev_cmd)
 {
@@ -1607,6 +1612,7 @@ const struct cmd_t system_commands[] = {
 	{ "ECHO",      4, NULL,              cmd_echo },
 	{ "ERRor",     3, NULL,              cmd_err },
 	{ "FLASH",     5, NULL,              cmd_flash },
+	{ "GAMMA",     5, NULL,              cmd_gamma },
 	{ "OUTputs",   3, NULL,              cmd_outputs },
 	{ "LED",       3, NULL,              cmd_led },
 	{ "LFS",       3, lfs_commands,      cmd_lfs },
