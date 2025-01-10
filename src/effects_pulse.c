@@ -74,7 +74,7 @@ void* effect_pulse_parse_args(const char *args)
 		c->end[i] = c->args[i] * 1000000;
 		if (i > 0)
 			c->end[i] += c->end[i - 1];
-		printf("pulse_arg[%d]: %f, %lld\n", i, c->args[i], c->end[i]);
+		//printf("pulse_arg[%d]: %f, %lld\n", i, c->args[i], c->end[i]);
 	}
 
 	return c;

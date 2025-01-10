@@ -114,6 +114,7 @@ void clear_config(struct brickpico_config *cfg)
 	strncopy(cfg->display_theme, "default", sizeof(cfg->display_theme));
 	strncopy(cfg->display_logo, "default", sizeof(cfg->display_logo));
 	strncopy(cfg->display_layout_r, "", sizeof(cfg->display_layout_r));
+	strncopy(cfg->gamma, "", sizeof(cfg->gamma));
 	strncopy(cfg->timezone, "", sizeof(cfg->timezone));
 #ifdef WIFI_SUPPORT
 	cfg->wifi_ssid[0] = 0;
@@ -157,6 +158,11 @@ void clear_config(struct brickpico_config *cfg)
 }
 
 
+#define STRING_TO_JSON(name, var) {					\
+	if (strlen(var) > 0)						\
+		cJSON_AddItemToObject(config, name, cJSON_CreateString(var)); \
+}
+
 cJSON *config_to_json(const struct brickpico_config *cfg)
 {
 	cJSON *config = cJSON_CreateObject();
@@ -175,26 +181,18 @@ cJSON *config_to_json(const struct brickpico_config *cfg)
 	cJSON_AddItemToObject(config, "spi_active", cJSON_CreateNumber(cfg->spi_active));
 	cJSON_AddItemToObject(config, "serial_active", cJSON_CreateNumber(cfg->serial_active));
 	cJSON_AddItemToObject(config, "pwm_freq", cJSON_CreateNumber(cfg->pwm_freq));
-	if (strlen(cfg->display_type) > 0)
-		cJSON_AddItemToObject(config, "display_type", cJSON_CreateString(cfg->display_type));
-	if (strlen(cfg->display_theme) > 0)
-		cJSON_AddItemToObject(config, "display_theme", cJSON_CreateString(cfg->display_theme));
-	if (strlen(cfg->display_logo) > 0)
-		cJSON_AddItemToObject(config, "display_logo", cJSON_CreateString(cfg->display_logo));
-	if (strlen(cfg->display_layout_r) > 0)
-		cJSON_AddItemToObject(config, "display_layout_r", cJSON_CreateString(cfg->display_layout_r));
-	if (strlen(cfg->name) > 0)
-		cJSON_AddItemToObject(config, "name", cJSON_CreateString(cfg->name));
-	if (strlen(cfg->timezone) > 0)
-		cJSON_AddItemToObject(config, "timezone", cJSON_CreateString(cfg->timezone));
+	STRING_TO_JSON("display_type", cfg->display_type);
+	STRING_TO_JSON("display_theme", cfg->display_theme);
+	STRING_TO_JSON("display_logo", cfg->display_logo);
+	STRING_TO_JSON("display_layout_r", cfg->display_layout_r);
+	STRING_TO_JSON("gamma", cfg->gamma);
+	STRING_TO_JSON("name", cfg->name);
+	STRING_TO_JSON("timezone", cfg->timezone);
 
 #ifdef WIFI_SUPPORT
-	if (strlen(cfg->hostname) > 0)
-		cJSON_AddItemToObject(config, "hostname", cJSON_CreateString(cfg->hostname));
-	if (strlen(cfg->wifi_country) > 0)
-		cJSON_AddItemToObject(config, "wifi_country", cJSON_CreateString(cfg->wifi_country));
-	if (strlen(cfg->wifi_ssid) > 0)
-		cJSON_AddItemToObject(config, "wifi_ssid", cJSON_CreateString(cfg->wifi_ssid));
+	STRING_TO_JSON("hostname", cfg->hostname);
+	STRING_TO_JSON("wifi_country", cfg->wifi_country);
+	STRING_TO_JSON("wifi_ssid", cfg->wifi_ssid);
 	if (strlen(cfg->wifi_passwd) > 0) {
 		char *p = base64encode(cfg->wifi_passwd);
 		if (p) {
@@ -202,9 +200,7 @@ cJSON *config_to_json(const struct brickpico_config *cfg)
 			free(p);
 		}
 	}
-	if (strlen(cfg->wifi_auth_mode) > 0) {
-		cJSON_AddItemToObject(config, "wifi_auth_mode", cJSON_CreateString(cfg->wifi_auth_mode));
-	}
+	STRING_TO_JSON("wifi_auth_mode", cfg->wifi_auth_mode);
 	if (cfg->wifi_mode != 0) {
 		cJSON_AddItemToObject(config, "wifi_mode", cJSON_CreateNumber(cfg->wifi_mode));
 	}
@@ -218,12 +214,10 @@ cJSON *config_to_json(const struct brickpico_config *cfg)
 		cJSON_AddItemToObject(config, "netmask", cJSON_CreateString(ipaddr_ntoa(&cfg->netmask)));
 	if (!ip_addr_isany(&cfg->gateway))
 		cJSON_AddItemToObject(config, "gateway", cJSON_CreateString(ipaddr_ntoa(&cfg->gateway)));
-	if (strlen(cfg->mqtt_server) > 0)
-		cJSON_AddItemToObject(config, "mqtt_server", cJSON_CreateString(cfg->mqtt_server));
+	STRING_TO_JSON("mqtt_server", cfg->mqtt_server);
 	if (cfg->mqtt_port > 0)
 		cJSON_AddItemToObject(config, "mqtt_port", cJSON_CreateNumber(cfg->mqtt_port));
-	if (strlen(cfg->mqtt_user) > 0)
-		cJSON_AddItemToObject(config, "mqtt_user", cJSON_CreateString(cfg->mqtt_user));
+	STRING_TO_JSON("mqtt_user", cfg->mqtt_user);
 	if (strlen(cfg->mqtt_pass) > 0) {
 		char *p = base64encode(cfg->mqtt_pass);
 		if (p) {
@@ -231,27 +225,13 @@ cJSON *config_to_json(const struct brickpico_config *cfg)
 			free(p);
 		}
 	}
-	if (strlen(cfg->mqtt_status_topic) > 0)
-		cJSON_AddItemToObject(config, "mqtt_status_topic",
-				cJSON_CreateString(cfg->mqtt_status_topic));
-	if (strlen(cfg->mqtt_cmd_topic) > 0)
-		cJSON_AddItemToObject(config, "mqtt_cmd_topic",
-				cJSON_CreateString(cfg->mqtt_cmd_topic));
-	if (strlen(cfg->mqtt_resp_topic) > 0)
-		cJSON_AddItemToObject(config, "mqtt_resp_topic",
-				cJSON_CreateString(cfg->mqtt_resp_topic));
-	if (strlen(cfg->mqtt_err_topic) > 0)
-		cJSON_AddItemToObject(config, "mqtt_err_topic",
-				cJSON_CreateString(cfg->mqtt_err_topic));
-	if (strlen(cfg->mqtt_warn_topic) > 0)
-		cJSON_AddItemToObject(config, "mqtt_warn_topic",
-				cJSON_CreateString(cfg->mqtt_warn_topic));
-	if (strlen(cfg->mqtt_pwm_topic) > 0)
-		cJSON_AddItemToObject(config, "mqtt_pwm_topic",
-				cJSON_CreateString(cfg->mqtt_pwm_topic));
-	if (strlen(cfg->mqtt_temp_topic) > 0)
-		cJSON_AddItemToObject(config, "mqtt_temp_topic",
-				cJSON_CreateString(cfg->mqtt_temp_topic));
+	STRING_TO_JSON("mqtt_status_topic", cfg->mqtt_status_topic);
+	STRING_TO_JSON("mqtt_cmd_topic", cfg->mqtt_cmd_topic);
+	STRING_TO_JSON("mqtt_resp_topic", cfg->mqtt_resp_topic);
+	STRING_TO_JSON("mqtt_err_topic", cfg->mqtt_err_topic);
+	STRING_TO_JSON("mqtt_warn_topic", cfg->mqtt_warn_topic);
+	STRING_TO_JSON("mqtt_pwm_topic", cfg->mqtt_pwm_topic);
+	STRING_TO_JSON("mqtt_temp_topic", cfg->mqtt_temp_topic);
 	if (cfg->mqtt_tls != true)
 		cJSON_AddItemToObject(config, "mqtt_tls", cJSON_CreateNumber(cfg->mqtt_tls));
 	if (cfg->mqtt_allow_scpi == true)
@@ -271,9 +251,7 @@ cJSON *config_to_json(const struct brickpico_config *cfg)
 				cJSON_CreateString(
 					bitmask_to_str(cfg->mqtt_pwm_mask, OUTPUT_COUNT,
 						1, true)));
-	if (strlen(cfg->mqtt_ha_discovery_prefix) > 0)
-		cJSON_AddItemToObject(config, "mqtt_ha_discovery_prefix",
-				cJSON_CreateString(cfg->mqtt_ha_discovery_prefix));
+	STRING_TO_JSON("mqtt_ha_discovery_prefix", cfg->mqtt_ha_discovery_prefix);
 	if (cfg->telnet_active)
 		cJSON_AddItemToObject(config, "telnet_active", cJSON_CreateNumber(cfg->telnet_active));
 	if (cfg->telnet_auth != true)
@@ -282,10 +260,8 @@ cJSON *config_to_json(const struct brickpico_config *cfg)
 		cJSON_AddItemToObject(config, "telnet_raw_mode", cJSON_CreateNumber(cfg->telnet_raw_mode));
 	if (cfg->telnet_port > 0)
 		cJSON_AddItemToObject(config, "telnet_port", cJSON_CreateNumber(cfg->telnet_port));
-	if (strlen(cfg->telnet_user) > 0)
-		cJSON_AddItemToObject(config, "telnet_user", cJSON_CreateString(cfg->telnet_user));
-	if (strlen(cfg->telnet_pwhash) > 0)
-		cJSON_AddItemToObject(config, "telnet_pwhash", cJSON_CreateString(cfg->telnet_pwhash));
+	STRING_TO_JSON("telnet_user", cfg->telnet_user);
+	STRING_TO_JSON("telnet_pwhash", cfg->telnet_pwhash);
 #endif
 
 	/* PWM Outputs */
@@ -336,6 +312,14 @@ panic:
 }
 
 
+
+#define JSON_TO_STRING(name, var, len) { \
+	if ((ref = cJSON_GetObjectItem(config, name))) {	\
+		if ((val = cJSON_GetStringValue(ref)))		\
+			strncopy(var, val, len);		\
+	}							\
+}
+
 int json_to_config(cJSON *config, struct brickpico_config *cfg)
 {
 	cJSON *ref, *item;
@@ -368,44 +352,18 @@ int json_to_config(cJSON *config, struct brickpico_config *cfg)
 		cfg->serial_active = cJSON_GetNumberValue(ref);
 	if ((ref = cJSON_GetObjectItem(config, "pwm_freq")))
 		cfg->pwm_freq = cJSON_GetNumberValue(ref);
-	if ((ref = cJSON_GetObjectItem(config, "display_type"))) {
-		if ((val = cJSON_GetStringValue(ref)))
-			strncopy(cfg->display_type, val, sizeof(cfg->display_type));
-	}
-	if ((ref = cJSON_GetObjectItem(config, "display_theme"))) {
-		if ((val = cJSON_GetStringValue(ref)))
-			strncopy(cfg->display_theme, val, sizeof(cfg->display_theme));
-	}
-	if ((ref = cJSON_GetObjectItem(config, "display_logo"))) {
-		if ((val = cJSON_GetStringValue(ref)))
-			strncopy(cfg->display_logo, val, sizeof(cfg->display_logo));
-	}
-	if ((ref = cJSON_GetObjectItem(config, "display_layout_r"))) {
-		if ((val = cJSON_GetStringValue(ref)))
-			strncopy(cfg->display_layout_r, val, sizeof(cfg->display_layout_r));
-	}
-	if ((ref = cJSON_GetObjectItem(config, "name"))) {
-		if ((val = cJSON_GetStringValue(ref)))
-			strncopy(cfg->name, val, sizeof(cfg->name));
-	}
-	if ((ref = cJSON_GetObjectItem(config, "timezone"))) {
-		if ((val = cJSON_GetStringValue(ref)))
-			strncopy(cfg->timezone, val, sizeof(cfg->timezone));
-	}
+	JSON_TO_STRING("display_type", cfg->display_type, sizeof(cfg->display_type));
+	JSON_TO_STRING("display_theme", cfg->display_theme, sizeof(cfg->display_theme));
+	JSON_TO_STRING("display_logo", cfg->display_logo, sizeof(cfg->display_logo));
+	JSON_TO_STRING("display_layout_r", cfg->display_layout_r, sizeof(cfg->display_layout_r));
+	JSON_TO_STRING("gamma", cfg->gamma, sizeof(cfg->gamma));
+	JSON_TO_STRING("name", cfg->name, sizeof(cfg->name));
+	JSON_TO_STRING("timezone", cfg->timezone, sizeof(cfg->timezone));
 
 #ifdef WIFI_SUPPORT
-	if ((ref = cJSON_GetObjectItem(config, "hostname"))) {
-		if ((val = cJSON_GetStringValue(ref)))
-			strncopy(cfg->hostname, val, sizeof(cfg->hostname));
-	}
-	if ((ref = cJSON_GetObjectItem(config, "wifi_country"))) {
-		if ((val = cJSON_GetStringValue(ref)))
-			strncopy(cfg->wifi_country, val, sizeof(cfg->wifi_country));
-	}
-	if ((ref = cJSON_GetObjectItem(config, "wifi_ssid"))) {
-		if ((val = cJSON_GetStringValue(ref)))
-			strncopy(cfg->wifi_ssid, val, sizeof(cfg->wifi_ssid));
-	}
+	JSON_TO_STRING("hostname", cfg->hostname, sizeof(cfg->hostname));
+	JSON_TO_STRING("wifi_country", cfg->wifi_country, sizeof(cfg->wifi_country));
+	JSON_TO_STRING("wifi_ssid", cfg->wifi_ssid, sizeof(cfg->wifi_ssid));
 	if ((ref = cJSON_GetObjectItem(config, "wifi_passwd"))) {
 		if ((val = cJSON_GetStringValue(ref))) {
 			char *p = base64decode(val);
@@ -415,10 +373,7 @@ int json_to_config(cJSON *config, struct brickpico_config *cfg)
 			}
 		}
 	}
-	if ((ref = cJSON_GetObjectItem(config, "wifi_auth_mode"))) {
-		if ((val = cJSON_GetStringValue(ref)))
-			strncopy(cfg->wifi_auth_mode, val, sizeof(cfg->wifi_auth_mode));
-	}
+	JSON_TO_STRING("wifi_auth_mode", cfg->wifi_auth_mode, sizeof(cfg->wifi_auth_mode));
 	if ((ref = cJSON_GetObjectItem(config, "wifi_mode"))) {
 		cfg->wifi_mode = cJSON_GetNumberValue(ref);
 	}
@@ -442,10 +397,7 @@ int json_to_config(cJSON *config, struct brickpico_config *cfg)
 		if ((val = cJSON_GetStringValue(ref)))
 			ipaddr_aton(val, &cfg->gateway);
 	}
-	if ((ref = cJSON_GetObjectItem(config, "mqtt_server"))) {
-		if ((val = cJSON_GetStringValue(ref)))
-			strncopy(cfg->mqtt_server, val, sizeof(cfg->mqtt_server));
-	}
+	JSON_TO_STRING("mqtt_server", cfg->mqtt_server, sizeof(cfg->mqtt_server));
 	if ((ref = cJSON_GetObjectItem(config, "mqtt_port"))) {
 		cfg->mqtt_port = cJSON_GetNumberValue(ref);
 	}
@@ -455,10 +407,7 @@ int json_to_config(cJSON *config, struct brickpico_config *cfg)
 	if ((ref = cJSON_GetObjectItem(config, "mqtt_allow_scpi"))) {
 		cfg->mqtt_allow_scpi = cJSON_GetNumberValue(ref);
 	}
-	if ((ref = cJSON_GetObjectItem(config, "mqtt_user"))) {
-		if ((val = cJSON_GetStringValue(ref)))
-			strncopy(cfg->mqtt_user, val, sizeof(cfg->mqtt_user));
-	}
+	JSON_TO_STRING("mqtt_user", cfg->mqtt_user, sizeof(cfg->mqtt_user));
 	if ((ref = cJSON_GetObjectItem(config, "mqtt_pass"))) {
 		if ((val = cJSON_GetStringValue(ref))) {
 			char *p = base64decode(val);
@@ -468,34 +417,13 @@ int json_to_config(cJSON *config, struct brickpico_config *cfg)
 			}
 		}
 	}
-	if ((ref = cJSON_GetObjectItem(config, "mqtt_status_topic"))) {
-		if ((val = cJSON_GetStringValue(ref)))
-			strncopy(cfg->mqtt_status_topic, val, sizeof(cfg->mqtt_status_topic));
-	}
-	if ((ref = cJSON_GetObjectItem(config, "mqtt_cmd_topic"))) {
-		if ((val = cJSON_GetStringValue(ref)))
-			strncopy(cfg->mqtt_cmd_topic, val, sizeof(cfg->mqtt_cmd_topic));
-	}
-	if ((ref = cJSON_GetObjectItem(config, "mqtt_resp_topic"))) {
-		if ((val = cJSON_GetStringValue(ref)))
-			strncopy(cfg->mqtt_resp_topic, val, sizeof(cfg->mqtt_resp_topic));
-	}
-	if ((ref = cJSON_GetObjectItem(config, "mqtt_err_topic"))) {
-		if ((val = cJSON_GetStringValue(ref)))
-			strncopy(cfg->mqtt_err_topic, val, sizeof(cfg->mqtt_err_topic));
-	}
-	if ((ref = cJSON_GetObjectItem(config, "mqtt_warn_topic"))) {
-		if ((val = cJSON_GetStringValue(ref)))
-			strncopy(cfg->mqtt_warn_topic, val, sizeof(cfg->mqtt_warn_topic));
-	}
-	if ((ref = cJSON_GetObjectItem(config, "mqtt_pwm_topic"))) {
-		if ((val = cJSON_GetStringValue(ref)))
-			strncopy(cfg->mqtt_pwm_topic, val, sizeof(cfg->mqtt_pwm_topic));
-	}
-	if ((ref = cJSON_GetObjectItem(config, "mqtt_temp_topic"))) {
-		if ((val = cJSON_GetStringValue(ref)))
-			strncopy(cfg->mqtt_temp_topic, val, sizeof(cfg->mqtt_temp_topic));
-	}
+	JSON_TO_STRING("mqtt_status_topic", cfg->mqtt_status_topic, sizeof(cfg->mqtt_status_topic));
+	JSON_TO_STRING("mqtt_cmd_topic", cfg->mqtt_cmd_topic, sizeof(cfg->mqtt_cmd_topic));
+	JSON_TO_STRING("mqtt_resp_topic", cfg->mqtt_resp_topic, sizeof(cfg->mqtt_resp_topic));
+	JSON_TO_STRING("mqtt_err_topic", cfg->mqtt_err_topic, sizeof(cfg->mqtt_err_topic));
+	JSON_TO_STRING("mqtt_warn_topic", cfg->mqtt_warn_topic, sizeof(cfg->mqtt_warn_topic));
+	JSON_TO_STRING("mqtt_pwm_topic", cfg->mqtt_pwm_topic, sizeof(cfg->mqtt_pwm_topic));
+	JSON_TO_STRING("mqtt_temp_topic", cfg->mqtt_temp_topic, sizeof(cfg->mqtt_temp_topic));
 	if ((ref = cJSON_GetObjectItem(config, "mqtt_status_interval"))) {
 		cfg->mqtt_status_interval = cJSON_GetNumberValue(ref);
 	}
@@ -510,10 +438,7 @@ int json_to_config(cJSON *config, struct brickpico_config *cfg)
 		if (!str_to_bitmask(cJSON_GetStringValue(ref), OUTPUT_COUNT, &m, 1))
 			cfg->mqtt_pwm_mask = m;
 	}
-	if ((ref = cJSON_GetObjectItem(config, "mqtt_ha_discovery_prefix"))) {
-		if ((val = cJSON_GetStringValue(ref)))
-			strncopy(cfg->mqtt_ha_discovery_prefix, val, sizeof(cfg->mqtt_ha_discovery_prefix));
-	}
+	JSON_TO_STRING("mqtt_ha_discovery_prefix", cfg->mqtt_ha_discovery_prefix, sizeof(cfg->mqtt_ha_discovery_prefix));
 	if ((ref = cJSON_GetObjectItem(config, "telnet_active"))) {
 		cfg->telnet_active = cJSON_GetNumberValue(ref);
 	}
@@ -526,14 +451,8 @@ int json_to_config(cJSON *config, struct brickpico_config *cfg)
 	if ((ref = cJSON_GetObjectItem(config, "telnet_port"))) {
 		cfg->telnet_port = cJSON_GetNumberValue(ref);
 	}
-	if ((ref = cJSON_GetObjectItem(config, "telnet_user"))) {
-		if ((val = cJSON_GetStringValue(ref)))
-			strncopy(cfg->telnet_user, val, sizeof(cfg->telnet_user));
-	}
-	if ((ref = cJSON_GetObjectItem(config, "telnet_pwhash"))) {
-		if ((val = cJSON_GetStringValue(ref)))
-			strncopy(cfg->telnet_pwhash, val, sizeof(cfg->telnet_pwhash));
-	}
+	JSON_TO_STRING("telnet_user", cfg->telnet_user, sizeof(cfg->telnet_user));
+	JSON_TO_STRING("telnet_pwhash", cfg->telnet_pwhash, sizeof(cfg->telnet_pwhash));
 #endif
 
 	/* PWM output configurations */

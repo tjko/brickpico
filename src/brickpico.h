@@ -104,6 +104,7 @@ struct brickpico_config {
 	char display_theme[16];
 	char display_logo[16];
 	char display_layout_r[64];
+	char gamma[16];
 	char name[32];
 	char timezone[64];
 	bool spi_active;
@@ -269,7 +270,8 @@ struct altcp_tls_config* tls_server_config();
 /* pwm.c */
 void setup_pwm_inputs();
 void setup_pwm_outputs();
-void set_pwm_duty_cycle(uint fan, float duty);
+void set_pwm_duty_cycle(uint out, float duty);
+void set_pwm_lightness(uint out, uint lightness);
 float get_pwm_duty_cycle(uint fan);
 void get_pwm_duty_cycles(const struct brickpico_config *config);
 

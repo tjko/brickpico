@@ -17,12 +17,15 @@ BrickPico is an Open-source hardware (OSHW) project.
 * Adjustable output voltage 5V or 3.3V
 * Up to 200mA current output per port (each port has resettable fuse).
 * Programmable PWM frequency from 10 to 100000 Hz
+* Configurable Lightness/Gamma correction
+* Support for configurable lighting "effects" on each channel
 * Connectors for common Lego light kits (Light My Bricks, etc.) as well as 2.54mm pin header.
 * OLED display module support (128x64 or 128x128)
 * Configuration stored on the device itself (in the flash memory).
 * SCPI "like" programming interface (see [Command Reference](commands.md))
 * WiFi support if opting to mount Pico W on the board. This turns fanpico to "IoT" device with basic web interface.
 * MQTT support for sending status and to receive commands.
+* Home Assistant (MQTT Discovery) support
 * Telnet support for remote configuration and monitoring.
 
 [![BrickPico](images/brickpico-08-small.jpg)](images/brickpico-08.jpg?raw=true)
