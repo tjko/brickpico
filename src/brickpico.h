@@ -270,6 +270,7 @@ struct altcp_tls_config* tls_server_config();
 void setup_pwm_inputs();
 void setup_pwm_outputs();
 void set_pwm_duty_cycle(uint fan, float duty);
+void set_pwm_lightness(uint out, uint lightness);
 float get_pwm_duty_cycle(uint fan);
 void get_pwm_duty_cycles(const struct brickpico_config *config);
 

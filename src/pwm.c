@@ -26,6 +26,7 @@
 #include "hardware/pwm.h"
 #include "hardware/clocks.h"
 
+#include "lightness.h"
 #include "brickpico.h"
 
 
@@ -52,10 +53,18 @@ uint8_t output_gpio_pwm_map[OUTPUT_MAX_COUNT] = {
 	PWM16_PIN,
 };
 
+#define PWM_TOP_MAX (1<<16)
+#define LIGHTNESS_MAX 100
 
-uint16_t pwm_out_top = 0;
+static uint16_t pwm_out_top = 0;
+static uint16_t pwm_lightness_map[LIGHTNESS_MAX + 1];
 
-/* Set PMW output signal duty cycle.
+
+/**
+ * Set PMW output signal duty cycle.
+ *
+ * @param out Output port.
+ * @param duty Duty cycle (0..100).
  */
 void set_pwm_duty_cycle(uint out, float duty)
 {
@@ -74,12 +83,52 @@ void set_pwm_duty_cycle(uint out, float duty)
 }
 
 
-
-/* Initialize PWM hardware to generate 25kHz PWM signal on output pins.
+/**
+ * Set PWM output signal to approximate desired lightness level.
+ *
+ * @param out Output port.
+ * @param lightness value (0..100).
  */
+void set_pwm_lightness(uint out, uint lightness)
+{
+	uint pin;
+	uint16_t level;
 
-#define PWM_TOP_MAX (1<<16)
+	assert(out < OUTPUT_COUNT);
+	pin = output_gpio_pwm_map[out];
+	level = pwm_lightness_map[lightness > LIGHTNESS_MAX ? LIGHTNESS_MAX : lightness];
 
+	pwm_set_gpio_level(pin, level);
+}
+
+
+/**
+ * Precalculate PWM level values for each lightness value.
+ *
+ * @param pwm_wrap PWM Counter wrap value.
+ */
+static void calculate_pwm_lightness(uint16_t pwm_wrap)
+{
+	int i;
+	double l;
+
+	for (i = 0; i <= LIGHTNESS_MAX; i++) {
+		l = cie_1931_lightness_inverse(i, LIGHTNESS_MAX);
+		pwm_lightness_map[i] = (pwm_wrap * l) / LIGHTNESS_MAX;
+#if 0
+		double g = gamma_lightness_inverse(2.2,i,LIGHTNESS_MAX);
+		printf("cie[%3d]: %lf (%lf)  [%lf : %lf]\n", i,
+			l, cie_1931_lightness(l,100),
+			g, gamma_lightness(2.2,g,100));
+#endif
+	}
+}
+
+
+
+/**
+ * Initialize PWM hardware to generate 25kHz PWM signal on output pins.
+ */
 void setup_pwm_outputs()
 {
 	uint32_t sys_clock = clock_get_hz(clk_sys);
@@ -101,10 +150,11 @@ void setup_pwm_outputs()
 	top = sys_clock / clk_div / pwm_freq / 2 - 1;  /* for phase-correct PWM signal */
 	if (top >= PWM_TOP_MAX) {
 		clk_div = top / PWM_TOP_MAX + 1;
-		log_msg(LOG_DEBUG, "adjust clock divider: %u", clk_div);
+		log_msg(LOG_INFO, "Set PWM clock divider: %u", clk_div);
 		top = sys_clock / clk_div / pwm_freq / 2 - 1;  /* for phase-correct PWM signal */
 	}
 	pwm_out_top = top;
+	calculate_pwm_lightness(top);
 
 	log_msg(LOG_DEBUG, "PWM: TOP=%u (max %u), CLK_DIV=%u", pwm_out_top, PWM_TOP_MAX, clk_div);
 	pwm_config_set_clkdiv_int(&config, clk_div);
