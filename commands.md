@@ -569,9 +569,9 @@ to produce more linear light (output) compared to PWM duty cycle.
 
 Value|Description|Value Range|Example
 ---------------|-----------|-----------|------
-<number>|Gamma correction factor (valid range 1.0 - 10.0)|2.5
+\<number\>|Gamma correction factor (valid range 1.0 - 10.0)|2.5
 cie|CIE (1931) Lightness algorithm|N/A|cie
-<blank>|Use default correction|N/A|
+\<blank\>|Use default correction|N/A|
 
 
 Default: <blank>   (use default correction method; currently CIE 1931)
@@ -590,7 +590,7 @@ Value|Description
 2.2|Gamma correction factor 2.2 (slightly under corrected)
 2.5|Gamma correction factor 2.5 (normal correction)
 cie|Use CIE 1931 Lightness algorithm
-<blank>|Use default correction (currently "cie")
+\<blank\>|Use default correction (currently "cie")
 
 Example:
 ```
