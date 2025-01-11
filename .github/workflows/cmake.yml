@@ -22,7 +22,7 @@ jobs:
     strategy:
       matrix:
         brickpico_board: ["8", "16"]
-        pico_board: ["pico", "pico_w"]
+        pico_board: ["pico", "pico_w", "pico2", "pico2_w"]
 
     steps:
     - name: Arm GNU Toolchain (arm-none-eabi-gcc)
