@@ -180,47 +180,41 @@ $ picotool info -a brickpico.uf2
 File brickpico.uf2:
 
 Program Information
- name:          brickpico
- version:       0.9.0 (Dec  1 2023)
- web site:      https://github.com/tjko/brickpico/
- description:   BrickPico-16 - Smart LED Controller
- features:      USB stdin / stdout
- binary start:  0x10000000
- binary end:    0x10023694
+ name:              brickpico
+ version:           1.3.0 (Jan  9 2025)
+ web site:          https://github.com/tjko/brickpico/
+ description:       BrickPico-08 - Smart LED Controller
+ features:          USB stdin / stdout
+ binary start:      0x10000000
+ binary end:        0x100b3910
 
 Fixed Pin Information
- 0:   TX (Serial)
- 1:   RX (Serial)
- 2:   SCK (SPI)
- 3:   MOSI (SPI)
- 4:   MISO (SPI)
- 5:   CS (SPI)
- 6:   PWM7 signal (output)
- 7:   PWM8 signal (output)
- 8:   PWM9 signal (output)
- 9:   PWM10 signal (output)
- 10:  PWM11 signal (output)
- 11:  PWM12 signal (output)
- 12:  PWM13 signal (output)
- 13:  PWM14 signal (output)
- 14:  PWM15 signal (output)
- 15:  PWM16 signal (output)
- 16:  PWM1 signal (output)
- 17:  PWM2 signal (output)
- 18:  PWM3 signal (output)
- 19:  PWM4 signal (output)
- 20:  PWM5 signal (output)
- 21:  PWM6 signal (output)
- 22:  LCD DC (SPI)
- 25:  On-board LED (output)
- 26:  SDA (I2C)
- 27:  SCL (I2C)
- 28:  LCD Reset (SPI)
+ 0:                 TX (Serial)
+ 1:                 RX (Serial)
+ 2:                 SCK (SPI)
+ 3:                 MOSI (SPI)
+ 4:                 MISO (SPI)
+ 5:                 CS (SPI)
+ 6:                 PWM7 signal (output)
+ 7:                 PWM8 signal (output)
+ 16:                PWM1 signal (output)
+ 17:                PWM2 signal (output)
+ 18:                PWM3 signal (output)
+ 19:                PWM4 signal (output)
+ 20:                PWM5 signal (output)
+ 21:                PWM6 signal (output)
+ 22:                LCD DC (SPI)
+ 26:                SDA (I2C)
+ 27:                SCL (I2C)
+ 28:                LCD Reset (SPI)
 
 Build Information
- sdk version:       1.5.1
- pico_board:        pico
- build date:        Dec  1 2023
+ sdk version:       2.1.0
+ pico_board:        pico_w
+ boot2_name:        boot2_w25q080
+ build date:        Dec 30 2024
  build attributes:  Release
 
+Metadata Blocks
+ none
 ```
