@@ -39,6 +39,9 @@
 #endif
 
 #define OUTPUT_MAX_COUNT       16   /* Max number of PWM outputs on the board */
+#define VSENSOR_MAX_COUNT      8    /* Max number of virtual sensors */
+
+#define VSENSOR_COUNT          8
 
 #define MAX_NAME_LEN           64
 #define MAX_MAP_POINTS         32
@@ -60,6 +63,13 @@
 #ifdef NDEBUG
 #define WATCHDOG_ENABLED       1
 #define WATCHDOG_REBOOT_DELAY  15000
+#endif
+
+#ifndef I2C_DEFAULT_SPEED
+#define I2C_DEFAULT_SPEED   1000000L /* Default I2C bus frequency 1MHz */
+#endif
+#ifndef SPI_DEFAULT_SPEED
+#define SPI_DEFAULT_SPEED  30000000L /* Default SPI bus frequency 30MHz */
 #endif
 
 #define MAX_EVENT_NAME_LEN     30
@@ -109,6 +119,7 @@ struct brickpico_config {
 	char timezone[64];
 	bool spi_active;
 	bool serial_active;
+	uint32_t i2c_speed;
 	uint pwm_freq;
 	struct timer_event events[MAX_EVENT_COUNT];
 	uint8_t event_count;
@@ -152,6 +163,12 @@ struct brickpico_config {
 	char telnet_user[16 + 1];
 	char telnet_pwhash[128 + 1];
 #endif
+	/* Non-config items */
+	float vtemp[VSENSOR_MAX_COUNT];
+	float vhumidity[VSENSOR_MAX_COUNT];
+	float vpressure[VSENSOR_MAX_COUNT];
+	absolute_time_t vtemp_updated[VSENSOR_MAX_COUNT];
+	void *i2c_context[VSENSOR_MAX_COUNT];
 };
 
 struct brickpico_state {
@@ -260,6 +277,12 @@ void brickpico_mqtt_scpi_command();
 void brickpico_mqtt_poll();
 
 #endif
+
+/* i2c.c */
+void scan_i2c_bus();
+void display_i2c_status();
+void setup_i2c_bus(struct brickpico_config *config);
+int i2c_read_temps(struct brickpico_config *config);
 
 /* tls.c */
 int read_pem_file(char *buf, uint32_t size, uint32_t timeout, bool append);

@@ -104,6 +104,7 @@ void clear_config(struct brickpico_config *cfg)
 	cfg->local_echo = false;
 	cfg->spi_active = false;
 	cfg->serial_active = true;
+	cfg->i2c_speed = I2C_DEFAULT_SPEED;
 	cfg->led_mode = 0;
 	cfg->pwm_freq = 1000;
 	cfg->adc_ref_voltage = 3.3;
@@ -180,6 +181,7 @@ cJSON *config_to_json(const struct brickpico_config *cfg)
 	cJSON_AddItemToObject(config, "led_mode", cJSON_CreateNumber(cfg->led_mode));
 	cJSON_AddItemToObject(config, "spi_active", cJSON_CreateNumber(cfg->spi_active));
 	cJSON_AddItemToObject(config, "serial_active", cJSON_CreateNumber(cfg->serial_active));
+	cJSON_AddItemToObject(config, "i2c_speed", cJSON_CreateNumber(cfg->i2c_speed));
 	cJSON_AddItemToObject(config, "pwm_freq", cJSON_CreateNumber(cfg->pwm_freq));
 	STRING_TO_JSON("display_type", cfg->display_type);
 	STRING_TO_JSON("display_theme", cfg->display_theme);
@@ -350,6 +352,8 @@ int json_to_config(cJSON *config, struct brickpico_config *cfg)
 		cfg->spi_active = cJSON_GetNumberValue(ref);
 	if ((ref = cJSON_GetObjectItem(config, "serial_active")))
 		cfg->serial_active = cJSON_GetNumberValue(ref);
+	if ((ref = cJSON_GetObjectItem(config, "i2c_speed")))
+		cfg->i2c_speed = cJSON_GetNumberValue(ref);
 	if ((ref = cJSON_GetObjectItem(config, "pwm_freq")))
 		cfg->pwm_freq = cJSON_GetNumberValue(ref);
 	JSON_TO_STRING("display_type", cfg->display_type, sizeof(cfg->display_type));
