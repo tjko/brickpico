@@ -186,6 +186,7 @@ target_compile_definitions(brickpico PRIVATE
   LFS_THREADSAFE=1
   LFS_NO_DEBUG=1
 #  LFS_YES_TRACE=1
+#  I2C_DEBUG=1
   )
 
 if (${PICO_SDK_VERSION_MAJOR} LESS 2)

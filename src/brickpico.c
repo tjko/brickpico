@@ -1,5 +1,5 @@
 /* brickpico.c
-   Copyright (C) 2023-2024 Timo Kokkonen <tjko@iki.fi>
+   Copyright (C) 2023-2025 Timo Kokkonen <tjko@iki.fi>
 
    SPDX-License-Identifier: GPL-3.0-or-later
 
@@ -333,13 +333,14 @@ int main()
 {
 	absolute_time_t ABSOLUTE_TIME_INITIALIZED_VAR(t_led, 0);
 	absolute_time_t ABSOLUTE_TIME_INITIALIZED_VAR(t_network, 0);
-	absolute_time_t t_now, t_last, t_display, t_timer, t_temp, t_ram;
+	absolute_time_t t_now, t_last, t_display, t_timer, t_temp, t_i2c_temp, t_ram;
 	uint8_t led_state = 0;
 	int64_t max_delta = 0;
 	int64_t delta;
 	int c;
 	char input_buf[1024 + 1];
 	int i_ptr = 0;
+	int i2c_temp_delay = 1000;
 
 
 	set_binary_info();
@@ -365,7 +366,7 @@ int main()
 #endif
 
 	t_last = get_absolute_time();
-	t_ram = t_temp = t_timer = t_display = t_last;
+	t_ram = t_i2c_temp = t_temp = t_timer = t_display = t_last;
 
 	while (1) {
 		t_now = get_absolute_time();
@@ -418,6 +419,11 @@ int main()
 		/* Check temperature */
 		if (time_passed(&t_temp, 20000)) {
 			update_temp(cfg, brickpico_state);
+		}
+
+		/* Poll I2C Temperature Sensors */
+		if (i2c_temp_delay > 0 && time_passed(&t_i2c_temp, i2c_temp_delay)) {
+			i2c_temp_delay = i2c_read_temps((struct brickpico_config*)cfg);
 		}
 
 		/* Process any (user) input */

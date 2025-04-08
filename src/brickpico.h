@@ -1,5 +1,5 @@
 /* brickpico.h
-   Copyright (C) 2021-2024 Timo Kokkonen <tjko@iki.fi>
+   Copyright (C) 2021-2025 Timo Kokkonen <tjko@iki.fi>
 
    SPDX-License-Identifier: GPL-3.0-or-later
 
@@ -38,10 +38,11 @@
 #error unknown board model
 #endif
 
-#define OUTPUT_MAX_COUNT       16   /* Max number of PWM outputs on the board */
-#define VSENSOR_MAX_COUNT      8    /* Max number of virtual sensors */
+#define OUTPUT_MAX_COUNT         16   /* Max number of PWM outputs on the board */
+#define VSENSOR_MAX_COUNT        8    /* Max number of virtual sensors */
 
-#define VSENSOR_COUNT          8
+#define VSENSOR_SOURCE_MAX_COUNT 8
+#define VSENSOR_COUNT            8
 
 #define MAX_NAME_LEN           64
 #define MAX_MAP_POINTS         32
@@ -82,6 +83,18 @@ enum timer_action_types {
 };
 #define TIMER_ACTION_ENUM_MAX 2
 
+enum vsensor_modes {
+	VSMODE_MANUAL = 0,
+	VSMODE_MAX = 1,
+	VSMODE_MIN = 2,
+	VSMODE_AVG = 3,
+	VSMODE_DELTA = 4,
+	VSMODE_ONEWIRE = 5,
+	VSMODE_I2C = 6,
+};
+#define VSMODE_ENUM_MAX 6
+
+
 struct timer_event {
 	char name[MAX_EVENT_NAME_LEN];
 	int8_t minute;          /* 0-59 */
@@ -106,8 +119,21 @@ struct pwm_output {
 	void *effect_ctx;
 };
 
+struct vsensor_input {
+	char name[MAX_NAME_LEN];
+	enum vsensor_modes mode;
+	float default_temp;
+	int32_t timeout;
+	uint8_t sensors[VSENSOR_SOURCE_MAX_COUNT];
+//	uint64_t onewire_addr;
+	uint8_t i2c_type;
+	uint8_t i2c_addr;
+};
+
+
 struct brickpico_config {
 	struct pwm_output outputs[OUTPUT_MAX_COUNT];
+	struct vsensor_input vsensors[VSENSOR_MAX_COUNT];
 	bool local_echo;
 	uint8_t led_mode;
 	char display_type[64];
@@ -214,6 +240,8 @@ int last_command_status();
 /* config.c */
 extern mutex_t *config_mutex;
 extern const struct brickpico_config *cfg;
+enum vsensor_modes str2vsmode(const char *s);
+const char* vsmode2str(enum vsensor_modes mode);
 void read_config();
 void save_config();
 void delete_config();
