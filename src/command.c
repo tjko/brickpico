@@ -1552,9 +1552,9 @@ int cmd_vsensors_sources(const char *cmd, const char *args, int query, char *pre
 			printf(",0x%02x,%s", v->i2c_addr, i2c_sensor_type_str(v->i2c_type));
 			break;
 		default:
-			for (int j = 0; j < VSENSOR_SOURCE_MAX_COUNT; i++) {
+			for (int j = 0; j < VSENSOR_SOURCE_MAX_COUNT; j++) {
 				if (v->sensors[j])
-					printf(",%d", v->sensors[i]);
+					printf(",%d", v->sensors[j]);
 			}
 			break;
 		}
@@ -1662,7 +1662,7 @@ int cmd_vsensor_source(const char *cmd, const char *args, int query, char *prev_
 					selected[i] = 0;
 				while((tok = strtok_r(NULL, ",", &saveptr)) != NULL) {
 					if (count < VSENSOR_SOURCE_MAX_COUNT && str_to_int(tok, &val, 10)) {
-						if ((val >= 1 && val <= VSENSOR_COUNT)) {
+						if ((val >= 1 && val <= VSENSOR_COUNT) || val == 101) {
 							selected[count++] = val;
 							snprintf(tmp, sizeof(tmp), ",%d", val);
 							strncatenate(temp_str, tmp, sizeof(temp_str));
@@ -1703,7 +1703,7 @@ int cmd_vsensor_temp(const char *cmd, const char *args, int query, char *prev_cm
 	}
 
 	if (sensor >= 0 && sensor < VSENSOR_COUNT) {
-		d = cfg->vtemp[sensor];
+		d = st->vtemp[sensor];
 		log_msg(LOG_DEBUG, "vsensor%d temperature = %fC", sensor + 1, d);
 		printf("%.0f\n", d);
 		return 0;
@@ -1722,7 +1722,7 @@ int cmd_vsensor_humidity(const char *cmd, const char *args, int query, char *pre
 
 	sensor = atoi(&prev_cmd[7]) - 1;
 	if (sensor >= 0 && sensor < VSENSOR_COUNT) {
-		d = cfg->vhumidity[sensor];
+		d = st->vhumidity[sensor];
 		log_msg(LOG_DEBUG, "vsensor%d humidity = %f%%", sensor + 1, d);
 		printf("%.0f\n", d);
 		return 0;
@@ -1741,7 +1741,7 @@ int cmd_vsensor_pressure(const char *cmd, const char *args, int query, char *pre
 
 	sensor = atoi(&prev_cmd[7]) - 1;
 	if (sensor >= 0 && sensor < VSENSOR_COUNT) {
-		d = cfg->vpressure[sensor];
+		d = st->vpressure[sensor];
 		log_msg(LOG_DEBUG, "vsensor%d pressure = %fhPa", sensor + 1, d);
 		printf("%.0f\n", d);
 		return 0;
@@ -1760,9 +1760,9 @@ int cmd_vsensors_read(const char *cmd, const char *args, int query, char *prev_c
 	for (i = 0; i < VSENSOR_COUNT; i++) {
 		printf("vsensor%d,\"%s\",%.1lf,%.0f,%0.0f\n", i+1,
 			conf->vsensors[i].name,
-			cfg->vtemp[i],
-			cfg->vhumidity[i],
-			cfg->vpressure[i]);
+			st->vtemp[i],
+			st->vhumidity[i],
+			st->vpressure[i]);
 	}
 
 	return 0;
@@ -1786,8 +1786,8 @@ int cmd_vsensor_write(const char *cmd, const char *args, int query, char *prev_c
 		if (conf->vsensors[sensor].mode == VSMODE_MANUAL) {
 			if (str_to_float(args, &val)) {
 				log_msg(LOG_INFO, "vsensor%d: write temperature = %fC", sensor + 1, val);
-				conf->vtemp[sensor] = val;
-				conf->vtemp_updated[sensor] = get_absolute_time();
+				st->vtemp[sensor] = val;
+				st->vtemp_updated[sensor] = get_absolute_time();
 				return 0;
 			}
 		} else {

@@ -190,10 +190,6 @@ struct brickpico_config {
 	char telnet_pwhash[128 + 1];
 #endif
 	/* Non-config items */
-	float vtemp[VSENSOR_MAX_COUNT];
-	float vhumidity[VSENSOR_MAX_COUNT];
-	float vpressure[VSENSOR_MAX_COUNT];
-	absolute_time_t vtemp_updated[VSENSOR_MAX_COUNT];
 	void *i2c_context[VSENSOR_MAX_COUNT];
 };
 
@@ -201,7 +197,13 @@ struct brickpico_state {
 	/* outputs */
 	uint8_t pwm[OUTPUT_MAX_COUNT];
 	uint8_t pwr[OUTPUT_MAX_COUNT];
-	double temp;
+	float temp;
+	float temp_prev;
+	float vtemp[VSENSOR_MAX_COUNT];
+	float vhumidity[VSENSOR_MAX_COUNT];
+	float vpressure[VSENSOR_MAX_COUNT];
+	absolute_time_t vtemp_updated[VSENSOR_MAX_COUNT];
+	float vtemp_prev[VSENSOR_MAX_COUNT];
 };
 
 
@@ -310,7 +312,7 @@ void brickpico_mqtt_poll();
 void scan_i2c_bus();
 void display_i2c_status();
 void setup_i2c_bus(struct brickpico_config *config);
-int i2c_read_temps(struct brickpico_config *config);
+int i2c_read_temps(const struct brickpico_config *config, struct brickpico_state *st);
 
 /* tls.c */
 int read_pem_file(char *buf, uint32_t size, uint32_t timeout, bool append);
@@ -389,6 +391,8 @@ int getstring_timeout_ms(char *str, uint32_t maxlen, uint32_t timeout);
 /* temp.c */
 double get_temperature(double adc_ref_voltage, double temp_offset, double temp_coefficient);
 void update_temp(const struct brickpico_config *conf, struct brickpico_state *state);
+double get_vsensor(uint8_t i, const struct brickpico_config *config,
+		struct brickpico_state *state);
 
 /* crc32.c */
 unsigned int xcrc32 (const unsigned char *buf, int len, unsigned int init);

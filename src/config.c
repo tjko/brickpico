@@ -178,10 +178,6 @@ void clear_config(struct brickpico_config *cfg)
 		vs->i2c_type = 0;
 		vs->i2c_addr = 0;
 
-		cfg->vtemp[i] = 0.0;
-		cfg->vhumidity[i] = 0.0;
-		cfg->vpressure[i] = 0.0;
-		cfg->vtemp_updated[i] = from_us_since_boot(0);
 		cfg->i2c_context[i] = NULL;
 	}
 

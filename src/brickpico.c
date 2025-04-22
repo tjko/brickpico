@@ -234,6 +234,16 @@ void clear_state(struct brickpico_state *s)
 		s->pwr[i] = 0;
 	}
 	s->temp = 0.0;
+	s->temp_prev = 0.0;
+
+	for (i = 0; i < VSENSOR_MAX_COUNT; i++) {
+		s->vtemp[i] = 0.0;
+		s->vtemp_prev[i] = 0.0;
+		s->vhumidity[i] = 0.0;
+		s->vpressure[i] = 0.0;
+		s->vtemp_updated[i] = from_us_since_boot(0);
+	}
+
 }
 
 
@@ -417,13 +427,13 @@ int main()
 		}
 
 		/* Check temperature */
-		if (time_passed(&t_temp, 20000)) {
+		if (time_passed(&t_temp, 4000)) {
 			update_temp(cfg, brickpico_state);
 		}
 
 		/* Poll I2C Temperature Sensors */
 		if (i2c_temp_delay > 0 && time_passed(&t_i2c_temp, i2c_temp_delay)) {
-			i2c_temp_delay = i2c_read_temps((struct brickpico_config*)cfg);
+			i2c_temp_delay = i2c_read_temps(cfg, brickpico_state);
 		}
 
 		/* Process any (user) input */
