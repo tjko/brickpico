@@ -1347,7 +1347,7 @@ int cmd_flash(const char *cmd, const char *args, int query, char *prev_cmd)
 }
 
 
-#define TEST_MEM_SIZE (264*1024)
+#define TEST_MEM_SIZE (1024*1024)
 
 int cmd_memory(const char *cmd, const char *args, int query, char *prev_cmd)
 {
@@ -1381,21 +1381,24 @@ int cmd_memory(const char *cmd, const char *args, int query, char *prev_cmd)
 	} while (buf && bufsize < TEST_MEM_SIZE);
 	printf("Largest available memory block:        %u bytes\n",
 		bufsize - blocksize);
+	if (buf)
+		free(buf);
 
 	/* Test how much memory available in 'blocksize' blocks... */
 	int i = 0;
 	int max = TEST_MEM_SIZE / blocksize + 1;
-	void **refbuf = malloc(max * sizeof(void*));
+	size_t refbufsize = max * sizeof(void*);
+	void **refbuf = malloc(refbufsize);
 	if (refbuf) {
-		memset(refbuf, 0, max * sizeof(void*));
+		memset(refbuf, 0, refbufsize);
 		while (i < max) {
 			if (!(refbuf[i] = malloc(blocksize)))
 				break;
 			i++;
 		}
 	}
-	printf("Total available memory:                %u bytes (%d x %dbytes)\n",
-		i * blocksize, i, blocksize);
+	printf("Total available memory:                %u bytes\n",
+		i * blocksize + refbufsize);
 	if (refbuf) {
 		i = 0;
 		while (i < max && refbuf[i]) {
