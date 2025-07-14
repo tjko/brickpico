@@ -25,6 +25,7 @@
 #include "pico/stdlib.h"
 #include "pico/mutex.h"
 #include "cJSON.h"
+#include "pico_sensor_lib.h"
 #ifdef WIFI_SUPPORT
 #include "lwip/ip_addr.h"
 #endif
@@ -36,6 +37,49 @@ struct brickpico_config brickpico_config;
 const struct brickpico_config *cfg = &brickpico_config;
 auto_init_mutex(config_mutex_inst);
 mutex_t *config_mutex = &config_mutex_inst;
+
+
+
+enum vsensor_modes str2vsmode(const char *s)
+{
+	int ret = VSMODE_MANUAL;
+
+	if (s) {
+		if (!strncasecmp(s, "max", 3))
+			ret = VSMODE_MAX;
+		else if (!strncasecmp(s, "min", 3))
+			ret = VSMODE_MIN;
+		else if (!strncasecmp(s, "avg", 3))
+			ret = VSMODE_AVG;
+		else if (!strncasecmp(s, "delta", 5))
+			ret = VSMODE_DELTA;
+		else if (!strncasecmp(s, "i2c", 3))
+			ret = VSMODE_I2C;
+		else if (!strncasecmp(s, "picotemp", 8))
+			ret = VSMODE_PICOTEMP;
+	}
+
+	return ret;
+}
+
+const char* vsmode2str(enum vsensor_modes mode)
+{
+	if (mode == VSMODE_MAX)
+		return "max";
+	else if (mode == VSMODE_MIN)
+		return "min";
+	else if (mode == VSMODE_AVG)
+		return "avg";
+	else if (mode == VSMODE_DELTA)
+		return "delta";
+	else if (mode == VSMODE_I2C)
+		return "i2c";
+	else if (mode == VSMODE_PICOTEMP)
+		return "picotemp";
+
+	return "manual";
+}
+
 
 
 void json2effect(cJSON *item, enum light_effect_types *effect, void **effect_ctx)
@@ -70,6 +114,43 @@ cJSON* effect2json(enum light_effect_types effect, void *effect_ctx)
 }
 
 
+void json2vsensors(cJSON *item, uint8_t *s)
+{
+	cJSON *o;
+	int i,val;
+	int count = 0;
+
+	for (i = 0; i < VSENSOR_SOURCE_MAX_COUNT; i++)
+		s[i] = 0;
+
+	cJSON_ArrayForEach(o, item) {
+		val = cJSON_GetNumberValue(o);
+		if (count < VSENSOR_SOURCE_MAX_COUNT) {
+			if ((val >= 1 && val <= VSENSOR_COUNT) || val == 101)
+				s[count++] = val;
+		}
+	}
+}
+
+
+cJSON* vsensors2json(const uint8_t *s)
+{
+	int i;
+	cJSON *o;
+
+	if ((o = cJSON_CreateArray()) == NULL)
+		return NULL;
+
+	for (i = 0; i < VSENSOR_SOURCE_MAX_COUNT; i++) {
+		if (s[i]) {
+			cJSON_AddItemToArray(o, cJSON_CreateNumber(s[i]));
+		}
+	}
+	return o;
+}
+
+
+
 void clear_config(struct brickpico_config *cfg)
 {
 	int i;
@@ -90,6 +171,26 @@ void clear_config(struct brickpico_config *cfg)
 		o->effect_ctx = NULL;
 	}
 
+	for (i = 0; i < VSENSOR_MAX_COUNT; i++) {
+		struct vsensor_input *vs = &cfg->vsensors[i];
+
+		if (i == 0) {
+			strncopy(vs->name, "Pico Temperature", sizeof(vs->name));
+			vs->mode = VSMODE_PICOTEMP;
+		} else {
+			vs->name[0] = 0;
+			vs->mode = VSMODE_MANUAL;
+		}
+		vs->default_temp = 0.0;
+		vs->timeout = 60;
+		for (int j = 0; j < VSENSOR_SOURCE_MAX_COUNT; j++)
+			vs->sensors[j] = 0;
+		vs->i2c_type = 0;
+		vs->i2c_addr = 0;
+
+		cfg->i2c_context[i] = NULL;
+	}
+
 	for (i = 0; i < MAX_EVENT_COUNT; i++) {
 		struct timer_event *e = &cfg->events[i];
 		e->name[0] = 0;
@@ -104,6 +205,7 @@ void clear_config(struct brickpico_config *cfg)
 	cfg->local_echo = false;
 	cfg->spi_active = false;
 	cfg->serial_active = true;
+	cfg->i2c_speed = I2C_DEFAULT_SPEED;
 	cfg->led_mode = 0;
 	cfg->pwm_freq = 1000;
 	cfg->adc_ref_voltage = 3.3;
@@ -166,7 +268,7 @@ void clear_config(struct brickpico_config *cfg)
 cJSON *config_to_json(const struct brickpico_config *cfg)
 {
 	cJSON *config = cJSON_CreateObject();
-	cJSON *outputs, *events, *o;
+	cJSON *outputs, *events, *vsensors, *o;
 	int i;
 
 	if (!config)
@@ -180,6 +282,7 @@ cJSON *config_to_json(const struct brickpico_config *cfg)
 	cJSON_AddItemToObject(config, "led_mode", cJSON_CreateNumber(cfg->led_mode));
 	cJSON_AddItemToObject(config, "spi_active", cJSON_CreateNumber(cfg->spi_active));
 	cJSON_AddItemToObject(config, "serial_active", cJSON_CreateNumber(cfg->serial_active));
+	cJSON_AddItemToObject(config, "i2c_speed", cJSON_CreateNumber(cfg->i2c_speed));
 	cJSON_AddItemToObject(config, "pwm_freq", cJSON_CreateNumber(cfg->pwm_freq));
 	STRING_TO_JSON("display_type", cfg->display_type);
 	STRING_TO_JSON("display_theme", cfg->display_theme);
@@ -304,7 +407,35 @@ cJSON *config_to_json(const struct brickpico_config *cfg)
 	}
 	cJSON_AddItemToObject(config, "timers", events);
 
-	return config;
+	/* Virtual Sensors */
+	vsensors = cJSON_CreateArray();
+	if (!vsensors)
+		goto panic;
+	for (i = 0; i < VSENSOR_COUNT; i++) {
+		const struct vsensor_input *s = &cfg->vsensors[i];
+
+		o = cJSON_CreateObject();
+		if (!o)
+			goto panic;
+		cJSON_AddItemToObject(o, "id", cJSON_CreateNumber(i));
+		cJSON_AddItemToObject(o, "name", cJSON_CreateString(s->name));
+		cJSON_AddItemToObject(o, "mode", cJSON_CreateString(vsmode2str(s->mode)));
+		if (s->mode == VSMODE_MANUAL) {
+			cJSON_AddItemToObject(o, "default_temp", cJSON_CreateNumber(s->default_temp));
+			cJSON_AddItemToObject(o, "timeout", cJSON_CreateNumber(s->timeout));
+		} else if (s->mode == VSMODE_I2C) {
+			cJSON_AddItemToObject(o, "i2c_type",
+					cJSON_CreateString(i2c_sensor_type_str(s->i2c_type)));
+			cJSON_AddItemToObject(o, "i2c_addr",
+					cJSON_CreateNumber(s->i2c_addr));
+		} else {
+			cJSON_AddItemToObject(o, "sensors", vsensors2json(s->sensors));
+		}
+		cJSON_AddItemToArray(vsensors, o);
+	}
+	cJSON_AddItemToObject(config, "vsensors", vsensors);
+
+        return config;
 
 panic:
 	cJSON_Delete(config);
@@ -350,6 +481,8 @@ int json_to_config(cJSON *config, struct brickpico_config *cfg)
 		cfg->spi_active = cJSON_GetNumberValue(ref);
 	if ((ref = cJSON_GetObjectItem(config, "serial_active")))
 		cfg->serial_active = cJSON_GetNumberValue(ref);
+	if ((ref = cJSON_GetObjectItem(config, "i2c_speed")))
+		cfg->i2c_speed = cJSON_GetNumberValue(ref);
 	if ((ref = cJSON_GetObjectItem(config, "pwm_freq")))
 		cfg->pwm_freq = cJSON_GetNumberValue(ref);
 	JSON_TO_STRING("display_type", cfg->display_type, sizeof(cfg->display_type));
@@ -515,13 +648,41 @@ int json_to_config(cJSON *config, struct brickpico_config *cfg)
 		}
 	}
 
+	/* Virtual Sensor configurations */
+	ref = cJSON_GetObjectItem(config, "vsensors");
+	cJSON_ArrayForEach(item, ref) {
+		cJSON *r;
+		id = (int)cJSON_GetNumberValue(cJSON_GetObjectItem(item, "id"));
+		if (id >= 0 && id < VSENSOR_COUNT) {
+			struct vsensor_input *s = &cfg->vsensors[id];
+
+			name = cJSON_GetStringValue(cJSON_GetObjectItem(item, "name"));
+			if (name) strncopy(s->name, name ,sizeof(s->name));
+
+			s->mode = str2vsmode(cJSON_GetStringValue(cJSON_GetObjectItem(item, "mode")));
+			if (s->mode == VSMODE_MANUAL) {
+				if ((r = cJSON_GetObjectItem(item, "default_temp")))
+					s->default_temp = cJSON_GetNumberValue(r);
+				if ((r = cJSON_GetObjectItem(item, "timeout")))
+					s->timeout = cJSON_GetNumberValue(r);
+			} else if (s->mode == VSMODE_I2C) {
+				if ((r = cJSON_GetObjectItem(item, "i2c_type")))
+					s->i2c_type = get_i2c_sensor_type(cJSON_GetStringValue(r));
+				if ((r = cJSON_GetObjectItem(item, "i2c_addr")))
+					s->i2c_addr = cJSON_GetNumberValue(r);
+			} else {
+				if ((r = cJSON_GetObjectItem(item, "sensors")))
+					json2vsensors(r, s->sensors);
+			}
+		}
+	}
 
 	mutex_exit(config_mutex);
 	return 0;
 }
 
 
-void read_config()
+void read_config(bool use_default_config)
 {
 	cJSON *config = NULL;
 	int res;
@@ -529,18 +690,20 @@ void read_config()
 	char  *buf = NULL;
 
 
-	log_msg(LOG_INFO, "Reading configuration...");
+	if (!use_default_config) {
+		log_msg(LOG_INFO, "Reading configuration...");
 
-	res = flash_read_file(&buf, &file_size, "brickpico.cfg");
-	if (res == 0 && buf != NULL) {
-		/* parse saved config... */
-		config = cJSON_Parse(buf);
-		if (!config) {
-			const char *error_str = cJSON_GetErrorPtr();
-			log_msg(LOG_ERR, "Failed to parse saved config: %s",
-				(error_str ? error_str : "") );
+		res = flash_read_file(&buf, &file_size, "brickpico.cfg");
+		if (res == 0 && buf != NULL) {
+			/* parse saved config... */
+			config = cJSON_Parse(buf);
+			if (!config) {
+				const char *error_str = cJSON_GetErrorPtr();
+				log_msg(LOG_ERR, "Failed to parse saved config: %s",
+					(error_str ? error_str : "") );
+			}
+			free(buf);
 		}
-		free(buf);
 	}
 
 	clear_config(&brickpico_config);
@@ -553,6 +716,12 @@ void read_config()
         /* Parse JSON configuration */
 	if (json_to_config(config, &brickpico_config) < 0) {
 		log_msg(LOG_ERR, "Error parsing JSON configuration");
+	}
+
+	if (use_default_config) {
+		/* Enable more verbose logging if in "safe-mode" ... */
+		set_log_level(LOG_INFO);
+		brickpico_config.local_echo = true;
 	}
 
 	cJSON_Delete(config);

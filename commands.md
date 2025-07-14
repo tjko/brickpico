@@ -29,10 +29,22 @@ BrickPico supports following commands:
 * [CONFigure:TIMERS?](#configuretimers)
 * [CONFigure:TIMERS:ADD](#configuretimersadd)
 * [CONFigure:TIMERS:DEL](#configuretimersdel)
+* [CONFigure:VSENSORS?](#configurevsensors)
+* [CONFigure:VSENSORS:SOUrces?](#configurevsensorssources)
+* [CONFigure:VSENSORx:NAME](#configurevsensorxname)
+* [CONFigure:VSENSORx:NAME?](#configurevsensorxname-1)
+* [CONFigure:VSENSORx:SOUrce](#configurevsensorxsource)
+* [CONFigure:VSENSORx:SOUrce?](#configurevsensorxsource-1)
 * [MEASure:Read?](#measureread)
 * [MEASure:OUTPUTx?](#measureoutputx)
 * [MEASure:OUTPUTx:Read?](#measureoutputxread)
 * [MEASure:OUTPUTx:PWM](#measureoutputxpwm)
+* [MEASure:VSENSORS?](#measurevsensors)
+* [MEASure:VSENSORx?](#measurevsensorx)
+* [MEASure:VSENSORx:HUMidity?](#measurevsensorxhumidity)
+* [MEASure:VSENSORx:PREssure?](#measurevsensorxpressure)
+* [MEASure:VSENSORx:Read?](#measurevsensorxread)
+* [MEASure:VSENSORx:TEMP?](#measurevsensorxtemp)
 * [Read?](#read)
 * [SYStem:ERRor?](#systemerror)
 * [SYStem:DEBug](#systemdebug)
@@ -54,11 +66,19 @@ BrickPico supports following commands:
 * [SYStem:ECHO](#systemecho)
 * [SYStem:ECHO?](#systemecho-1)
 * [SYStem:FLASH?](#systemflash)
+* [SYStem:I2C?](#systemi2c)
+* [SYStem:I2C:SCAN?](#systemi2cscan)
+* [SYStem:I2C:SPEED](#systemi2cspeed)
+* [SYStem:I2C:SPEED?](#systemi2cspeed?)
 * [SYStem:OUTputs?](#systemoutputs)
 * [SYStem:LED](#systemled)
 * [SYStem:LED?](#systemled-1)
 * [SYStem:LFS?](#systemlfs)
+* [SYStem:LFS:COPY](#systemlfscopy)
+* [SYStem:LFS:DELete](#systemlfsdelete)
+* [SYStem:LFS:DIR?](#systemlfsdir)
 * [SYStem:LFS:FORMAT](#systemlfsformat)
+* [SYStem:LFS:REName](#systemlfsrename)
 * [SYStem:MEM](#systemmem)
 * [SYStem:MEM?](#systemmem-1)
 * [SYStem:MQTT:SERVer](#systemmqttserver)
@@ -126,6 +146,7 @@ BrickPico supports following commands:
 * [SYStem:UPTIme?](#systemuptime)
 * [SYStem:UPGRADE](#systemupgrade)
 * [SYStem:VERsion?](#systemversion)
+* [SYStem:VSENSORS?](#systemvsensors)
 * [SYStem:WIFI?](#systemwifi)
 * [SYStem:WIFI:AUTHmode](#systemwifiauthmode)
 * [SYStem:WIFI:AUTHmode?](#systemwifiauthmode-1)
@@ -155,6 +176,7 @@ BrickPico supports following commands:
 * [WRIte:OUTPUTx](#writeoutputx)
 * [WRIte:OUTPUTx:PWM](#writeoutputxpwm)
 * [WRIte:OUTPUTx:STAte](#writeoutputxstate)
+* [WRIte:VSENSORx](#writevsensorx)
 
 
 Additionally unit will respond to following standard SCPI commands to provide compatibility in case some program
@@ -456,6 +478,176 @@ CONF:TIMERS:DEL 2
 ```
 
 
+#### CONFigure:VSENSORS?
+
+This is same as CONFigure::VSENSORS:SOUrces? command.
+
+
+#### CONFigure:VSENSORS:SOUrces?
+Return virtual sensor (source) configuration information for all
+virtual sensors in CSV format.
+
+Format: <vsensor>,<type>,<parameter1>,<parameter2>,...
+
+Example:
+```
+CONF:VSENSORS:SOURCES?
+vsensor1,picotemp
+vsensor2,i2c,0x48,TMP117
+vsensor3,i2c,0x37,PCT2075
+vsensor4,i2c,0x77,DPS310
+vsensor5,i2c,0x76,BMP280
+vsensor6,i2c,0x49,ADT7410
+vsensor7,i2c,0x38,AHT2x
+vsensor8,manual,0.00,30
+```
+
+
+### CONFigure:VSENSORx Commands
+VSENSORx (where x is the sensor number) commands are used to configure virtual temperature sensors.
+These can be "sensors" that are updated by software, like "CPU Temperature" of host system.
+Or these can be be virtual sensors that report value of multiple physical sensors fed through a mathematical formula.
+
+
+Where x is a number from 1 to 8.
+
+Virtual Sensor Mode|Description
+------|-----------
+manual|Manually updated (by software) sensor values. For example host CPU Temperature.
+max|Maximum temperature of configured source sensors.
+min|Minimum temperature of configured source sensors.
+avg|Average temperature of configured source sensors.
+delta|Temperature delta between readings from two source sensors.
+i2c|Reading from digital I2C sensor.
+picotemp|Pico (MCU) Temperature.
+
+
+#### CONFigure:VSENSORx:NAME
+Set name for virtual temperature sensor.
+
+For example:
+```
+CONF:VSENSOR1:NAME Pico Temperature
+```
+
+#### CONFigure:VSENSORx:NAME?
+Query name of a virtual temperature sensor.
+
+For example:
+```
+CONF:VSENSOR1:NAME?
+Pico Temperature
+```
+
+#### CONFigure:VSENSORx:SOUrce
+Configure source for the virtual temperature sensor.
+
+Source types:
+
+MODE|Description|No of Parameters|Parameters
+----|-----------|----------------|----------
+MANUAL|Temperature updated by external program/driver|2|default_temperature_C,timeout
+MAX|Maximum temperatore between source sensors|2+|sensor_a,sensor_b, ...
+MIN|Minimum temperature between source sensors|2+|sensor_a,sensor_b, ...
+AVG|Average temperature between source sensors|2+|sensor_a,sensor_b, ...
+DELTA|Temperature delta between to source sensors|2|sensor_a,sensor_b
+I2C|Temperature reading from digital I2C sensor|2|i2c_address,sensor_type_or_alias
+PICOTEMP|Pico (MCU) temperature|0|
+
+
+Note, in "manual" mode if timeout_ms is set to zero, then sensor's temperature reading
+will never revert back to default value (if no updates are being received).
+
+Sensor numbering:
+ - VSENSORS: 1, 2, ...
+ - PICO Temperature: 101
+
+Supported I2C sensors:
+
+Sensor Type|Aliases|Possible Addresses|Description|Notes
+-----------|-------|------------------|-----------|-----
+ADT7410||0x48, 0x49, 0x4a, 0x4b|16bit Digital Temperature Sensor, 0.5C accuracy
+AHT1x|||AHT1x Series Temperature and Humidity sensors (AHT10, AHT11 ,...)
+AHT2x|||AHT2x Series Temperature and Humidity sensors (AHT20, AHT21 ,...)
+AM2320||0x5c|Temperature and Humidity Sensor, 0.5C accuracy|Not found when scanning bus. May not work above 100kHz bus speeds.
+AS621x|AS6212, AS6214, AS6218||AS621x Series sensors: AS6212 (0.2C), AS6214 (0.4C), AC6218 (0.8C)
+BMP180|||16bit, 0.5C accuracy
+BMP280||0x76, 0x77|20bit, 0.5C accuracy
+DPS310||0x77, 0x76|24bit, 0.5C accuracy
+HDC302x|HDC3022, HDC3021, HDC3020|0x44, 0x45, 0x46, 0x47|HDC302x Series Temperature and Humiditysensors
+HTS221||0x5f|Temperature and Humidity Sensor
+HTU21D||0x40|Temperature and Humidity Sensor, 0.4C accuracy|Not found when scanning bus (SYS:I2C:SCAN?)
+HTU31D||0x40, 0x41|Temperature and Humidity Sensor, 0.3C accuracy
+LPSxx|LPS22, LPS25, LPS28, LPS33, LPS35|0x5d, 0x5c|LPSxx Series Temperature and Pressure sensors
+MCP9808|||Digital Temperature Sensor, 0.5C accuracy
+MPL115A2||0x60|Digital Barometer|Temperature sensor not calibrated.
+MPL3115A2||0x60|Temperature and Pressure sensor with Altimetry, 1C accuracy
+MS5611||0x76, 0x77|Temperature and Pressure Sensor|Not found when scanning bus (SYS:I2C:SCAN?)
+MS8607||0x76 and 0x40|Temperature, Humidity and Pressure Sensor|Not found when scanning bus (SYS:I2C:SCAN?), appears as two seprate devices.
+PCT2075|||Digital Temperature Sensor, 1C accuracy
+SHT3x|SHT30, SHT31, SHT35|0x44, 0x34|SHT3x Series Temperature and Humidity sensors|Not always found when scanning bus (SYS:I2C:SCAN?)
+SHT4x|SHT40, SHT41, SHT43, SHT45|0x44|SHT4x Series Temperature and Humidity sensors|Not always found when scanning bus (SYS:I2C:SCAN?)
+SHTC3||0x70|Temperature and Humidity sensor, 0.2C accuracy
+SI7021||0x40|Temperature and Humidity sensor, 0.4C accuracy
+STTS22H||0x38, 0x3c, 0x3e, 0x3f|Temperature Sensor, 0.5C accuracy
+TC74|TC74A0|0x48 - 0x4f|Digital Thermal Sensor, 2C accuracy
+TMP102||0x48, 0x49, 0x4a, 0x4b|Temperature Sensor, 2C accuracy
+TMP117||0x48, 0x49, 0x4a, 0x4b|Temperature Sensor, 0.1C accuracy
+
+
+Defaults:
+
+Default for all virtual sensors is to be in "MANUAL" mode and revert automatically to 0C
+if no temperature update has been received within 30 seconds.
+
+VSENSOR|SOURCE
+---|------
+1|MANUAL,0,30
+...|...
+
+
+Example: Set VSENSOR1 to report temperature that is updated by external program. And to sensor reading to revert to default value of 99C if no update has been received within 5 seconds.
+```
+CONF:VSENSOR2:SOURCE manual,99,5
+```
+
+Example: Set VSENSOR2 to follow report temperature delta between SENSOR1 and SENSOR2.
+```
+CONF:VSENSOR2:SOURCE delta,1,2
+```
+
+Example: Set VSENSOR3 to report average temperature between SENSOR1, SENSOR2, and VSENSOR1
+```
+CONF:VSENSOR3:SOURCE avg,1,2,101
+```
+
+
+Example: Set VSENSOR5 to report temperature from TMP117 (I2C) sensor with address 0x48:
+```
+CONF:VSENSOR5:SOURCE i2c,0x48,tmp117
+```
+
+(to get list of currently active I2C sensor addresses, use: SYS:I2C:SCAN?)
+
+
+
+#### CONFigure:VSENSORx:SOUrce?
+Query a virtual temperature sensor configuration (temperature reading source).
+
+
+Command returns response in following format:
+```
+mode,parameter,parameter,...
+```
+
+Example:
+```
+CONF:VSENSOR1:SOU?
+manual,99.0,5
+```
+
+
+
 ### MEASure Commands
 These commands are for reading (measuring) the current output values on ports.
 
@@ -504,6 +696,75 @@ This is same as: MEASure:OUTPUTx?
 Return current output PWM signal duty cycle (%) for a output.
 
 This is same as: MEASure:OUTPUTx?
+
+
+#### MEASure:VSENSORS?
+Return all measurements for all virtual sensors.
+
+Format: sensor,temperature_C,humidity_%,pressure_hPa
+
+Example:
+```
+MEAS:VSENSORS?
+vsensor1,"vsensor1",24.4,0,0
+vsensor2,"vsensor2",24.9,0,0
+vsensor3,"vsensor3",24.8,43,0
+vsensor4,"vsensor4",26.5,0,997
+vsensor5,"vsensor5",25.1,0,991
+vsensor6,"vsensor6",0.0,0,0
+vsensor7,"vsensor7",0.0,0,0
+vsensor8,"vsensor8",0.0,0,0
+```
+
+
+#### MEASure:VENSORx?
+Return current temperature (C) measured by the sensor.
+
+Example:
+```
+MEAS:VSENSOR1?
+25
+```
+
+#### MEASure:VSENSORx:HUMidity?
+Return current humidity (%) measured by the sensor.
+
+Example:
+```
+MEAS:VSENSOR1:HUM?
+45
+```
+
+#### MEASure:VSENSORx:PREssure?
+Return current pressure (hPa) measured by the sensor.
+
+Example:
+```
+MEAS:VSENSOR1:PRE?
+1013
+```
+
+#### MEASure:VSENSORx:Read?
+Return current temperature (C) measured by the sensor.
+
+This is same as: MEASure:VSENSORx?
+
+Example:
+```
+MEAS:VSENSOR1:R?
+25
+```
+
+#### MEASure:VSENSORx:TEMP?
+Return current temperature (C) measured by the sensor.
+
+This is same as: MEASure:VSENSORx?
+
+Example:
+```
+MEAS:VSENSOR1:TEMP?
+25
+```
 
 
 
@@ -835,6 +1096,63 @@ Unused flash memory:                   1151488
 ```
 
 
+### SYStem:I2C?
+Returns status if I2C bus is active (available) currently.
+Depending on board model I2C may not be available at all
+or may only be available if SPI is not active.
+
+Returns:
+
+status|description
+------|-----------
+0|I2C Bus not available
+1|I2C Bus available
+
+Example:
+```
+SYS:I2C?
+1
+```
+
+
+### SYStem:I2C:SCAN?
+Scan I2C Bus for active devices.
+This returns addresses of any devices found on I2C bus.
+
+Example:
+```
+SYS:I2C:SCAN??
+Scanning I2C Bus... 0x3c
+Device(s) found: 1
+```
+
+
+### SYStem:I2C:SPEED
+Set speed that I2C bus operates.
+Note, change won't take effect until unit is rebooted.
+
+Speed range: 10000 - 3400000
+(speeds over 1000000 may not work reliably)
+
+Default: 1000000  (1000 kHz or 1000 kbit/s)
+
+Example:
+```
+SYS:I2C:SPEED 1000000
+CONF:SAVE
+```
+
+
+### SYStem:I2C:SPEED?
+Return currently configured I2C bus speed (Hz or bit/s).
+
+Example:
+```
+SYS:I2C:SPEED?
+1000000
+```
+
+
 #### SYStem:OUTPUTS?
 Display number of OUTPUT output ports available.
 
@@ -888,6 +1206,47 @@ Number of subdirectories:              0
 ```
 
 
+#### SYStem:LFS:COPY
+Copy a file on the flash filesystem (littlefs).
+If destination file already exists copy will fail.
+
+Parameters: <sourcefile> <destinationfile>
+
+Example:
+```
+SYS:LFS:COPY fanpico.cfg fanpico-backup.cfg
+```
+
+
+#### SYStem:LFS:DELete
+Delete file from the flash filesystem (littlefs).
+
+parameters: <filename>
+
+Example (delete TLS certificate and private key):
+```
+SYS:LFS:DEL cert.pem
+SYS:LFS:DEL key.pem
+```
+
+
+#### SYStem:LFS:DIR?
+List contents of the flash filesystem (littlefs).
+
+Example:
+```
+SYS:LFS:DIR?
+Directory: /
+
+.                                                       <DIR>
+..                                                      <DIR>
+cert.pem                                                 1286
+fanpico.cfg                                              7012
+key.pem                                                  1709
+
+```
+
+
 #### SYStem:LFS:FORMAT
 Format flash filesystem. This will erase current configuration (including any TLS certificates saved in flash).
 
@@ -895,6 +1254,17 @@ Example (format filesystem and save current configuration):
 ```
 SYS:LFS:FORMAT
 CONF:SAVE
+```
+
+
+#### SYStem:LFS:REName
+Rename a file on the flash filesystem (littlefs).
+
+Parameters: <oldname> <newname>
+
+Example:
+```
+SYS:LFS:REN fanpico-backup.cfg fanpico.cfg
 ```
 
 
@@ -1702,6 +2072,16 @@ SYS:VER?
 ```
 
 
+#### SYStem:VSENSORS?
+Display number of virtual (temperature) sensors available.
+
+Example:
+```
+SYS:VSENSORS?
+8
+```
+
+
 #### SYStem:WIFI?
 Check if the unit support WiFi networking.
 This should be used to determine if any other "WIFI"
@@ -2081,3 +2461,13 @@ WRITE:OUTPUT1:STATE OFF
 ```
 
 
+#### WRIte:VSENSORx
+
+Set/update temperature of a virtual sensor. This can be used by a program on the host
+system to feed external temperature information into BrickPico.
+
+
+Example: Set VSENSOR1 temperature to 42.1C
+```
+WRITE:VSENSOR1 42.1
+```

@@ -8,7 +8,7 @@ include($ENV{PICO_SDK_PATH}/external/pico_sdk_import.cmake)
 
 
 project(brickpico
-  VERSION 1.3.0
+  VERSION 1.4.0
   LANGUAGES C CXX ASM
   )
 set(CMAKE_C_STANDARD 11)
@@ -75,6 +75,9 @@ target_sources(libb64 INTERFACE
   libs/libb64/src/cencode.c
   )
 
+# pico-sensor-lib
+add_subdirectory(libs/pico-sensor-lib)
+
 
 # brickpico firmware
 
@@ -86,6 +89,7 @@ add_executable(brickpico
   src/config.c
   src/display.c
   src/display_oled.c
+  src/i2c.c
   src/network.c
   src/timer.c
   src/tls.c
@@ -130,6 +134,7 @@ target_link_libraries(brickpico PRIVATE
   cJSON
   ss_oled-lib
   libb64
+  pico_sensor_lib
   )
 
 if (PICO_CYW43_SUPPORTED) # set by PICO_BOARD=pico_w
@@ -181,6 +186,7 @@ target_compile_definitions(brickpico PRIVATE
   LFS_THREADSAFE=1
   LFS_NO_DEBUG=1
 #  LFS_YES_TRACE=1
+#  I2C_DEBUG=1
   )
 
 if (${PICO_SDK_VERSION_MAJOR} LESS 2)

@@ -1,5 +1,5 @@
 /* brickpico.c
-   Copyright (C) 2023-2024 Timo Kokkonen <tjko@iki.fi>
+   Copyright (C) 2023-2025 Timo Kokkonen <tjko@iki.fi>
 
    SPDX-License-Identifier: GPL-3.0-or-later
 
@@ -47,6 +47,8 @@ static struct brickpico_state core1_state;
 static struct brickpico_state transfer_state;
 static struct brickpico_state system_state;
 struct brickpico_state *brickpico_state = &system_state;
+static struct brickpico_fw_settings system_settings;
+const struct brickpico_fw_settings *firmware_settings = &system_settings;
 
 struct persistent_memory_block __uninitialized_ram(persistent_memory);
 struct persistent_memory_block *persistent_mem = &persistent_memory;
@@ -137,8 +139,11 @@ void setup()
 		sleep_ms(50);
 	}
 
+	if (firmware_settings->bootdelay > 0)
+		sleep_ms(firmware_settings->bootdelay * 1000);
+
 	lfs_setup(false);
-	read_config();
+	read_config(firmware_settings->safemode);
 
 #if TTL_SERIAL > 0
 	stdio_uart_init_full(TTL_SERIAL_UART,
@@ -167,6 +172,8 @@ void setup()
 	init_persistent_memory();
 	log_rb = &persistent_mem->log_rb;
 	printf("\n");
+	if (firmware_settings->safemode)
+		printf("*** Booting into Safe Mode ***\n\n");
 
 	log_msg(LOG_NOTICE, "System starting...");
 	if (persistent_mem->prev_uptime) {
@@ -180,6 +187,7 @@ void setup()
 			time_t_to_str(buf, sizeof(buf), timespec_to_time_t(&ts)));
 	}
 
+	setup_i2c_bus((struct brickpico_config *)cfg);
 	display_init();
 	network_init(&system_state);
 
@@ -233,6 +241,16 @@ void clear_state(struct brickpico_state *s)
 		s->pwr[i] = 0;
 	}
 	s->temp = 0.0;
+	s->temp_prev = 0.0;
+
+	for (i = 0; i < VSENSOR_MAX_COUNT; i++) {
+		s->vtemp[i] = 0.0;
+		s->vtemp_prev[i] = 0.0;
+		s->vhumidity[i] = -1.0;
+		s->vpressure[i] = -1.0;
+		s->vtemp_updated[i] = from_us_since_boot(0);
+	}
+
 }
 
 
@@ -332,16 +350,17 @@ int main()
 {
 	absolute_time_t ABSOLUTE_TIME_INITIALIZED_VAR(t_led, 0);
 	absolute_time_t ABSOLUTE_TIME_INITIALIZED_VAR(t_network, 0);
-	absolute_time_t t_now, t_last, t_display, t_timer, t_temp, t_ram;
+	absolute_time_t t_now, t_last, t_display, t_timer, t_temp, t_i2c_temp, t_ram;
 	uint8_t led_state = 0;
 	int64_t max_delta = 0;
 	int64_t delta;
 	int c;
 	char input_buf[1024 + 1];
 	int i_ptr = 0;
+	int i2c_temp_delay = 1000;
 
 
-	set_binary_info();
+	set_binary_info(&system_settings);
 	clear_state(&system_state);
 	clear_state(&transfer_state);
 
@@ -364,7 +383,7 @@ int main()
 #endif
 
 	t_last = get_absolute_time();
-	t_ram = t_temp = t_timer = t_display = t_last;
+	t_ram = t_i2c_temp = t_temp = t_timer = t_display = t_last;
 
 	while (1) {
 		t_now = get_absolute_time();
@@ -415,8 +434,13 @@ int main()
 		}
 
 		/* Check temperature */
-		if (time_passed(&t_temp, 20000)) {
+		if (time_passed(&t_temp, 4000)) {
 			update_temp(cfg, brickpico_state);
+		}
+
+		/* Poll I2C Temperature Sensors */
+		if (i2c_temp_delay > 0 && time_passed(&t_i2c_temp, i2c_temp_delay)) {
+			i2c_temp_delay = i2c_read_temps(cfg, brickpico_state);
 		}
 
 		/* Process any (user) input */

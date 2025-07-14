@@ -1,5 +1,5 @@
 BrickPico: Smart LED Controller
-Copyright (C) 2023-2024 Timo Kokkonen <tjko@iki.fi>
+Copyright (C) 2023-2025 Timo Kokkonen <tjko@iki.fi>
 https://github.com/tjko/brickpico
 
 This program comes with ABSOLUTELY NO WARRANTY.
@@ -40,3 +40,6 @@ pico-telnetd
 Copryight (c) 2024 Timo Kokkonen (tjko@iki.fi)
 https://github.com/tjko/pico-telnetd
 
+pico-sensor-lib
+Copryight (c) 2024 Timo Kokkonen (tjko@iki.fi)
+https://github.com/tjko/pico-sensor-lib

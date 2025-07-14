@@ -34,6 +34,7 @@
 #include "pico/rand.h"
 #include "hardware/watchdog.h"
 #include "cJSON.h"
+#include "pico_sensor_lib.h"
 
 #include "brickpico.h"
 #ifdef WIFI_SUPPORT
@@ -1323,6 +1324,30 @@ int cmd_lfs(const char *cmd, const char *args, int query, char *prev_cmd)
 	return 0;
 }
 
+int cmd_lfs_del(const char *cmd, const char *args, int query, char *prev_cmd)
+{
+	if (query)
+		return 1;
+
+	if (strlen(args) < 1)
+		return 2;
+
+	if (flash_delete_file(args))
+		return 2;
+
+	return 0;
+}
+
+int cmd_lfs_dir(const char *cmd, const char *args, int query, char *prev_cmd)
+{
+	if (!query)
+		return 1;
+
+	flash_list_directory("/", true);
+
+	return 0;
+}
+
 int cmd_lfs_format(const char *cmd, const char *args, int query, char *prev_cmd)
 {
 	if (query)
@@ -1336,6 +1361,58 @@ int cmd_lfs_format(const char *cmd, const char *args, int query, char *prev_cmd)
 	return 0;
 }
 
+int cmd_lfs_ren(const char *cmd, const char *args, int query, char *prev_cmd)
+{
+	char *saveptr, *oldname, *newname, *arg;
+	int res = 2;
+
+	if (query)
+		return 1;
+
+	if (!(arg = strdup(args)))
+		return 2;
+
+	oldname = strtok_r(arg, " \t", &saveptr);
+	if (oldname && strlen(oldname) > 0) {
+		newname = strtok_r(NULL, " \t", &saveptr);
+		if (newname && strlen(newname) > 0) {
+			if (!flash_rename_file(oldname, newname)) {
+				res = 0;
+			}
+		}
+	}
+	free(arg);
+
+	return res;
+}
+
+int cmd_lfs_copy(const char *cmd, const char *args, int query, char *prev_cmd)
+{
+	char *saveptr, *srcname, *dstname, *arg;
+	int res = 2;
+
+	if (query)
+		return 1;
+
+	if (!(arg = strdup(args)))
+		return 2;
+
+	srcname = strtok_r(arg, " \t", &saveptr);
+	if (srcname && strlen(srcname) > 0) {
+		dstname = strtok_r(NULL, " \t", &saveptr);
+		if (dstname && strlen(dstname) > 0) {
+			if (strcmp(srcname, dstname)) {
+				if (!flash_copy_file(srcname, dstname, false)) {
+					res = 0;
+				}
+			}
+		}
+	}
+	free(arg);
+
+	return res;
+}
+
 int cmd_flash(const char *cmd, const char *args, int query, char *prev_cmd)
 {
 	if (!query)
@@ -1346,7 +1423,7 @@ int cmd_flash(const char *cmd, const char *args, int query, char *prev_cmd)
 }
 
 
-#define TEST_MEM_SIZE (264*1024)
+#define TEST_MEM_SIZE (1024*1024)
 
 int cmd_memory(const char *cmd, const char *args, int query, char *prev_cmd)
 {
@@ -1380,21 +1457,24 @@ int cmd_memory(const char *cmd, const char *args, int query, char *prev_cmd)
 	} while (buf && bufsize < TEST_MEM_SIZE);
 	printf("Largest available memory block:        %u bytes\n",
 		bufsize - blocksize);
+	if (buf)
+		free(buf);
 
 	/* Test how much memory available in 'blocksize' blocks... */
 	int i = 0;
 	int max = TEST_MEM_SIZE / blocksize + 1;
-	void **refbuf = malloc(max * sizeof(void*));
+	size_t refbufsize = max * sizeof(void*);
+	void **refbuf = malloc(refbufsize);
 	if (refbuf) {
-		memset(refbuf, 0, max * sizeof(void*));
+		memset(refbuf, 0, refbufsize);
 		while (i < max) {
 			if (!(refbuf[i] = malloc(blocksize)))
 				break;
 			i++;
 		}
 	}
-	printf("Total available memory:                %u bytes (%d x %dbytes)\n",
-		i * blocksize, i, blocksize);
+	printf("Total available memory:                %u bytes\n",
+		i * blocksize + refbufsize);
 	if (refbuf) {
 		i = 0;
 		while (i < max && refbuf[i]) {
@@ -1403,6 +1483,30 @@ int cmd_memory(const char *cmd, const char *args, int query, char *prev_cmd)
 		free(refbuf);
 	}
 	return 0;
+}
+
+int cmd_i2c(const char *cmd, const char *args, int query, char *prev_cmd)
+{
+	if (!query)
+		return 1;
+
+	display_i2c_status();
+	return 0;
+}
+
+int cmd_i2c_scan(const char *cmd, const char *args, int query, char *prev_cmd)
+{
+	if (!query)
+		return 1;
+
+	scan_i2c_bus();
+	return 0;
+}
+
+int cmd_i2c_speed(const char *cmd, const char *args, int query, char *prev_cmd)
+{
+	return uint32_setting(cmd, args, query, prev_cmd,
+			&conf->i2c_speed, 10000, 3400000, "I2C Bus Speed (Hz)");
 }
 
 int cmd_serial(const char *cmd, const char *args, int query, char *prev_cmd)
@@ -1502,6 +1606,285 @@ int cmd_timer_del(const char *cmd, const char *args, int query, char *prev_cmd)
 	return res;
 }
 
+int cmd_vsensors(const char *cmd, const char *args, int query, char *prev_cmd)
+{
+	if (!query)
+		return 1;
+
+	printf("%d\n", VSENSOR_COUNT);
+	return 0;
+}
+
+int cmd_vsensors_sources(const char *cmd, const char *args, int query, char *prev_cmd)
+{
+	if (!query)
+		return 1;
+
+	for (int i = 0; i < VSENSOR_COUNT; i++) {
+		const struct vsensor_input *v = &conf->vsensors[i];
+		printf("vsensor%d,%s", i + 1, vsmode2str(v->mode));
+		switch (v->mode) {
+		case VSMODE_MANUAL:
+			printf(",%0.2f,%ld", v->default_temp, v->timeout);
+			break;
+		case VSMODE_I2C:
+			printf(",0x%02x,%s", v->i2c_addr, i2c_sensor_type_str(v->i2c_type));
+			break;
+		default:
+			for (int j = 0; j < VSENSOR_SOURCE_MAX_COUNT; j++) {
+				if (v->sensors[j])
+					printf(",%d", v->sensors[j]);
+			}
+			break;
+		}
+		printf("\n");
+	}
+
+	return 0;
+}
+
+int cmd_vsensor_name(const char *cmd, const char *args, int query, char *prev_cmd)
+{
+	int sensor;
+
+	sensor = atoi(&prev_cmd[7]) - 1;
+	if (sensor >= 0 && sensor < VSENSOR_COUNT) {
+		if (query) {
+			printf("%s\n", conf->vsensors[sensor].name);
+		} else {
+			log_msg(LOG_NOTICE, "vsensor%d: change name '%s' --> '%s'", sensor + 1,
+				conf->vsensors[sensor].name, args);
+			strncopy(conf->vsensors[sensor].name, args,
+				sizeof(conf->vsensors[sensor].name));
+		}
+		return 0;
+	}
+	return 1;
+}
+
+int cmd_vsensor_source(const char *cmd, const char *args, int query, char *prev_cmd)
+{
+	struct vsensor_input *v;
+	int sensor, val, i;
+	uint8_t vsmode, selected[VSENSOR_SOURCE_MAX_COUNT];
+	float default_temp;
+	int timeout;
+	char *tok, *saveptr, *param, temp_str[32], tmp[8];
+	int ret = 0;
+	int count = 0;
+
+	sensor = atoi(&prev_cmd[7]) - 1;
+	if (sensor < 0 || sensor >= VSENSOR_COUNT)
+		return 1;
+	v = &conf->vsensors[sensor];
+
+	if (query) {
+		printf("%s", vsmode2str(v->mode));
+		if (v->mode == VSMODE_MANUAL) {
+			printf(",%0.2f,%ld", v->default_temp, v->timeout);
+		} else if (v->mode == VSMODE_I2C) {
+			printf(",0x%02x,%s", v->i2c_addr, i2c_sensor_type_str(v->i2c_type));
+		} else {
+			for(i = 0; i < VSENSOR_SOURCE_MAX_COUNT; i++) {
+				if (v->sensors[i])
+					printf(",%d", v->sensors[i]);
+			}
+		}
+		printf("\n");
+	} else {
+		ret = 2;
+		if ((param = strdup(args)) == NULL)
+			return 1;
+
+		if ((tok = strtok_r(param, ",", &saveptr)) != NULL) {
+			vsmode = str2vsmode(tok);
+			if (vsmode == VSMODE_MANUAL) {
+				tok = strtok_r(NULL, ",", &saveptr);
+				if (str_to_float(tok, &default_temp)) {
+					tok = strtok_r(NULL, ",", &saveptr);
+					if (str_to_int(tok, &timeout, 10)) {
+						if (timeout < 0)
+							timeout = 0;
+						log_msg(LOG_NOTICE, "vsensor%d: set source to %s,%0.2f,%d",
+							sensor + 1,
+							vsmode2str(vsmode),
+							default_temp,
+							timeout);
+						v->mode = vsmode;
+						v->default_temp = default_temp;
+						v->timeout = timeout;
+						ret = 0;
+					}
+				}
+			} else if (vsmode == VSMODE_I2C) {
+				tok = strtok_r(NULL, ",", &saveptr);
+				if (str_to_int(tok, &val, 16)) {
+					if (val > 0 && val < 128 && !i2c_reserved_address(val)) {
+						tok = strtok_r(NULL, ",", &saveptr);
+						uint type = get_i2c_sensor_type(tok);
+						if (type > 0) {
+							log_msg(LOG_NOTICE, "vsensor%d: set source to %s,0x%02x,%s",
+								sensor + 1,
+								vsmode2str(vsmode),
+								val,
+								i2c_sensor_type_str(type));
+							v->mode = vsmode;
+							v->i2c_type = type;
+							v->i2c_addr = val;
+							ret = 0;
+						}
+					}
+				}
+			} else if (vsmode == VSMODE_PICOTEMP) {
+				log_msg(LOG_NOTICE, "vsensor%d: set source to Pico (MCU) temperature.",
+					sensor + 1);
+				v->mode = vsmode;
+				for(i = 0; i < VSENSOR_COUNT; i++) {
+					v->sensors[i] = 0;
+				}
+				ret = 0;
+			} else {
+				temp_str[0] = 0;
+				for(i = 0; i < VSENSOR_SOURCE_MAX_COUNT; i++)
+					selected[i] = 0;
+				while((tok = strtok_r(NULL, ",", &saveptr)) != NULL) {
+					if (count < VSENSOR_SOURCE_MAX_COUNT && str_to_int(tok, &val, 10)) {
+						if ((val >= 1 && val <= VSENSOR_COUNT) || val == 101) {
+							selected[count++] = val;
+							snprintf(tmp, sizeof(tmp), ",%d", val);
+							strncatenate(temp_str, tmp, sizeof(temp_str));
+						}
+					}
+				}
+				if (count >= 2) {
+					log_msg(LOG_NOTICE, "vsensor%d: set source to %s%s",
+						sensor + 1,
+						vsmode2str(vsmode),
+						temp_str);
+					v->mode = vsmode;
+					for(i = 0; i < VSENSOR_COUNT; i++) {
+						v->sensors[i] = selected[i];
+					}
+					ret = 0;
+				}
+			}
+		}
+		free(param);
+	}
+
+	return ret;
+}
+
+int cmd_vsensor_temp(const char *cmd, const char *args, int query, char *prev_cmd)
+{
+	int sensor;
+	float d;
+
+	if (!query)
+		return 1;
+
+	if (!strncasecmp(prev_cmd, "vsensor", 7)) {
+		sensor = atoi(&prev_cmd[7]) - 1;
+	} else {
+		sensor = atoi(&cmd[7]) - 1;
+	}
+
+	if (sensor >= 0 && sensor < VSENSOR_COUNT) {
+		d = st->vtemp[sensor];
+		log_msg(LOG_DEBUG, "vsensor%d temperature = %fC", sensor + 1, d);
+		printf("%.0f\n", d);
+		return 0;
+	}
+
+	return 1;
+}
+
+int cmd_vsensor_humidity(const char *cmd, const char *args, int query, char *prev_cmd)
+{
+	int sensor;
+	float d;
+
+	if (!query)
+		return 1;
+
+	sensor = atoi(&prev_cmd[7]) - 1;
+	if (sensor >= 0 && sensor < VSENSOR_COUNT) {
+		d = st->vhumidity[sensor];
+		log_msg(LOG_DEBUG, "vsensor%d humidity = %f%%", sensor + 1, d);
+		printf("%.0f\n", d);
+		return 0;
+	}
+
+	return 1;
+}
+
+int cmd_vsensor_pressure(const char *cmd, const char *args, int query, char *prev_cmd)
+{
+	int sensor;
+	float d;
+
+	if (!query)
+		return 1;
+
+	sensor = atoi(&prev_cmd[7]) - 1;
+	if (sensor >= 0 && sensor < VSENSOR_COUNT) {
+		d = st->vpressure[sensor];
+		log_msg(LOG_DEBUG, "vsensor%d pressure = %fhPa", sensor + 1, d);
+		printf("%.0f\n", d);
+		return 0;
+	}
+
+	return 1;
+}
+
+int cmd_vsensors_read(const char *cmd, const char *args, int query, char *prev_cmd)
+{
+	int i;
+
+	if (!query)
+		return 1;
+
+	for (i = 0; i < VSENSOR_COUNT; i++) {
+		printf("vsensor%d,\"%s\",%.1lf,%.0f,%0.0f\n", i+1,
+			conf->vsensors[i].name,
+			st->vtemp[i],
+			st->vhumidity[i],
+			st->vpressure[i]);
+	}
+
+	return 0;
+}
+
+int cmd_vsensor_write(const char *cmd, const char *args, int query, char *prev_cmd)
+{
+	int sensor;
+	float val;
+
+	if (query)
+		return 1;
+
+	if (!strncasecmp(prev_cmd, "vsensor", 7)) {
+		sensor = atoi(&prev_cmd[7]) - 1;
+	} else {
+		sensor = atoi(&cmd[7]) - 1;
+	}
+
+	if (sensor >= 0 && sensor < VSENSOR_COUNT) {
+		if (conf->vsensors[sensor].mode == VSMODE_MANUAL) {
+			if (str_to_float(args, &val)) {
+				log_msg(LOG_INFO, "vsensor%d: write temperature = %fC", sensor + 1, val);
+				st->vtemp[sensor] = val;
+				st->vtemp_updated[sensor] = get_absolute_time();
+				return 0;
+			}
+		} else {
+			return 2;
+		}
+	}
+
+	return 1;
+}
+
 
 
 const struct cmd_t display_commands[] = {
@@ -1512,7 +1895,11 @@ const struct cmd_t display_commands[] = {
 };
 
 const struct cmd_t lfs_commands[] = {
+	{ "COPY",      4, NULL,              cmd_lfs_copy },
+	{ "DELete",    3, NULL,              cmd_lfs_del },
+	{ "DIRectory", 3, NULL,              cmd_lfs_dir },
 	{ "FORMAT",    6, NULL,              cmd_lfs_format },
+	{ "REName",    3, NULL,              cmd_lfs_ren },
 	{ 0, 0, 0, 0 }
 };
 
@@ -1606,12 +1993,19 @@ const struct cmd_t telnet_commands[] = {
 	{ 0, 0, 0, 0 }
 };
 
+const struct cmd_t i2c_commands[] = {
+	{ "SCAN",      4, NULL,              cmd_i2c_scan },
+	{ "SPEED",     5, NULL,              cmd_i2c_speed },
+	{ 0, 0, 0, 0 }
+};
+
 const struct cmd_t system_commands[] = {
 	{ "DEBUG",     5, NULL,              cmd_debug }, /* Obsolete ? */
 	{ "DISPlay",   4, display_commands,  cmd_display_type },
 	{ "ECHO",      4, NULL,              cmd_echo },
 	{ "ERRor",     3, NULL,              cmd_err },
 	{ "FLASH",     5, NULL,              cmd_flash },
+	{ "I2C",       3, i2c_commands,      cmd_i2c },
 	{ "GAMMA",     5, NULL,              cmd_gamma },
 	{ "OUTputs",   3, NULL,              cmd_outputs },
 	{ "LED",       3, NULL,              cmd_led },
@@ -1632,6 +2026,7 @@ const struct cmd_t system_commands[] = {
 	{ "UPGRADE",   7, NULL,              cmd_usb_boot },
 	{ "UPTIme",    4, NULL,              cmd_uptime },
 	{ "VERsion",   3, NULL,              cmd_version },
+	{ "VSENSORS",  8, NULL,              cmd_vsensors },
 	{ "WIFI",      4, wifi_commands,     cmd_wifi },
 	{ 0, 0, 0, 0 }
 };
@@ -1658,6 +2053,17 @@ const struct cmd_t timer_c_commands[] = {
 	{ 0, 0, 0, 0 }
 };
 
+const struct cmd_t vsensor_c_commands[] = {
+	{ "NAME",        4, NULL,            cmd_vsensor_name },
+	{ "SOUrce",      3, NULL,            cmd_vsensor_source },
+	{ 0, 0, 0, 0 }
+};
+
+const struct cmd_t vsensors_c_commands[] = {
+	{ "SOUrce",   3, NULL,               cmd_vsensors_sources },
+	{ 0, 0, 0, 0 }
+};
+
 const struct cmd_t config_commands[] = {
 	{ "DEFAULTS",  8, defaults_c_commands, NULL },
 	{ "DELete",    3, NULL,              cmd_delete_config },
@@ -1665,6 +2071,8 @@ const struct cmd_t config_commands[] = {
 	{ "Read",      1, NULL,              cmd_print_config },
 	{ "SAVe",      3, NULL,              cmd_save_config },
 	{ "TIMER",     5, timer_c_commands,  cmd_timer },
+	{ "VSENSORS",  8, vsensors_c_commands, cmd_vsensors_sources },
+	{ "VSENSOR",   7, vsensor_c_commands, NULL },
 	{ 0, 0, 0, 0 }
 };
 
@@ -1674,9 +2082,19 @@ const struct cmd_t output_commands[] = {
 	{ 0, 0, 0, 0 }
 };
 
+const struct cmd_t vsensor_commands[] = {
+	{ "HUMidity",  3, NULL,              cmd_vsensor_humidity },
+	{ "PREssure",  3, NULL,              cmd_vsensor_pressure },
+	{ "Read",      1, NULL,              cmd_vsensor_temp },
+	{ "TEMP",      4, NULL,              cmd_vsensor_temp },
+	{ 0, 0, 0, 0 }
+};
+
 const struct cmd_t measure_commands[] = {
 	{ "OUTPUT",    6, output_commands,   cmd_out_read },
 	{ "Read",      1, NULL,              cmd_read },
+	{ "VSENSORS",  8, NULL,              cmd_vsensors_read },
+	{ "VSENSOR",   7, vsensor_commands,  cmd_vsensor_temp },
 	{ 0, 0, 0, 0 }
 };
 
@@ -1688,6 +2106,7 @@ const struct cmd_t write_o_commands[] = {
 
 const struct cmd_t write_commands[] = {
 	{ "OUTPUT",    6, write_o_commands,  cmd_write_state },
+	{ "VSENSOR",   7, NULL,              cmd_vsensor_write },
 	{ 0, 0, 0, 0 }
 };
 

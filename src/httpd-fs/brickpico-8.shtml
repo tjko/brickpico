@@ -108,6 +108,25 @@
 		  </td></tr>
 		</table>
 	    </tr>
+	    <tr>
+	      <td valign="top">
+		Sensors:<br>
+		<table width="100%">
+		  <tr><td id="l1">
+		      <table class="pretty" width="100%">
+			<tr><th align="left">Sensor<th align="left">Temp<th align="left">Other</tr>
+			<!--#sensor01-->
+			<!--#sensor02-->
+			<!--#sensor03-->
+			<!--#sensor04-->
+			<!--#sensor05-->
+			<!--#sensor06-->
+			<!--#sensor07-->
+			<!--#sensor08-->
+			</table>
+		</table>
+	      </td>
+	    </tr>
 	  </table>
 	  <br>
 	</td>

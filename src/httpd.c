@@ -1,5 +1,5 @@
 /* httpd.c
-   Copyright (C) 2023-2024 Timo Kokkonen <tjko@iki.fi>
+   Copyright (C) 2023-2025 Timo Kokkonen <tjko@iki.fi>
 
    SPDX-License-Identifier: GPL-3.0-or-later
 
@@ -294,6 +294,28 @@ u16_t brickpico_ssi_handler(const char *tag, char *insert, int insertlen,
 		else if (!strncmp(tag, "o_name", 6)) {
 			if (idx < OUTPUT_COUNT)
 				printed = snprintf(insert, insertlen, "%s", cfg->outputs[idx].name);
+		}
+		else if (!strncmp(tag, "sensor", 6)) {
+			char other[24], tmp[12];
+
+			other[0] = 0;
+			if (st->vhumidity[idx] >= 0.0) {
+				snprintf(tmp, sizeof(tmp), "%0.0f %%rh", st->vhumidity[idx]);
+				strncatenate(other, tmp, sizeof(other));
+			}
+			if (st->vpressure[idx] >= 0.0) {
+				snprintf(tmp, sizeof(tmp), "%0.0f hPa", st->vpressure[idx]);
+				if (strlen(other) > 0)
+					strncatenate(other, ", ", sizeof(other));
+				strncatenate(other, tmp, sizeof(other));
+			}
+			if (idx < VSENSOR_COUNT && cfg->vsensors[idx].name[0]) {
+				printed = snprintf(insert, insertlen,
+						"<tr><td>%s<td>%0.1f C<td>%s</tr>",
+						cfg->vsensors[idx].name,
+						st->vtemp[idx],
+						other);
+			}
 		}
 	}
 	else if (!strncmp(tag, "datetime", 8)) {

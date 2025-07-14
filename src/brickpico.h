@@ -1,5 +1,5 @@
 /* brickpico.h
-   Copyright (C) 2021-2024 Timo Kokkonen <tjko@iki.fi>
+   Copyright (C) 2021-2025 Timo Kokkonen <tjko@iki.fi>
 
    SPDX-License-Identifier: GPL-3.0-or-later
 
@@ -38,7 +38,11 @@
 #error unknown board model
 #endif
 
-#define OUTPUT_MAX_COUNT       16   /* Max number of PWM outputs on the board */
+#define OUTPUT_MAX_COUNT         16   /* Max number of PWM outputs on the board */
+#define VSENSOR_MAX_COUNT        8    /* Max number of virtual sensors */
+
+#define VSENSOR_SOURCE_MAX_COUNT 8
+#define VSENSOR_COUNT            8
 
 #define MAX_NAME_LEN           64
 #define MAX_MAP_POINTS         32
@@ -62,8 +66,19 @@
 #define WATCHDOG_REBOOT_DELAY  15000
 #endif
 
+#ifndef I2C_DEFAULT_SPEED
+#define I2C_DEFAULT_SPEED   1000000L /* Default I2C bus frequency 1MHz */
+#endif
+#ifndef SPI_DEFAULT_SPEED
+#define SPI_DEFAULT_SPEED  30000000L /* Default SPI bus frequency 30MHz */
+#endif
+
 #define MAX_EVENT_NAME_LEN     30
 #define MAX_EVENT_COUNT        20
+
+#define BRICKPICO_FS_SIZE  (256*1024)
+#define BRICKPICO_FS_OFFSET  (PICO_FLASH_SIZE_BYTES - BRICKPICO_FS_SIZE)
+
 
 enum timer_action_types {
 	ACTION_NONE = 0,
@@ -71,6 +86,18 @@ enum timer_action_types {
 	ACTION_OFF = 2,
 };
 #define TIMER_ACTION_ENUM_MAX 2
+
+enum vsensor_modes {
+	VSMODE_MANUAL = 0,
+	VSMODE_MAX = 1,
+	VSMODE_MIN = 2,
+	VSMODE_AVG = 3,
+	VSMODE_DELTA = 4,
+	VSMODE_I2C = 5,
+	VSMODE_PICOTEMP = 6,
+};
+#define VSMODE_ENUM_MAX 6
+
 
 struct timer_event {
 	char name[MAX_EVENT_NAME_LEN];
@@ -96,8 +123,21 @@ struct pwm_output {
 	void *effect_ctx;
 };
 
+struct vsensor_input {
+	char name[MAX_NAME_LEN];
+	enum vsensor_modes mode;
+	float default_temp;
+	int32_t timeout;
+	uint8_t sensors[VSENSOR_SOURCE_MAX_COUNT];
+//	uint64_t onewire_addr;
+	uint8_t i2c_type;
+	uint8_t i2c_addr;
+};
+
+
 struct brickpico_config {
 	struct pwm_output outputs[OUTPUT_MAX_COUNT];
+	struct vsensor_input vsensors[VSENSOR_MAX_COUNT];
 	bool local_echo;
 	uint8_t led_mode;
 	char display_type[64];
@@ -109,6 +149,7 @@ struct brickpico_config {
 	char timezone[64];
 	bool spi_active;
 	bool serial_active;
+	uint32_t i2c_speed;
 	uint pwm_freq;
 	struct timer_event events[MAX_EVENT_COUNT];
 	uint8_t event_count;
@@ -152,15 +193,28 @@ struct brickpico_config {
 	char telnet_user[16 + 1];
 	char telnet_pwhash[128 + 1];
 #endif
+	/* Non-config items */
+	void *i2c_context[VSENSOR_MAX_COUNT];
+};
+
+/* Firmware settings that can be modified with picotool */
+struct brickpico_fw_settings {
+	bool safemode;         /* Safe mode disables loading saved configuration during boot. */
+	int  bootdelay;        /* Delay (seconds) after initializing USB console during boot. */
 };
 
 struct brickpico_state {
 	/* outputs */
 	uint8_t pwm[OUTPUT_MAX_COUNT];
 	uint8_t pwr[OUTPUT_MAX_COUNT];
-	double temp;
+	float temp;
+	float temp_prev;
+	float vtemp[VSENSOR_MAX_COUNT];
+	float vhumidity[VSENSOR_MAX_COUNT];
+	float vpressure[VSENSOR_MAX_COUNT];
+	absolute_time_t vtemp_updated[VSENSOR_MAX_COUNT];
+	float vtemp_prev[VSENSOR_MAX_COUNT];
 };
-
 
 struct persistent_memory_block {
 	uint32_t id;
@@ -187,7 +241,7 @@ void update_display_state();
 void update_core1_state();
 
 /* bi_decl.c */
-void set_binary_info();
+void set_binary_info(struct brickpico_fw_settings *settings);
 
 /* command.c */
 void process_command(struct brickpico_state *state, struct brickpico_config *config, char *command);
@@ -197,7 +251,9 @@ int last_command_status();
 /* config.c */
 extern mutex_t *config_mutex;
 extern const struct brickpico_config *cfg;
-void read_config();
+enum vsensor_modes str2vsmode(const char *s);
+const char* vsmode2str(enum vsensor_modes mode);
+void read_config(bool use_default_config);
 void save_config();
 void delete_config();
 void print_config();
@@ -227,8 +283,12 @@ int flash_format(bool multicore);
 int flash_read_file(char **bufptr, uint32_t *sizeptr, const char *filename);
 int flash_write_file(const char *buf, uint32_t size, const char *filename);
 int flash_delete_file(const char *filename);
+int flash_rename_file(const char *oldname, const char *newname);
+int flash_copy_file(const char *srcname, const char *dstname, bool overwrite);
+int flash_file_size(const char *filename);
 int flash_get_fs_info(size_t *size, size_t *free, size_t *files,
 		size_t *directories, size_t *filesizetotal);
+int flash_list_directory(const char *path, bool recursive);
 void print_rp2040_flashinfo();
 
 /* network.c */
@@ -260,6 +320,12 @@ void brickpico_mqtt_scpi_command();
 void brickpico_mqtt_poll();
 
 #endif
+
+/* i2c.c */
+void scan_i2c_bus();
+void display_i2c_status();
+void setup_i2c_bus(struct brickpico_config *config);
+int i2c_read_temps(const struct brickpico_config *config, struct brickpico_state *st);
 
 /* tls.c */
 int read_pem_file(char *buf, uint32_t size, uint32_t timeout, bool append);
@@ -338,6 +404,8 @@ int getstring_timeout_ms(char *str, uint32_t maxlen, uint32_t timeout);
 /* temp.c */
 double get_temperature(double adc_ref_voltage, double temp_offset, double temp_coefficient);
 void update_temp(const struct brickpico_config *conf, struct brickpico_state *state);
+double get_vsensor(uint8_t i, const struct brickpico_config *config,
+		struct brickpico_state *state);
 
 /* crc32.c */
 unsigned int xcrc32 (const unsigned char *buf, int len, unsigned int init);
