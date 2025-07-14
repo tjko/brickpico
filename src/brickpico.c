@@ -47,6 +47,8 @@ static struct brickpico_state core1_state;
 static struct brickpico_state transfer_state;
 static struct brickpico_state system_state;
 struct brickpico_state *brickpico_state = &system_state;
+static struct brickpico_fw_settings system_settings;
+const struct brickpico_fw_settings *firmware_settings = &system_settings;
 
 struct persistent_memory_block __uninitialized_ram(persistent_memory);
 struct persistent_memory_block *persistent_mem = &persistent_memory;
@@ -137,8 +139,11 @@ void setup()
 		sleep_ms(50);
 	}
 
+	if (firmware_settings->bootdelay > 0)
+		sleep_ms(firmware_settings->bootdelay * 1000);
+
 	lfs_setup(false);
-	read_config();
+	read_config(firmware_settings->safemode);
 
 #if TTL_SERIAL > 0
 	stdio_uart_init_full(TTL_SERIAL_UART,
@@ -167,6 +172,8 @@ void setup()
 	init_persistent_memory();
 	log_rb = &persistent_mem->log_rb;
 	printf("\n");
+	if (firmware_settings->safemode)
+		printf("*** Booting into Safe Mode ***\n\n");
 
 	log_msg(LOG_NOTICE, "System starting...");
 	if (persistent_mem->prev_uptime) {
@@ -353,7 +360,7 @@ int main()
 	int i2c_temp_delay = 1000;
 
 
-	set_binary_info();
+	set_binary_info(&system_settings);
 	clear_state(&system_state);
 	clear_state(&transfer_state);
 

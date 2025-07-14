@@ -30,18 +30,16 @@
 extern char __flash_binary_start;
 extern char __flash_binary_end;
 
-
-#define FS_SIZE  (256*1024)
-
 static struct lfs_config *lfs_cfg;
 static lfs_t lfs;
+
 
 
 void lfs_setup(bool multicore)
 {
 	int err;
 
-	lfs_cfg = pico_lfs_init(PICO_FLASH_SIZE_BYTES - FS_SIZE, FS_SIZE);
+	lfs_cfg = pico_lfs_init(BRICKPICO_FS_OFFSET, BRICKPICO_FS_SIZE);
 	if (!lfs_cfg)
 		panic("lfs_setup: not enough memory!");
 

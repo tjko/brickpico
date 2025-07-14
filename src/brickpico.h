@@ -76,6 +76,10 @@
 #define MAX_EVENT_NAME_LEN     30
 #define MAX_EVENT_COUNT        20
 
+#define BRICKPICO_FS_SIZE  (256*1024)
+#define BRICKPICO_FS_OFFSET  (PICO_FLASH_SIZE_BYTES - BRICKPICO_FS_SIZE)
+
+
 enum timer_action_types {
 	ACTION_NONE = 0,
 	ACTION_ON = 1,
@@ -193,6 +197,12 @@ struct brickpico_config {
 	void *i2c_context[VSENSOR_MAX_COUNT];
 };
 
+/* Firmware settings that can be modified with picotool */
+struct brickpico_fw_settings {
+	bool safemode;         /* Safe mode disables loading saved configuration during boot. */
+	int  bootdelay;        /* Delay (seconds) after initializing USB console during boot. */
+};
+
 struct brickpico_state {
 	/* outputs */
 	uint8_t pwm[OUTPUT_MAX_COUNT];
@@ -205,7 +215,6 @@ struct brickpico_state {
 	absolute_time_t vtemp_updated[VSENSOR_MAX_COUNT];
 	float vtemp_prev[VSENSOR_MAX_COUNT];
 };
-
 
 struct persistent_memory_block {
 	uint32_t id;
@@ -232,7 +241,7 @@ void update_display_state();
 void update_core1_state();
 
 /* bi_decl.c */
-void set_binary_info();
+void set_binary_info(struct brickpico_fw_settings *settings);
 
 /* command.c */
 void process_command(struct brickpico_state *state, struct brickpico_config *config, char *command);
@@ -244,7 +253,7 @@ extern mutex_t *config_mutex;
 extern const struct brickpico_config *cfg;
 enum vsensor_modes str2vsmode(const char *s);
 const char* vsmode2str(enum vsensor_modes mode);
-void read_config();
+void read_config(bool use_default_config);
 void save_config();
 void delete_config();
 void print_config();
