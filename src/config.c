@@ -125,8 +125,9 @@ void json2vsensors(cJSON *item, uint8_t *s)
 
 	cJSON_ArrayForEach(o, item) {
 		val = cJSON_GetNumberValue(o);
-		if (count < VSENSOR_SOURCE_MAX_COUNT && val >= 1 && val <= VSENSOR_COUNT) {
-			s[count++] = val;
+		if (count < VSENSOR_SOURCE_MAX_COUNT) {
+			if ((val >= 1 && val <= VSENSOR_COUNT) || val == 101)
+				s[count++] = val;
 		}
 	}
 }
