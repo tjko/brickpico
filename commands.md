@@ -74,7 +74,11 @@ BrickPico supports following commands:
 * [SYStem:LED](#systemled)
 * [SYStem:LED?](#systemled-1)
 * [SYStem:LFS?](#systemlfs)
+* [SYStem:LFS:COPY](#systemlfscopy)
+* [SYStem:LFS:DELete](#systemlfsdelete)
+* [SYStem:LFS:DIR?](#systemlfsdir)
 * [SYStem:LFS:FORMAT](#systemlfsformat)
+* [SYStem:LFS:REName](#systemlfsrename)
 * [SYStem:MEM](#systemmem)
 * [SYStem:MEM?](#systemmem-1)
 * [SYStem:MQTT:SERVer](#systemmqttserver)
@@ -488,7 +492,7 @@ Format: <vsensor>,<type>,<parameter1>,<parameter2>,...
 Example:
 ```
 CONF:VSENSORS:SOURCES?
-vsensor1,manual,0.00,30
+vsensor1,picotemp
 vsensor2,i2c,0x48,TMP117
 vsensor3,i2c,0x37,PCT2075
 vsensor4,i2c,0x77,DPS310
@@ -515,6 +519,7 @@ min|Minimum temperature of configured source sensors.
 avg|Average temperature of configured source sensors.
 delta|Temperature delta between readings from two source sensors.
 i2c|Reading from digital I2C sensor.
+picotemp|Pico (MCU) Temperature.
 
 
 #### CONFigure:VSENSORx:NAME
@@ -522,7 +527,7 @@ Set name for virtual temperature sensor.
 
 For example:
 ```
-CONF:VSENSOR1:NAME CPU Temperature
+CONF:VSENSOR1:NAME Pico Temperature
 ```
 
 #### CONFigure:VSENSORx:NAME?
@@ -531,7 +536,7 @@ Query name of a virtual temperature sensor.
 For example:
 ```
 CONF:VSENSOR1:NAME?
-CPU Temperature
+Pico Temperature
 ```
 
 #### CONFigure:VSENSORx:SOUrce
@@ -547,15 +552,15 @@ MIN|Minimum temperature between source sensors|2+|sensor_a,sensor_b, ...
 AVG|Average temperature between source sensors|2+|sensor_a,sensor_b, ...
 DELTA|Temperature delta between to source sensors|2|sensor_a,sensor_b
 I2C|Temperature reading from digital I2C sensor|2|i2c_address,sensor_type_or_alias
+PICOTEMP|Pico (MCU) temperature|0|
 
 
 Note, in "manual" mode if timeout_ms is set to zero, then sensor's temperature reading
 will never revert back to default value (if no updates are being received).
 
 Sensor numbering:
- - SENSORS: 1, 2, ...
- - VSENSORS: 101, 102, ...
-
+ - VSENSORS: 1, 2, ...
+ - PICO Temperature: 101
 
 Supported I2C sensors:
 
@@ -1201,6 +1206,47 @@ Number of subdirectories:              0
 ```
 
 
+#### SYStem:LFS:COPY
+Copy a file on the flash filesystem (littlefs).
+If destination file already exists copy will fail.
+
+Parameters: <sourcefile> <destinationfile>
+
+Example:
+```
+SYS:LFS:COPY fanpico.cfg fanpico-backup.cfg
+```
+
+
+#### SYStem:LFS:DELete
+Delete file from the flash filesystem (littlefs).
+
+parameters: <filename>
+
+Example (delete TLS certificate and private key):
+```
+SYS:LFS:DEL cert.pem
+SYS:LFS:DEL key.pem
+```
+
+
+#### SYStem:LFS:DIR?
+List contents of the flash filesystem (littlefs).
+
+Example:
+```
+SYS:LFS:DIR?
+Directory: /
+
+.                                                       <DIR>
+..                                                      <DIR>
+cert.pem                                                 1286
+fanpico.cfg                                              7012
+key.pem                                                  1709
+
+```
+
+
 #### SYStem:LFS:FORMAT
 Format flash filesystem. This will erase current configuration (including any TLS certificates saved in flash).
 
@@ -1208,6 +1254,17 @@ Example (format filesystem and save current configuration):
 ```
 SYS:LFS:FORMAT
 CONF:SAVE
+```
+
+
+#### SYStem:LFS:REName
+Rename a file on the flash filesystem (littlefs).
+
+Parameters: <oldname> <newname>
+
+Example:
+```
+SYS:LFS:REN fanpico-backup.cfg fanpico.cfg
 ```
 
 
