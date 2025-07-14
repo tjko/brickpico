@@ -238,9 +238,9 @@ void clear_state(struct brickpico_state *s)
 
 	for (i = 0; i < VSENSOR_MAX_COUNT; i++) {
 		s->vtemp[i] = 0.0;
-		s->vtemp_prev[i] = 0.0;
-		s->vhumidity[i] = 0.0;
-		s->vpressure[i] = 0.0;
+		s->vtemp_prev[i] = -1.0;
+		s->vhumidity[i] = -1.0;
+		s->vpressure[i] = -1.0;
 		s->vtemp_updated[i] = from_us_since_boot(0);
 	}
 
