@@ -1324,6 +1324,30 @@ int cmd_lfs(const char *cmd, const char *args, int query, char *prev_cmd)
 	return 0;
 }
 
+int cmd_lfs_del(const char *cmd, const char *args, int query, char *prev_cmd)
+{
+	if (query)
+		return 1;
+
+	if (strlen(args) < 1)
+		return 2;
+
+	if (flash_delete_file(args))
+		return 2;
+
+	return 0;
+}
+
+int cmd_lfs_dir(const char *cmd, const char *args, int query, char *prev_cmd)
+{
+	if (!query)
+		return 1;
+
+	flash_list_directory("/", true);
+
+	return 0;
+}
+
 int cmd_lfs_format(const char *cmd, const char *args, int query, char *prev_cmd)
 {
 	if (query)
@@ -1335,6 +1359,58 @@ int cmd_lfs_format(const char *cmd, const char *args, int query, char *prev_cmd)
 	printf("Filesystem successfully formatted.\n");
 
 	return 0;
+}
+
+int cmd_lfs_ren(const char *cmd, const char *args, int query, char *prev_cmd)
+{
+	char *saveptr, *oldname, *newname, *arg;
+	int res = 2;
+
+	if (query)
+		return 1;
+
+	if (!(arg = strdup(args)))
+		return 2;
+
+	oldname = strtok_r(arg, " \t", &saveptr);
+	if (oldname && strlen(oldname) > 0) {
+		newname = strtok_r(NULL, " \t", &saveptr);
+		if (newname && strlen(newname) > 0) {
+			if (!flash_rename_file(oldname, newname)) {
+				res = 0;
+			}
+		}
+	}
+	free(arg);
+
+	return res;
+}
+
+int cmd_lfs_copy(const char *cmd, const char *args, int query, char *prev_cmd)
+{
+	char *saveptr, *srcname, *dstname, *arg;
+	int res = 2;
+
+	if (query)
+		return 1;
+
+	if (!(arg = strdup(args)))
+		return 2;
+
+	srcname = strtok_r(arg, " \t", &saveptr);
+	if (srcname && strlen(srcname) > 0) {
+		dstname = strtok_r(NULL, " \t", &saveptr);
+		if (dstname && strlen(dstname) > 0) {
+			if (strcmp(srcname, dstname)) {
+				if (!flash_copy_file(srcname, dstname, false)) {
+					res = 0;
+				}
+			}
+		}
+	}
+	free(arg);
+
+	return res;
 }
 
 int cmd_flash(const char *cmd, const char *args, int query, char *prev_cmd)
@@ -1659,6 +1735,14 @@ int cmd_vsensor_source(const char *cmd, const char *args, int query, char *prev_
 						}
 					}
 				}
+			} else if (vsmode == VSMODE_PICOTEMP) {
+				log_msg(LOG_NOTICE, "vsensor%d: set source to Pico (MCU) temperature.",
+					sensor + 1);
+				v->mode = vsmode;
+				for(i = 0; i < VSENSOR_COUNT; i++) {
+					v->sensors[i] = 0;
+				}
+				ret = 0;
 			} else {
 				temp_str[0] = 0;
 				for(i = 0; i < VSENSOR_SOURCE_MAX_COUNT; i++)
@@ -1811,7 +1895,11 @@ const struct cmd_t display_commands[] = {
 };
 
 const struct cmd_t lfs_commands[] = {
+	{ "COPY",      4, NULL,              cmd_lfs_copy },
+	{ "DELete",    3, NULL,              cmd_lfs_del },
+	{ "DIRectory", 3, NULL,              cmd_lfs_dir },
 	{ "FORMAT",    6, NULL,              cmd_lfs_format },
+	{ "REName",    3, NULL,              cmd_lfs_ren },
 	{ 0, 0, 0, 0 }
 };
 

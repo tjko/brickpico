@@ -108,6 +108,8 @@ double get_vsensor(uint8_t i, const struct brickpico_config *config,
 				t = s->default_temp;
 			}
 		}
+	} else if (s->mode == VSMODE_PICOTEMP) {
+		t = state->temp;
 	} else  {
 		int count = 0;
 		t = 0.0;

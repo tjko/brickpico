@@ -89,8 +89,8 @@ enum vsensor_modes {
 	VSMODE_MIN = 2,
 	VSMODE_AVG = 3,
 	VSMODE_DELTA = 4,
-	VSMODE_ONEWIRE = 5,
-	VSMODE_I2C = 6,
+	VSMODE_I2C = 5,
+	VSMODE_PICOTEMP = 6,
 };
 #define VSMODE_ENUM_MAX 6
 
@@ -274,8 +274,12 @@ int flash_format(bool multicore);
 int flash_read_file(char **bufptr, uint32_t *sizeptr, const char *filename);
 int flash_write_file(const char *buf, uint32_t size, const char *filename);
 int flash_delete_file(const char *filename);
+int flash_rename_file(const char *oldname, const char *newname);
+int flash_copy_file(const char *srcname, const char *dstname, bool overwrite);
+int flash_file_size(const char *filename);
 int flash_get_fs_info(size_t *size, size_t *free, size_t *files,
 		size_t *directories, size_t *filesizetotal);
+int flash_list_directory(const char *path, bool recursive);
 void print_rp2040_flashinfo();
 
 /* network.c */

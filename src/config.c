@@ -55,6 +55,8 @@ enum vsensor_modes str2vsmode(const char *s)
 			ret = VSMODE_DELTA;
 		else if (!strncasecmp(s, "i2c", 3))
 			ret = VSMODE_I2C;
+		else if (!strncasecmp(s, "picotemp", 8))
+			ret = VSMODE_PICOTEMP;
 	}
 
 	return ret;
@@ -72,6 +74,8 @@ const char* vsmode2str(enum vsensor_modes mode)
 		return "delta";
 	else if (mode == VSMODE_I2C)
 		return "i2c";
+	else if (mode == VSMODE_PICOTEMP)
+		return "picotemp";
 
 	return "manual";
 }
@@ -169,8 +173,13 @@ void clear_config(struct brickpico_config *cfg)
 	for (i = 0; i < VSENSOR_MAX_COUNT; i++) {
 		struct vsensor_input *vs = &cfg->vsensors[i];
 
-		vs->name[0] = 0;
-		vs->mode = VSMODE_MANUAL;
+		if (i == 0) {
+			strncopy(vs->name, "Pico Temperature", sizeof(vs->name));
+			vs->mode = VSMODE_PICOTEMP;
+		} else {
+			vs->name[0] = 0;
+			vs->mode = VSMODE_MANUAL;
+		}
 		vs->default_temp = 0.0;
 		vs->timeout = 60;
 		for (int j = 0; j < VSENSOR_SOURCE_MAX_COUNT; j++)
