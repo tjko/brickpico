@@ -149,6 +149,145 @@ cJSON* vsensors2json(const uint8_t *s)
 	return o;
 }
 
+#ifdef WIFI_SUPPORT
+int str_to_ssh_pubkey(const char *s, struct ssh_public_key *pk)
+{
+	char *t, *str, *saveptr;
+	void *buf = NULL;
+	int idx = 0;
+	int len, key_len;
+
+	if (!s || !pk)
+		return -1;
+	if (!(str = strdup(s)))
+		return -2;
+
+	pk->type[0] = 0;
+	pk->name[0] = 0;
+	pk->pubkey_size = 0;
+	memset(pk->pubkey, 0, sizeof(pk->pubkey));
+
+	t = strtok_r(str, " ", &saveptr);
+	while (t && idx < 3) {
+		if ((len = strlen(t)) > 0) {
+			//printf("%d: '%s'\n", idx, t);
+			if (idx == 0) {
+				/* key type */
+				strncopy(pk->type, t, sizeof(pk->type));
+			}
+			else if (idx == 1) {
+				/* key (base64 encoded) */
+				key_len = base64decode_raw(t, len, &buf);
+				if (key_len > 0 && key_len <= sizeof(pk->pubkey) &&
+					memmem(buf, key_len, pk->type, strlen(pk->type))) {
+					memcpy(pk->pubkey, buf, key_len);
+					pk->pubkey_size = key_len;
+				} else {
+					printf("Invalid key!\n");
+					break;
+				}
+			}
+			else if (idx == 2) {
+				/* key name */
+				strncopy(pk->name, t, sizeof(pk->name));
+			}
+			idx++;
+		}
+		t = strtok_r(NULL, " ", &saveptr);
+	}
+
+	free(str);
+	if (buf)
+		free(buf);
+
+	return (idx >= 2 ? 0 : 1);
+}
+
+
+const char* ssh_pubkey_to_str(const struct ssh_public_key *pk, char *s, size_t s_len)
+{
+	char *e;
+
+	if (!pk || !s || s_len < 1)
+		return NULL;
+
+	if (!(e = base64encode_raw(pk->pubkey, pk->pubkey_size)))
+		return NULL;
+
+	snprintf(s, s_len, "%s %s %s", pk->type, e, pk->name);
+	s[s_len - 1] = 0;
+	free(e);
+
+	return s;
+}
+
+
+static void json2sshpubkeys(cJSON *list, struct ssh_public_key *keys)
+{
+	cJSON *r, *user, *pkey;
+	struct ssh_public_key *k;
+	int idx = 0;
+
+	for (int i = 0; i < SSH_MAX_PUB_KEYS; i++) {
+		keys[i].username[0] = 0;
+		keys[i].type[0] = 0;
+		keys[i].name[0] = 0;
+		keys[i].pubkey_size = 0;
+	}
+
+	cJSON_ArrayForEach(r, list) {
+		k = &keys[idx];
+		user = cJSON_GetObjectItem(r, "user");
+		pkey = cJSON_GetObjectItem(r, "pubkey");
+		if (user && pkey) {
+			if (str_to_ssh_pubkey(cJSON_GetStringValue(pkey), k) == 0) {
+				strncopy(k->username, cJSON_GetStringValue(user),
+					sizeof(k->username));
+				idx++;
+			}
+		}
+		if (idx >= SSH_MAX_PUB_KEYS)
+			break;
+	}
+}
+
+static cJSON* sshpubkeys2json(const struct ssh_public_key *keys)
+{
+	const size_t buf_len = 256;
+	char *buf;
+	int count = 0;
+	cJSON *o, *r;
+
+	if (!(buf = calloc(1, buf_len)))
+		return NULL;
+
+	if ((o = cJSON_CreateArray())) {
+		for (int i = 0; i < SSH_MAX_PUB_KEYS; i++) {
+			const struct ssh_public_key *k = &keys[i];
+			if (k->pubkey_size > 0 && strlen(k->username) > 0) {
+				if (ssh_pubkey_to_str(k, buf, buf_len)) {
+					if ((r = cJSON_CreateObject())) {
+						cJSON_AddItemToObject(r, "pubkey",
+								cJSON_CreateString(buf));
+						cJSON_AddItemToObject(r, "user",
+								cJSON_CreateString(k->username));
+						cJSON_AddItemToArray(o, r);
+						count++;
+					}
+				}
+			}
+		}
+	}
+
+	free(buf);
+	if (count < 1) {
+		cJSON_Delete(o);
+		o = NULL;
+	}
+
+	return o;
+}
+#endif
 
 
 void clear_config(struct brickpico_config *cfg)
@@ -254,6 +393,17 @@ void clear_config(struct brickpico_config *cfg)
 	cfg->telnet_port = 0;
 	cfg->telnet_user[0] = 0;
 	cfg->telnet_pwhash[0] = 0;
+	cfg->ssh_active = false;
+	cfg->ssh_auth = true;
+	cfg->ssh_port = 0;
+	cfg->ssh_user[0] = 0;
+	cfg->ssh_pwhash[0] = 0;
+	for (int i = 0; i < SSH_MAX_PUB_KEYS; i++) {
+		cfg->ssh_pub_keys[i].username[0] = 0;
+		cfg->ssh_pub_keys[i].type[0] = 0;
+		cfg->ssh_pub_keys[i].name[0] = 0;
+		cfg->ssh_pub_keys[i].pubkey_size = 0;
+	}
 #endif
 
 	mutex_exit(config_mutex);
@@ -365,6 +515,17 @@ cJSON *config_to_json(const struct brickpico_config *cfg)
 		cJSON_AddItemToObject(config, "telnet_port", cJSON_CreateNumber(cfg->telnet_port));
 	STRING_TO_JSON("telnet_user", cfg->telnet_user);
 	STRING_TO_JSON("telnet_pwhash", cfg->telnet_pwhash);
+	if (cfg->ssh_active)
+		cJSON_AddItemToObject(config, "ssh_active", cJSON_CreateNumber(cfg->ssh_active));
+	if (cfg->ssh_auth != true)
+		cJSON_AddItemToObject(config, "ssh_auth", cJSON_CreateNumber(cfg->ssh_auth));
+	if (cfg->ssh_port > 0)
+		cJSON_AddItemToObject(config, "ssh_port", cJSON_CreateNumber(cfg->ssh_port));
+	STRING_TO_JSON("ssh_user", cfg->ssh_user);
+	STRING_TO_JSON("ssh_pwhash", cfg->ssh_pwhash);
+	if ((o = sshpubkeys2json(cfg->ssh_pub_keys))) {
+		cJSON_AddItemToObject(config, "ssh_pubkeys", o);
+	}
 #endif
 
 	/* PWM Outputs */
@@ -586,6 +747,20 @@ int json_to_config(cJSON *config, struct brickpico_config *cfg)
 	}
 	JSON_TO_STRING("telnet_user", cfg->telnet_user, sizeof(cfg->telnet_user));
 	JSON_TO_STRING("telnet_pwhash", cfg->telnet_pwhash, sizeof(cfg->telnet_pwhash));
+	if ((ref = cJSON_GetObjectItem(config, "ssh_active"))) {
+		cfg->ssh_active = cJSON_GetNumberValue(ref);
+	}
+	if ((ref = cJSON_GetObjectItem(config, "ssh_auth"))) {
+		cfg->ssh_auth = cJSON_GetNumberValue(ref);
+	}
+	if ((ref = cJSON_GetObjectItem(config, "ssh_port"))) {
+		cfg->ssh_port = cJSON_GetNumberValue(ref);
+	}
+	JSON_TO_STRING("ssh_user", cfg->ssh_user, sizeof(cfg->ssh_user));
+	JSON_TO_STRING("ssh_pwhash", cfg->ssh_pwhash, sizeof(cfg->ssh_pwhash));
+	if ((ref = cJSON_GetObjectItem(config, "ssh_pubkeys"))) {
+		json2sshpubkeys(ref, cfg->ssh_pub_keys);
+	}
 #endif
 
 	/* PWM output configurations */

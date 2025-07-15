@@ -1,5 +1,5 @@
 /* util.c
-   Copyright (C) 2023 Timo Kokkonen <tjko@iki.fi>
+   Copyright (C) 2023-2025 Timo Kokkonen <tjko@iki.fi>
 
    SPDX-License-Identifier: GPL-3.0-or-later
 
@@ -275,10 +275,11 @@ double round_decimal(double val, unsigned int decimal)
 	return round(val * f) / f;
 }
 
-char* base64encode(const char *input)
+
+char* base64encode_raw(const void *input, size_t input_len)
 {
 	base64_encodestate ctx;
-	size_t buf_len, input_len, count;
+	size_t buf_len,  count;
 	char *buf, *c;
 
 	if (!input)
@@ -286,7 +287,6 @@ char* base64encode(const char *input)
 
 	base64_init_encodestate(&ctx);
 
-	input_len = strlen(input);
 	buf_len = base64_encode_length(input_len, &ctx);
 	if (!(buf = malloc(buf_len + 1)))
 		return NULL;
@@ -301,27 +301,42 @@ char* base64encode(const char *input)
 	return buf;
 }
 
+char *base64encode(const char *input)
+{
+	if (!input)
+		return NULL;
+
+	return base64encode_raw(input, strlen(input));
+}
+
+
+int base64decode_raw(const void *input, size_t input_len, void **output)
+{
+	base64_decodestate ctx;
+	size_t buf_len, count;
+
+	if (!input || !output || input_len < 1)
+		return -1;
+
+	base64_init_decodestate(&ctx);
+	buf_len = base64_decode_maxlength(input_len);
+	if (!(*output = calloc(1, buf_len)))
+		return -2;
+
+	count = base64_decode_block(input, input_len, *output, &ctx);
+
+	return count;
+}
 
 char* base64decode(const char *input)
 {
-	base64_decodestate ctx;
-	size_t buf_len, input_len, count;
-	char *buf, *c;
+	char *buf = NULL;
 
 	if (!input)
 		return NULL;
 
-	base64_init_decodestate(&ctx);
-
-	input_len = strlen(input);
-	buf_len = base64_decode_maxlength(input_len);
-	if (!(buf = malloc(buf_len + 1)))
+	if (base64decode_raw(input, strlen(input), (void**)&buf) < 0)
 		return NULL;
-
-	c = buf;
-	count = base64_decode_block(input, input_len, c, &ctx);
-	c += count;
-	*c = 0;
 
 	return buf;
 }

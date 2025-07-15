@@ -484,8 +484,7 @@ static int littlefs_list_dir(const char *path, bool recursive)
 		return LFS_ERR_INVAL;
 
 	/* Check if path ends with "/" ... */
-	path_len = strnlen(path, LFS_NAME_MAX);
-	if (path_len > 0) {
+	if ((path_len = strnlen(path, LFS_NAME_MAX)) > 0) {
 		if (path[path_len - 1] == '/')
 			separator[0] = 0;
 	}
@@ -523,9 +522,9 @@ static int littlefs_list_dir(const char *path, bool recursive)
 				if (info.name[1] == '.' && info.name[2] == 0)
 					continue;
 			}
-			if ((dirname = malloc(LFS_NAME_MAX + 1))) {
-				snprintf(dirname, LFS_NAME_MAX + 1, "%s%s%s",
-					path, separator, info.name);
+			if ((dirname = calloc(1, LFS_NAME_MAX + 1))) {
+				snprintf(dirname, LFS_NAME_MAX, "%s%s",	path, separator);
+				strncatenate(dirname, info.name, LFS_NAME_MAX);
 				flash_list_directory(dirname, recursive);
 				free(dirname);
 			}
