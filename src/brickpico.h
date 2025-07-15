@@ -60,6 +60,9 @@
 #define DEFAULT_MQTT_PWR_INTERVAL     600
 #define DEFAULT_MQTT_PWM_INTERVAL     600
 
+#define SSH_MAX_PUB_KEYS  4
+#define MAX_USERNAME_LEN  16
+#define MAX_PWHASH_LEN    128
 
 #ifdef NDEBUG
 #define WATCHDOG_ENABLED       1
@@ -98,6 +101,14 @@ enum vsensor_modes {
 };
 #define VSMODE_ENUM_MAX 6
 
+
+struct ssh_public_key {
+	char username[MAX_USERNAME_LEN + 1];
+	char type[32 + 1];
+	char name[32 + 1];
+	uint8_t pubkey[128];
+	uint16_t pubkey_size;
+};
 
 struct timer_event {
 	char name[MAX_EVENT_NAME_LEN];
@@ -190,8 +201,14 @@ struct brickpico_config {
 	bool telnet_auth;
 	bool telnet_raw_mode;
 	uint32_t telnet_port;
-	char telnet_user[16 + 1];
-	char telnet_pwhash[128 + 1];
+	char telnet_user[MAX_USERNAME_LEN + 1];
+	char telnet_pwhash[MAX_PWHASH_LEN + 1];
+	bool ssh_active;
+	bool ssh_auth;
+	uint32_t ssh_port;
+	char ssh_user[MAX_USERNAME_LEN + 1];
+	char ssh_pwhash[MAX_PWHASH_LEN + 1];
+	struct ssh_public_key ssh_pub_keys[SSH_MAX_PUB_KEYS];
 #endif
 	/* Non-config items */
 	void *i2c_context[VSENSOR_MAX_COUNT];
@@ -253,6 +270,10 @@ extern mutex_t *config_mutex;
 extern const struct brickpico_config *cfg;
 enum vsensor_modes str2vsmode(const char *s);
 const char* vsmode2str(enum vsensor_modes mode);
+#if WIFI_SUPPORT
+int str_to_ssh_pubkey(const char *s, struct ssh_public_key *pk);
+const char* ssh_pubkey_to_str(const struct ssh_public_key *pk, char *s, size_t s_len);
+#endif
 void read_config(bool use_default_config);
 void save_config();
 void delete_config();
@@ -306,8 +327,19 @@ const char* wifi_auth_type_name(uint32_t type);
 /* httpd.c */
 void brickpico_setup_http_handlers();
 
-/* tcpserver.c */
+/* telnetd.c */
 void tcpserver_init();
+
+/* sshd.c */
+void sshserver_init();
+void sshserver_disconnect();
+void sshserver_who();
+
+/* ssh_util.c */
+void ssh_list_pkeys();
+int ssh_create_pkey(const char* args);
+int ssh_delete_pkey(const char* args);
+int ssh_get_pkey(int index, char** buf_ptr, uint32_t* buf_size_ptr, const char** name_ptr);
 
 /* mqtt.c */
 void brickpico_setup_mqtt_client();
@@ -380,7 +412,9 @@ int valid_hostname(const char *hostname);
 int check_for_change(double oldval, double newval, double threshold);
 int64_t pow_i64(int64_t x, uint8_t y);
 double round_decimal(double val, unsigned int decimal);
+char* base64encode_raw(const void *input, size_t input_len);
 char* base64encode(const char *input);
+int base64decode_raw(const void *input, size_t input_len, void **output);
 char* base64decode(const char *input);
 char *strncopy(char *dst, const char *src, size_t size);
 char *strncatenate(char *dst, const char *src, size_t size);

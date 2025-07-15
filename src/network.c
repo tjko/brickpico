@@ -276,9 +276,16 @@ void wifi_init()
 #endif
 	brickpico_setup_http_handlers();
 
+	/* Enable Telnet server */
 	if (cfg->telnet_active) {
 		log_msg(LOG_NOTICE, "Telnet Server enabled");
 		tcpserver_init();
+	}
+
+	/* Enable SSH server */
+	if (cfg->ssh_active) {
+		log_msg(LOG_NOTICE, "SSH Server enabled");
+		sshserver_init();
 	}
 
 	cyw43_arch_lwip_end();

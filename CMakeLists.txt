@@ -6,6 +6,12 @@ cmake_minimum_required(VERSION 3.13)
 # Include Pico-SDK ($PICO_SDK_PATH must be set)
 include($ENV{PICO_SDK_PATH}/external/pico_sdk_import.cmake)
 
+message("Pico SDK version: ${PICO_SDK_VERSION_STRING}")
+
+if (PICO_SDK_VERSION_STRING VERSION_LESS "2.0.0")
+   message(FATAL_ERROR "Pico-SDK version 2.0.0 or later required.")
+endif()
+
 
 project(brickpico
   VERSION 1.4.0
@@ -78,6 +84,19 @@ target_sources(libb64 INTERFACE
 # pico-sensor-lib
 add_subdirectory(libs/pico-sensor-lib)
 
+# pico-sshd
+add_subdirectory(libs/pico-sshd)
+
+# wolfSSL / wolfCrypt
+set(WOLFSSL_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/libs/wolfssl)
+include(libs/pico-sshd/cmake/wolfssl_pico.cmake)
+
+# wolfSSH
+set(WOLFSSH_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/libs/wolfssh)
+include(libs/pico-sshd/cmake/wolfssh_pico.cmake)
+
+include_directories(src/wolfssl)
+
 
 # brickpico firmware
 
@@ -144,6 +163,8 @@ if (PICO_CYW43_SUPPORTED) # set by PICO_BOARD=pico_w
     src/httpd.c
     src/mqtt.c
     src/telnetd.c
+    src/sshd.c
+    src/ssh_util.c
     )
   target_link_libraries(brickpico PRIVATE
     pico_cyw43_arch_lwip_threadsafe_background
@@ -151,6 +172,9 @@ if (PICO_CYW43_SUPPORTED) # set by PICO_BOARD=pico_w
     pico_lwip_http
     pico_lwip_mqtt
     pico-telnetd-lib
+    pico-sshd-lib
+    wolfssh
+    wolfssl
     )
   if (TLS_SUPPORT)
     target_link_libraries(brickpico PRIVATE
