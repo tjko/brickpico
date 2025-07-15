@@ -20,13 +20,16 @@ BrickPico is an Open-source hardware (OSHW) project.
 * Configurable Lightness/Gamma correction
 * Support for configurable lighting "effects" on each channel
 * Connectors for common Lego light kits (Light My Bricks, etc.) as well as 2.54mm pin header.
-* OLED display module support (128x64 or 128x128)
+* I2C OLED display module support (128x64 or 128x128)
+* I2C Enviromental sensor support (up to 8 sensors)
 * Configuration stored on the device itself (in the flash memory).
 * SCPI "like" programming interface (see [Command Reference](commands.md))
-* WiFi support if opting to mount Pico W on the board. This turns fanpico to "IoT" device with basic web interface.
+* WiFi support if opting to mount Pico W on the board.
+* HTTP server for monitoring.
 * MQTT support for sending status and to receive commands.
 * Home Assistant (MQTT Discovery) support
-* Telnet support for remote configuration and monitoring.
+* Telnet server for remote configuration and monitoring.
+* SSH server for remote configuration and monitoring.
 
 [![BrickPico](images/brickpico-08-small.jpg)](images/brickpico-08.jpg?raw=true)
 
@@ -177,16 +180,19 @@ brickpico.uf2
 If you have picotool installed you can check the firmware image information:
 ```
 $ picotool info -a brickpico.uf2
-File brickpico.uf2:
+File brickpico.uf2 family ID 'rp2040':
 
 Program Information
  name:              brickpico
- version:           1.3.0 (Jan  9 2025)
+ version:           1.4.0beta
  web site:          https://github.com/tjko/brickpico/
  description:       BrickPico-08 - Smart LED Controller
  features:          USB stdin / stdout
+ boot settings:     bootdelay = 0
+                    safemode = 0
  binary start:      0x10000000
- binary end:        0x100b3910
+ binary end:        0x1010b638
+ embedded drive:    0x101c0000-0x10200000 (256K): littlefs
 
 Fixed Pin Information
  0:                 TX (Serial)
@@ -209,10 +215,10 @@ Fixed Pin Information
  28:                LCD Reset (SPI)
 
 Build Information
- sdk version:       2.1.0
+ sdk version:       2.1.1
  pico_board:        pico_w
  boot2_name:        boot2_w25q080
- build date:        Dec 30 2024
+ build date:        Jul 14 2025
  build attributes:  Release
 
 Metadata Blocks
