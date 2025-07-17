@@ -32,7 +32,6 @@
 #define ADC_REF_VOLTAGE 3.338
 #define ADC_MAX_VALUE   (1 << 12)
 #define ADC_AVG_WINDOW  16
-#define ADC_PIN         4  /* ADC4 - Internal temperature sensor on RP2040 */
 
 
 double get_temperature(double adc_ref_voltage, double temp_offset, double temp_coefficient)
@@ -44,7 +43,7 @@ double get_temperature(double adc_ref_voltage, double temp_offset, double temp_c
 
 	start = to_us_since_boot(get_absolute_time());
 
-	adc_select_input(ADC_PIN);
+	adc_select_input(ADC_TEMPERATURE_CHANNEL_NUM);
 	for (i = 0; i < ADC_AVG_WINDOW; i++) {
 		raw += adc_read();
 	}
