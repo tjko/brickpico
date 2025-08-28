@@ -150,6 +150,65 @@ cJSON* vsensors2json(const uint8_t *s)
 }
 
 #ifdef WIFI_SUPPORT
+static void json2acllist(cJSON *item, acl_entry_t *list, uint32_t len)
+{
+	cJSON *o;
+	char *val;
+	ip_addr_t tmpip;
+	int count = 0;
+	char *s, *tok, *saveptr;
+	int prefix;
+
+	for (int i = 0; i < len; i++) {
+		ip_addr_set_any(0, &list[i].ip);
+		list[i].prefix = 0;
+	}
+
+	cJSON_ArrayForEach(o, item) {
+		val = cJSON_GetStringValue(o);
+		if (val && count < len && (s = strdup(val))) {
+			tok = strtok_r(s, "/", &saveptr);
+			if (tok && ipaddr_aton(tok, &tmpip)) {
+				tok = strtok_r(NULL, "/", &saveptr);
+				if (tok && str_to_int(tok, &prefix, 10)) {
+					ip_addr_copy(list[count].ip, tmpip);
+					list[count].prefix = clamp_int(prefix, 0,
+								IP_IS_V6(tmpip) ? 128 : 32);
+					count++;
+				}
+			}
+			free(s);
+		}
+	}
+
+}
+
+static cJSON* acllist2json(const acl_entry_t *list, uint32_t len)
+{
+	cJSON *o;
+	char tmp[128];
+	int count = 0;
+
+	if ((o = cJSON_CreateArray()) == NULL)
+		return NULL;
+
+	for (int i = 0; i < len; i++) {
+		if (list[i].prefix > 0) {
+			snprintf(tmp, sizeof(tmp), "%s/%u", ipaddr_ntoa(&list[i].ip),
+				list[i].prefix);
+			cJSON_AddItemToArray(o, cJSON_CreateString(tmp));
+			count++;
+		}
+	}
+
+	if (count < 1) {
+		cJSON_Delete(o);
+		o = NULL;
+	}
+
+	return o;
+}
+
 int str_to_ssh_pubkey(const char *s, struct ssh_public_key *pk)
 {
 	char *t, *str, *saveptr;
@@ -515,6 +574,8 @@ cJSON *config_to_json(const struct brickpico_config *cfg)
 		cJSON_AddItemToObject(config, "telnet_port", cJSON_CreateNumber(cfg->telnet_port));
 	STRING_TO_JSON("telnet_user", cfg->telnet_user);
 	STRING_TO_JSON("telnet_pwhash", cfg->telnet_pwhash);
+	if ((o = acllist2json(cfg->telnet_acls, TELNET_MAX_ACL_ENTRIES)))
+		cJSON_AddItemToObject(config, "telnet_acls", o);
 	if (cfg->ssh_active)
 		cJSON_AddItemToObject(config, "ssh_active", cJSON_CreateNumber(cfg->ssh_active));
 	if (cfg->ssh_auth != true)
@@ -523,9 +584,10 @@ cJSON *config_to_json(const struct brickpico_config *cfg)
 		cJSON_AddItemToObject(config, "ssh_port", cJSON_CreateNumber(cfg->ssh_port));
 	STRING_TO_JSON("ssh_user", cfg->ssh_user);
 	STRING_TO_JSON("ssh_pwhash", cfg->ssh_pwhash);
-	if ((o = sshpubkeys2json(cfg->ssh_pub_keys))) {
+	if ((o = sshpubkeys2json(cfg->ssh_pub_keys)))
 		cJSON_AddItemToObject(config, "ssh_pubkeys", o);
-	}
+	if ((o = acllist2json(cfg->ssh_acls, SSH_MAX_ACL_ENTRIES)))
+		cJSON_AddItemToObject(config, "ssh_acls", o);
 #endif
 
 	/* PWM Outputs */
@@ -747,6 +809,8 @@ int json_to_config(cJSON *config, struct brickpico_config *cfg)
 	}
 	JSON_TO_STRING("telnet_user", cfg->telnet_user, sizeof(cfg->telnet_user));
 	JSON_TO_STRING("telnet_pwhash", cfg->telnet_pwhash, sizeof(cfg->telnet_pwhash));
+	if ((ref = cJSON_GetObjectItem(config, "telnet_acls")))
+		json2acllist(ref, cfg->telnet_acls, TELNET_MAX_ACL_ENTRIES);
 	if ((ref = cJSON_GetObjectItem(config, "ssh_active"))) {
 		cfg->ssh_active = cJSON_GetNumberValue(ref);
 	}
@@ -758,9 +822,10 @@ int json_to_config(cJSON *config, struct brickpico_config *cfg)
 	}
 	JSON_TO_STRING("ssh_user", cfg->ssh_user, sizeof(cfg->ssh_user));
 	JSON_TO_STRING("ssh_pwhash", cfg->ssh_pwhash, sizeof(cfg->ssh_pwhash));
-	if ((ref = cJSON_GetObjectItem(config, "ssh_pubkeys"))) {
+	if ((ref = cJSON_GetObjectItem(config, "ssh_pubkeys")))
 		json2sshpubkeys(ref, cfg->ssh_pub_keys);
-	}
+	if ((ref = cJSON_GetObjectItem(config, "ssh_acls")))
+		json2acllist(ref, cfg->ssh_acls, SSH_MAX_ACL_ENTRIES);
 #endif
 
 	/* PWM output configurations */

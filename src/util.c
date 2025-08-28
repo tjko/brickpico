@@ -177,59 +177,6 @@ bool rtc_get_time(time_t *t)
 }
 
 
-const char *mac_address_str_r(const uint8_t *mac, char *buf, size_t buf_len)
-{
-	if (!buf || buf_len < 1)
-		return NULL;
-
-	snprintf(buf, buf_len, "%02x:%02x:%02x:%02x:%02x:%02x",
-		mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
-	return buf;
-}
-
-const char *mac_address_str(const uint8_t *mac)
-{
-	static char buf[18];
-
-	return mac_address_str_r(mac, buf, sizeof(buf));
-}
-
-int valid_wifi_country(const char *country)
-{
-	if (!country)
-		return 0;
-
-	if (strlen(country) < 2)
-		return 0;
-
-	if (!(country[0] >= 'A' && country[0] <= 'Z'))
-		return 0;
-	if (!(country[1] >= 'A' && country[1] <= 'Z'))
-		return 0;
-
-	if (strlen(country) == 2)
-		return 1;
-
-	if (country[2] >= '1' && country[2] <= '9')
-		return 1;
-
-	return 0;
-}
-
-int valid_hostname(const char *name)
-{
-	if (!name)
-		return 0;
-
-	for (int i = 0; i < strlen(name); i++) {
-		if (!(isalnum((int)name[i]) || name[i] == '-')) {
-			return 0;
-		}
-	}
-
-	return 1;
-}
-
 int check_for_change(double oldval, double newval, double threshold)
 {
 	double delta = fabs(oldval - newval);

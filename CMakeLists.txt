@@ -168,6 +168,7 @@ if (PICO_CYW43_SUPPORTED) # set by PICO_BOARD=pico_w
     src/telnetd.c
     src/sshd.c
     src/ssh_util.c
+    src/util_net.c
     )
   target_link_libraries(brickpico PRIVATE
     pico_cyw43_arch_lwip_threadsafe_background

@@ -40,6 +40,7 @@
 
 #ifdef WIFI_SUPPORT
 
+#include "util_net.h"
 #include "syslog.h"
 
 static absolute_time_t t_network_initialized;
