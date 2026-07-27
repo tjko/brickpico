@@ -31,7 +31,7 @@
 #include "pico_telnetd.h"
 #include "pico_telnetd/util.h"
 #include "brickpico.h"
-
+#include "util_net.h"
 
 static const char *telnet_banner = "\r\n"
 	"______      _      _   ______ _\r\n"
@@ -46,6 +46,34 @@ static user_pwhash_entry_t users[] = {
 	{ NULL, NULL },
 	{ NULL, NULL }
 };
+
+
+static int telnet_allow_connection_cb(ip_addr_t *src_ip)
+{
+	int ret = 0;
+	int aclcount = 0;
+
+	if (!src_ip)
+		return -1;
+
+	for (int i = 0; i < TELNET_MAX_ACL_ENTRIES; i++) {
+		const acl_entry_t *acl = &cfg->telnet_acls[i];
+
+		if (acl->prefix > 0) {
+			ip_addr_t netmask;
+
+			aclcount++;
+			make_netmask(&netmask, acl->prefix);
+			if (ip_addr_netcmp(&acl->ip, src_ip, &netmask)) {
+				ret = 1;
+				break;
+			}
+		}
+	}
+
+	return (aclcount > 0 ? ret: 1);
+}
+
 
 void tcpserver_init()
 {
@@ -65,6 +93,7 @@ void tcpserver_init()
 	}
 	srv->log_cb = log_msg;
 	srv->banner = telnet_banner;
+	srv->allow_connect_cb = telnet_allow_connection_cb;
 
 	telnet_server_start(srv, true);
 }

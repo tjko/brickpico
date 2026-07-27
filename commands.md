@@ -125,6 +125,8 @@ BrickPico supports following commands:
 * [SYStem:SPI?](#systemspi-1)
 * [SYStem:SSH:SERVer](#systemsshserver)
 * [SYStem:SSH:SERVer?](#systemsshserver-1)
+* [SYStem:SSH:ACLs](#systemsshacls)
+* [SYStem:SSH:ACLs?](#systemsshacls-1)
 * [SYStem:SSH:AUTH](#systemsshauth)
 * [SYStem:SSH:AUTH?](#systemsshauth-1)
 * [SYStem:SSH:PORT](#systemsshport)
@@ -143,6 +145,8 @@ BrickPico supports following commands:
 * [SYStem:SSH:PUBKEY:LIST?](#systemsshpubkeylist)
 * [SYStem:TELNET:SERVer](#systemtelnetserver)
 * [SYStem:TELNET:SERVer?](#systemtelnetserver-1)
+* [SYStem:TELNET:ACLs](#systemtelnetacls)
+* [SYStem:TELNET:ACLs?](#systemtelnetacls-1)
 * [SYStem:TELNET:AUTH](#systemtelnetauth)
 * [SYStem:TELNET:AUTH?](#systemtelnetauth-1)
 * [SYStem:TELNET:PORT](#systemtelnetport)
@@ -819,6 +823,7 @@ Example:
 SYS:ERR?
 0,"No Error"
 ```
+
 
 #### SYStem:DEBug
 Set the system debug level. This controls the logging to the console.
@@ -1842,6 +1847,35 @@ OFF
 ```
 
 
+#### SYStem:SSH:ACLs
+Configure ACL(s) to limit from which subnets (or IPs) connnections
+to SSH server is allowed.
+If no ACLs have been setup then connections from any (source) IP is allowed.
+
+
+Default: 0.0.0.0/0  (none)
+
+Example (allow subnet 192.168.1.0/255.255.255.0 and single IP 172.30.1.42):
+```
+SYS:SSH:ACLS 192.168.1.0/24,172.30.1.42/32
+```
+
+Example (remove all ACLs):
+```
+SYS:SSH:ACLS 0.0.0.0/0
+```
+
+#### SYStem:SSH:ACLs?
+Display currently configured ACL(s) for the SSH server.
+If no ACLs have been setup then connections from any (source) IP is allowed.
+
+Example:
+```
+SYS:SSH:ACLs?
+192.168.1.0/24, 172.30.1.42/32
+```
+
+
 #### SYStem:SSH:AUTH
 Toggle SSH server authentication mode. When enabled then SSH server will
 require user to authenticate (password or publickey authentication).
@@ -2065,6 +2099,35 @@ Example:
 ```
 SYS:TELNET:SERV?
 OFF
+```
+
+
+#### SYStem:TELNET:ACLs
+Configure ACL(s) to limit from which subnets (or IPs) connnections
+to Telnet server is allowed.
+If no ACLs have been setup then connections from any (source) IP is allowed.
+
+
+Default: 0.0.0.0/0 (none)
+
+Example (allow subnet 192.168.1.0/255.255.255.0 and single IP 172.30.1.42):
+```
+SYS:TELNET:ACLS 192.168.1.0/24,172.30.1.42/32
+```
+
+Example (remove all ACLs):
+```
+SYS:TELNET:ACLS 0.0.0.0/0
+```
+
+#### SYStem:TELNET:ACLs?
+Display currently configured ACL(s) for the Telnet server.
+If no ACLs have been setup then connections from any (source) IP is allowed.
+
+Example:
+```
+SYS:TELNET:ACLs?
+192.168.1.0/24, 172.30.1.42/32
 ```
 
 

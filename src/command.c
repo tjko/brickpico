@@ -41,6 +41,7 @@
 #include "lwip/ip_addr.h"
 #include "lwip/stats.h"
 #include "pico_telnetd/util.h"
+#include "util_net.h"
 #endif
 
 
@@ -216,6 +217,67 @@ int ip_change(const char *cmd, const char *args, int query, char *prev_cmd, cons
 		log_msg(LOG_NOTICE, "%s change '%s' --> %s'", name, ipaddr_ntoa(ip), args);
 		ip_addr_copy(*ip, tmpip);
 	}
+	return 0;
+}
+
+int acl_list_change(const char *cmd, const char *args, int query, char *prev_cmd, const char *name, acl_entry_t *acl, uint32_t list_len)
+{
+	ip_addr_t tmpip;
+	char buf[255], tmp[32];
+	char *t, *t2, *arg, *saveptr, *saveptr2;
+	int prefix;
+	int idx = 0;
+
+
+	if (query) {
+		for (int i = 0; i < list_len; i++) {
+			if (i > 0) {
+				if (acl[i].prefix == 0)
+					break;
+				printf(", ");
+			}
+			printf("%s/%u", ipaddr_ntoa(&acl[i].ip), acl[i].prefix);
+		}
+		printf("\n");
+		return 0;
+	}
+
+	if (!(arg = strdup(args)))
+		return 2;
+	t = strtok_r(arg, ",", &saveptr);
+	while (t && idx < list_len) {
+		t = trim_str(t);
+		t2 = strtok_r(t, "/", &saveptr2);
+		if (t2 && ipaddr_aton(t2, &tmpip)) {
+			t2 = strtok_r(NULL, "/", &saveptr2);
+			if (t2 && str_to_int(t2, &prefix, 10)) {
+				ip_addr_copy(acl[idx].ip, tmpip);
+				acl[idx].prefix = clamp_int(prefix,
+							0, IP_IS_V6(tmpip) ? 128 : 32);
+				idx++;
+				if (acl[idx - 1].prefix == 0)
+					break;
+			}
+		}
+		t = strtok_r(NULL, ",", &saveptr);
+	}
+	free(arg);
+	if (idx == 0)
+		return 1;
+
+	buf[0] = 0;
+	for (int i = 0; i < list_len; i++) {
+		if (i >= idx) {
+			ip_addr_set_zero(&acl[i].ip);
+			acl[i].prefix = 0;
+		} else {
+			snprintf(tmp, sizeof(tmp), "%s%s/%u", (i > 0 ? ", " : ""),
+				ipaddr_ntoa(&acl[i].ip), acl[i].prefix);
+			strncatenate(buf, tmp, sizeof(buf));
+		}
+	}
+	log_msg(LOG_NOTICE, "%s changed to '%s'", name, buf);
+
 	return 0;
 }
 #endif
@@ -1203,6 +1265,12 @@ int cmd_tls_cert(const char *cmd, const char *args, int query, char *prev_cmd)
 }
 #endif /* TLS_SUPPORT */
 
+int cmd_ssh_acls(const char *cmd, const char *args, int query, char *prev_cmd)
+{
+	return acl_list_change(cmd, args, query, prev_cmd, "SSH Server ACLs", conf->ssh_acls,
+		SSH_MAX_ACL_ENTRIES);
+}
+
 int cmd_ssh_auth(const char *cmd, const char *args, int query, char *prev_cmd)
 {
 	return bool_setting(cmd, args, query, prev_cmd,
@@ -1366,6 +1434,12 @@ int cmd_ssh_pubkey_del(const char *cmd, const char *args, int query, char *prev_
 	}
 
 	return 0;
+}
+
+int cmd_telnet_acls(const char *cmd, const char *args, int query, char *prev_cmd)
+{
+	return acl_list_change(cmd, args, query, prev_cmd, "Telnet Server ACLs",
+			conf->telnet_acls, TELNET_MAX_ACL_ENTRIES);
 }
 
 int cmd_telnet_auth(const char *cmd, const char *args, int query, char *prev_cmd)
@@ -2171,6 +2245,7 @@ const struct cmd_t ssh_pubkey_commands[] = {
 };
 
 const struct cmd_t ssh_commands[] = {
+	{ "ACLs",      3, NULL,              cmd_ssh_acls },
 	{ "AUTH",      4, NULL,              cmd_ssh_auth },
 	{ "PORT",      4, NULL,              cmd_ssh_port },
 	{ "SERVer",    4, NULL,              cmd_ssh_server },
@@ -2182,6 +2257,7 @@ const struct cmd_t ssh_commands[] = {
 };
 
 const struct cmd_t telnet_commands[] = {
+	{ "ACLs",      3, NULL,              cmd_telnet_acls },
 	{ "AUTH",      4, NULL,              cmd_telnet_auth },
 	{ "PORT",      4, NULL,              cmd_telnet_port },
 	{ "RAWmode",   3, NULL,              cmd_telnet_rawmode },

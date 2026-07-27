@@ -60,6 +60,8 @@
 #define DEFAULT_MQTT_PWR_INTERVAL     600
 #define DEFAULT_MQTT_PWM_INTERVAL     600
 
+#define TELNET_MAX_ACL_ENTRIES 4
+#define SSH_MAX_ACL_ENTRIES 4
 #define SSH_MAX_PUB_KEYS  4
 #define MAX_USERNAME_LEN  16
 #define MAX_PWHASH_LEN    128
@@ -101,6 +103,12 @@ enum vsensor_modes {
 };
 #define VSMODE_ENUM_MAX 6
 
+#ifdef WIFI_SUPPORT
+typedef struct acl_entry_t {
+	ip_addr_t ip;
+	uint8_t prefix;
+} acl_entry_t;
+#endif
 
 struct ssh_public_key {
 	char username[MAX_USERNAME_LEN + 1];
@@ -203,12 +211,14 @@ struct brickpico_config {
 	uint32_t telnet_port;
 	char telnet_user[MAX_USERNAME_LEN + 1];
 	char telnet_pwhash[MAX_PWHASH_LEN + 1];
+	acl_entry_t telnet_acls[TELNET_MAX_ACL_ENTRIES];
 	bool ssh_active;
 	bool ssh_auth;
 	uint32_t ssh_port;
 	char ssh_user[MAX_USERNAME_LEN + 1];
 	char ssh_pwhash[MAX_PWHASH_LEN + 1];
 	struct ssh_public_key ssh_pub_keys[SSH_MAX_PUB_KEYS];
+	acl_entry_t ssh_acls[SSH_MAX_ACL_ENTRIES];
 #endif
 	/* Non-config items */
 	void *i2c_context[VSENSOR_MAX_COUNT];
@@ -405,10 +415,6 @@ char* time_t_to_str(char *buf, size_t size, const time_t t);
 bool str_to_time_t(const char *str, time_t *t);
 bool rtc_get_tm(struct tm *tm);
 bool rtc_get_time(time_t *t);
-const char *mac_address_str_r(const uint8_t *mac, char *buf, size_t buf_len);
-const char *mac_address_str(const uint8_t *mac);
-int valid_wifi_country(const char *country);
-int valid_hostname(const char *hostname);
 int check_for_change(double oldval, double newval, double threshold);
 int64_t pow_i64(int64_t x, uint8_t y);
 double round_decimal(double val, unsigned int decimal);
